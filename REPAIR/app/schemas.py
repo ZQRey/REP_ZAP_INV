@@ -27,9 +27,43 @@ class EquipmentModelUpdate(BaseModel):
 
 class EquipmentModelResponse(EquipmentModelBase):
     id: int
+    units_count: int = 0
     created_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class ModelParseSuggestResponse(BaseModel):
+    name: str
+    vendor: Optional[str] = None
+    category: str
+    specs_template: str
+    sample_size: int = 0
+    average_ram_gb: int = 16
+    common_cpu: Optional[str] = None
+    common_storage: Optional[str] = None
+    common_os: Optional[str] = None
+
+
+class SwitchConfigSchema(BaseModel):
+    ip_address: str
+    management_type: str = "snmp"
+    mgmt_port: int = 161
+    username: Optional[str] = None
+    password: Optional[str] = None
+    snmp_community: Optional[str] = "public"
+    model: Optional[str] = None
+    total_ports: int = 24
+    site: Optional[str] = "Default"
+
+
+class SwitchTestResponse(BaseModel):
+    success: bool
+    reachable: bool
+    learned_mac_count: int = 0
+    message: str
+    ports_up: Optional[int] = None
+    ports_total: Optional[int] = None
 
 
 # --- Техника и IT-активы (Asset) ---
@@ -44,6 +78,7 @@ class EquipmentBase(BaseModel):
     current_user_id: Optional[str] = None
     specs: Optional[Dict[str, Any]] = None
     notes: Optional[str] = None
+    switch_config: Optional[SwitchConfigSchema] = None
 
 
 class EquipmentCreate(EquipmentBase):
@@ -62,6 +97,7 @@ class EquipmentUpdate(BaseModel):
     current_user_id: Optional[str] = None
     specs: Optional[Dict[str, Any]] = None
     notes: Optional[str] = None
+    switch_config: Optional[SwitchConfigSchema] = None
 
 
 class EquipmentAcceptanceRequest(BaseModel):
@@ -107,6 +143,7 @@ class EquipmentResponse(BaseModel):
     ad_guid: Optional[str] = None
     specs: Optional[Dict[str, Any]] = None
     notes: Optional[str] = None
+    switch_config: Optional[SwitchConfigSchema] = None
     updated_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)

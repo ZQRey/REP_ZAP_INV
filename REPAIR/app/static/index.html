@@ -203,7 +203,7 @@
                         <svg class="w-4 h-4" :class="isAdSyncing ? 'animate-spin' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                         <span x-text="isAdSyncing ? 'Сбор из AD...' : 'Собрать ПК из AD'"></span>
                     </button>
-                    <button @click="showAddModal = true" class="px-3.5 py-2 text-xs font-semibold rounded-lg bg-brand-600 hover:bg-brand-700 text-white shadow-sm flex items-center gap-1.5 transition">
+                    <button @click="openAddEquipment()" class="px-3.5 py-2 text-xs font-semibold rounded-lg bg-brand-600 hover:bg-brand-700 text-white shadow-sm flex items-center gap-1.5 transition">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                         <span>Добавить технику</span>
                     </button>
@@ -557,9 +557,13 @@
             <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
                 <div>
                     <h2 class="text-base font-bold text-slate-900">Справочник моделей оборудования</h2>
-                    <p class="text-xs text-slate-500">Каталог типовых моделей ПК, ноутбуков, мониторов, принтеров и сетевых устройств</p>
+                    <p class="text-xs text-slate-500">Автоматически формируется из AD и парка ПК с подсчетом количества устройств</p>
                 </div>
-                <div class="flex items-center gap-3">
+                <div class="flex items-center gap-2 sm:gap-3 flex-wrap">
+                    <button @click="syncModelsFromAD()" :disabled="isSyncingModels" class="px-3.5 py-2 text-xs font-semibold rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 flex items-center gap-1.5 transition disabled:opacity-50 shadow-sm">
+                        <svg class="w-4 h-4" :class="isSyncingModels ? 'animate-spin' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                        <span x-text="isSyncingModels ? 'Формирование из AD...' : '⚡ Сформировать из AD и ПК'"></span>
+                    </button>
                     <button @click="openCreateModel()" class="px-3.5 py-2 text-xs font-semibold rounded-lg bg-brand-600 hover:bg-brand-700 text-white shadow-sm flex items-center gap-1.5 transition">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                         <span>Добавить модель</span>
@@ -588,18 +592,27 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <template x-if="filteredModels.length === 0">
                     <div class="col-span-full text-center py-12 text-slate-400 bg-white rounded-xl border border-slate-200">
-                        Модели не найдены. Нажмите «Добавить модель», чтобы пополнить справочник.
+                        Модели не найдены. Нажмите «Сформировать из AD и ПК» или «Добавить модель».
                     </div>
                 </template>
                 <template x-for="m in filteredModels" :key="m.id">
-                    <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-3 flex flex-col justify-between">
+                    <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-3 flex flex-col justify-between hover:shadow-md transition">
                         <div class="space-y-2">
                             <div class="flex items-start justify-between gap-2">
                                 <span class="font-bold text-slate-900 text-sm leading-tight" x-text="m.name"></span>
-                                <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 uppercase shrink-0" x-text="m.category"></span>
+                                <div class="flex items-center gap-1.5 shrink-0">
+                                    <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 uppercase" x-text="m.category"></span>
+                                    <span class="px-2 py-0.5 rounded text-[10px] font-bold border"
+                                          :class="(m.units_count > 0) ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-slate-50 text-slate-400 border-slate-200'"
+                                          x-text="(m.units_count || 0) + ' шт.'">
+                                    </span>
+                                </div>
                             </div>
-                            <div class="text-xs text-slate-500" x-show="m.vendor" x-text="'Производитель: ' + m.vendor"></div>
-                            <div class="text-xs text-slate-600 bg-slate-50 p-2 rounded-lg" x-text="m.specs_template || 'Характеристики не указаны'"></div>
+                            <div class="flex items-center justify-between text-xs text-slate-500">
+                                <span x-show="m.vendor" x-text="'Производитель: ' + m.vendor"></span>
+                                <span class="font-medium text-indigo-600 bg-indigo-50/60 px-2 py-0.5 rounded" x-text="'В парке: ' + (m.units_count || 0) + ' устр.'"></span>
+                            </div>
+                            <div class="text-xs text-slate-600 bg-slate-50 p-2.5 rounded-lg border border-slate-100 font-mono text-[11px]" x-text="m.specs_template || 'Характеристики не указаны'"></div>
                             <div class="text-[11px] text-slate-400" x-show="m.notes" x-text="m.notes"></div>
                         </div>
                         <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
@@ -793,19 +806,19 @@
 
     <!-- Модалка ручного добавления техники -->
     <div x-show="showAddModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" style="display: none;">
-        <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4" @click.outside="showAddModal = false">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto" @click.outside="showAddModal = false">
             <h3 class="text-base font-bold text-slate-900">Регистрация техники (Ручной ввод)</h3>
-            <p class="text-xs text-slate-500">Мониторы, принтеры, ИБП и другое оборудование вводятся вручную</p>
+            <p class="text-xs text-slate-500">При вводе модели автоматически определяется тип и типовые характеристики</p>
 
             <form @submit.prevent="submitManualAdd()" class="space-y-3 text-xs">
                 <div>
                     <label class="block font-semibold text-slate-700 mb-1">Инвентарный номер *</label>
-                    <input type="text" x-model="addForm.inventory_number" required placeholder="ИНВ-ПРН-0042" class="w-full border border-slate-200 rounded-lg px-3 py-2">
+                    <input type="text" x-model="addForm.inventory_number" required placeholder="ИНВ-0042" class="w-full border border-slate-200 rounded-lg px-3 py-2">
                 </div>
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="block font-semibold text-slate-700 mb-1">Наименование / Модель *</label>
-                        <input type="text" x-model="addForm.name" required placeholder="HP LaserJet Pro M428" class="w-full border border-slate-200 rounded-lg px-3 py-2">
+                        <input type="text" x-model="addForm.name" @input.debounce.350ms="onEquipmentNameInput('add')" required placeholder="HP ProDesk 400 G6 или MikroTik CRS326" class="w-full border border-slate-200 rounded-lg px-3 py-2">
                     </div>
                     <div>
                         <label class="block font-semibold text-slate-700 mb-1">Серийный номер (S/N)</label>
@@ -815,12 +828,12 @@
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="block font-semibold text-slate-700 mb-1">Тип техники</label>
-                        <select x-model="addForm.asset_type" class="w-full border border-slate-200 rounded-lg px-3 py-2">
+                        <select x-model="addForm.asset_type" @change="if(addForm.asset_type === 'switch') updateSwitchDefaultPort('add')" class="w-full border border-slate-200 rounded-lg px-3 py-2">
+                            <option value="workstation">Компьютер (ПК)</option>
+                            <option value="laptop">Ноутбук</option>
                             <option value="monitor">Монитор</option>
                             <option value="printer">Принтер / МФУ</option>
                             <option value="ups">ИБП</option>
-                            <option value="workstation">Компьютер (ПК)</option>
-                            <option value="laptop">Ноутбук</option>
                             <option value="switch">Коммутатор</option>
                             <option value="other">Прочее</option>
                         </select>
@@ -833,6 +846,74 @@
                         </select>
                     </div>
                 </div>
+
+                <!-- БЛОК НАСТРОЕК КОММУТАТОРА (ПОЯВЛЯЕТСЯ ПРИ ВЫБОРЕ ТИПА "КОММУТАТОР") -->
+                <div x-show="addForm.asset_type === 'switch'" class="p-3.5 bg-sky-50/70 border border-sky-200 rounded-xl space-y-3 transition">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-sky-500 animate-pulse"></span>
+                            <span class="font-bold text-sky-900 text-xs">Параметры подключения коммутатора (L2 / MAC)</span>
+                        </div>
+                        <span class="text-[10px] text-sky-600 font-semibold bg-sky-100/60 px-2 py-0.5 rounded">Синхронизация портов</span>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">IP-адрес коммутатора *</label>
+                            <input type="text" x-model="addSwitchConfig.ip_address" placeholder="192.168.1.10" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs">
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Тип управления *</label>
+                            <select x-model="addSwitchConfig.management_type" @change="updateSwitchDefaultPort('add')" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs">
+                                <option value="omada">TP-Link Omada SDN (API)</option>
+                                <option value="mikrotik">MikroTik RouterOS (SSH / API)</option>
+                                <option value="hp">HP / Aruba ProCurve (SSH / Telnet)</option>
+                                <option value="tplink">TP-Link JetStream (SSH / Telnet)</option>
+                                <option value="snmp">Универсальный SNMP (Bridge-MIB)</option>
+                                <option value="ssh_cli">Универсальный SSH CLI</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Порт</label>
+                            <input type="number" x-model.number="addSwitchConfig.management_port" placeholder="22 / 161 / 8043" class="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs">
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Кол-во портов</label>
+                            <input type="number" x-model.number="addSwitchConfig.total_ports" placeholder="24" class="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs">
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Логин / User</label>
+                            <input type="text" x-model="addSwitchConfig.username" placeholder="admin" class="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs">
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Пароль / Pass</label>
+                            <input type="password" x-model="addSwitchConfig.password" placeholder="••••••••" class="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs">
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between gap-2 pt-1">
+                        <div class="flex-1">
+                            <input type="text" x-model="addSwitchConfig.snmp_community" placeholder="SNMP Community (public)" class="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs">
+                        </div>
+                        <button type="button" @click="testSwitchConnection('add')" :disabled="isTestingSwitch" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-sky-600 hover:bg-sky-700 text-white shadow-sm flex items-center gap-1.5 transition disabled:opacity-50 shrink-0">
+                            <svg class="w-3.5 h-3.5" :class="isTestingSwitch ? 'animate-spin' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                            <span x-text="isTestingSwitch ? 'Проверка...' : '⚡ Проверить подключение и MAC'"></span>
+                        </button>
+                    </div>
+
+                    <!-- Результат проверки подключения -->
+                    <template x-if="switchTestResult">
+                        <div class="p-2.5 rounded-lg text-[11px] border"
+                             :class="switchTestResult.success ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-rose-50 text-rose-800 border-rose-200'">
+                            <div class="font-bold flex items-center gap-1" x-text="switchTestResult.success ? '🟢 Связь установлена' : '🔴 Ошибка связи'"></div>
+                            <div x-text="switchTestResult.message" class="mt-0.5"></div>
+                        </div>
+                    </template>
+                </div>
+
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="block font-semibold text-slate-700 mb-1">Кабинет</label>
@@ -847,6 +928,10 @@
                             </template>
                         </select>
                     </div>
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Примечания / Характеристики</label>
+                    <textarea x-model="addForm.notes" rows="2" class="w-full border border-slate-200 rounded-lg px-3 py-2" placeholder="Характеристики или особенности..."></textarea>
                 </div>
 
                 <div class="flex justify-end gap-2 pt-3 border-t border-slate-100">
@@ -901,6 +986,28 @@
                         </div>
                     </div>
 
+                    <!-- Карточка коммутатора с кнопкой синхронизации -->
+                    <template x-if="selectedEquipment.asset_type === 'switch'">
+                        <div class="p-3 bg-sky-50 border border-sky-200 rounded-xl space-y-2 text-xs">
+                            <div class="flex items-center justify-between">
+                                <div class="font-bold text-sky-900 flex items-center gap-2">
+                                    <svg class="w-4 h-4 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/></svg>
+                                    <span>Интеграция с коммутатором (L2 / Роуминг)</span>
+                                </div>
+                                <button type="button" @click="syncSwitchEquipment(selectedEquipment)" class="px-2.5 py-1 text-xs font-semibold bg-sky-600 hover:bg-sky-700 text-white rounded-lg shadow-sm flex items-center gap-1 transition">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                                    <span>Опросить MAC-таблицу</span>
+                                </button>
+                            </div>
+                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-slate-700">
+                                <div>IP: <span class="font-semibold text-slate-900" x-text="selectedEquipment.switch_config?.ip_address || '—'"></span></div>
+                                <div>Тип: <span class="font-semibold uppercase text-slate-900" x-text="selectedEquipment.switch_config?.management_type || '—'"></span></div>
+                                <div>Порт: <span class="font-semibold text-slate-900" x-text="selectedEquipment.switch_config?.management_port || '—'"></span></div>
+                                <div>Портов: <span class="font-semibold text-slate-900" x-text="selectedEquipment.switch_config?.total_ports || '—'"></span></div>
+                            </div>
+                        </div>
+                    </template>
+
                     <!-- История операций -->
                     <div class="space-y-2">
                         <h4 class="text-xs font-bold text-slate-900 uppercase tracking-wider">История жизненного цикла</h4>
@@ -953,7 +1060,7 @@
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="block font-semibold text-slate-700 mb-1">Наименование / Модель *</label>
-                        <input type="text" x-model="editForm.name" required class="w-full border border-slate-200 rounded-lg px-3 py-2">
+                        <input type="text" x-model="editForm.name" @input.debounce.350ms="onEquipmentNameInput('edit')" required class="w-full border border-slate-200 rounded-lg px-3 py-2">
                     </div>
                     <div>
                         <label class="block font-semibold text-slate-700 mb-1">Серийный номер (S/N)</label>
@@ -963,7 +1070,7 @@
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="block font-semibold text-slate-700 mb-1">Тип техники</label>
-                        <select x-model="editForm.asset_type" class="w-full border border-slate-200 rounded-lg px-3 py-2">
+                        <select x-model="editForm.asset_type" @change="if(editForm.asset_type === 'switch') updateSwitchDefaultPort('edit')" class="w-full border border-slate-200 rounded-lg px-3 py-2">
                             <option value="workstation">Компьютер (ПК)</option>
                             <option value="laptop">Ноутбук</option>
                             <option value="monitor">Монитор</option>
@@ -981,6 +1088,74 @@
                         </select>
                     </div>
                 </div>
+
+                <!-- БЛОК НАСТРОЕК КОММУТАТОРА (ПОЯВЛЯЕТСЯ ПРИ ВЫБОРЕ ТИПА "КОММУТАТОР") -->
+                <div x-show="editForm.asset_type === 'switch'" class="p-3.5 bg-sky-50/70 border border-sky-200 rounded-xl space-y-3 transition">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-sky-500 animate-pulse"></span>
+                            <span class="font-bold text-sky-900 text-xs">Параметры подключения коммутатора (L2 / MAC)</span>
+                        </div>
+                        <span class="text-[10px] text-sky-600 font-semibold bg-sky-100/60 px-2 py-0.5 rounded">Синхронизация портов</span>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">IP-адрес коммутатора *</label>
+                            <input type="text" x-model="editSwitchConfig.ip_address" placeholder="192.168.1.10" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs">
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Тип управления *</label>
+                            <select x-model="editSwitchConfig.management_type" @change="updateSwitchDefaultPort('edit')" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs">
+                                <option value="omada">TP-Link Omada SDN (API)</option>
+                                <option value="mikrotik">MikroTik RouterOS (SSH / API)</option>
+                                <option value="hp">HP / Aruba ProCurve (SSH / Telnet)</option>
+                                <option value="tplink">TP-Link JetStream (SSH / Telnet)</option>
+                                <option value="snmp">Универсальный SNMP (Bridge-MIB)</option>
+                                <option value="ssh_cli">Универсальный SSH CLI</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Порт</label>
+                            <input type="number" x-model.number="editSwitchConfig.management_port" placeholder="22 / 161 / 8043" class="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs">
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Кол-во портов</label>
+                            <input type="number" x-model.number="editSwitchConfig.total_ports" placeholder="24" class="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs">
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Логин / User</label>
+                            <input type="text" x-model="editSwitchConfig.username" placeholder="admin" class="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs">
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Пароль / Pass</label>
+                            <input type="password" x-model="editSwitchConfig.password" placeholder="••••••••" class="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs">
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between gap-2 pt-1">
+                        <div class="flex-1">
+                            <input type="text" x-model="editSwitchConfig.snmp_community" placeholder="SNMP Community (public)" class="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs">
+                        </div>
+                        <button type="button" @click="testSwitchConnection('edit')" :disabled="isTestingSwitch" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-sky-600 hover:bg-sky-700 text-white shadow-sm flex items-center gap-1.5 transition disabled:opacity-50 shrink-0">
+                            <svg class="w-3.5 h-3.5" :class="isTestingSwitch ? 'animate-spin' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                            <span x-text="isTestingSwitch ? 'Проверка...' : '⚡ Проверить подключение и MAC'"></span>
+                        </button>
+                    </div>
+
+                    <!-- Результат проверки подключения -->
+                    <template x-if="switchTestResult">
+                        <div class="p-2.5 rounded-lg text-[11px] border"
+                             :class="switchTestResult.success ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-rose-50 text-rose-800 border-rose-200'">
+                            <div class="font-bold flex items-center gap-1" x-text="switchTestResult.success ? '🟢 Связь установлена' : '🔴 Ошибка связи'"></div>
+                            <div x-text="switchTestResult.message" class="mt-0.5"></div>
+                        </div>
+                    </template>
+                </div>
+
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="block font-semibold text-slate-700 mb-1">Статус оборудования</label>
@@ -1033,12 +1208,13 @@
     <div x-show="showModelModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" style="display: none;">
         <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4" @click.outside="showModelModal = false">
             <h3 class="text-base font-bold text-slate-900" x-text="modelForm.id ? 'Редактировать модель' : 'Добавить новую модель'"></h3>
-            <p class="text-xs text-slate-500">Справочник типового оборудования организации</p>
+            <p class="text-xs text-slate-500">При вводе полного названия модели тип, вендор и средние характеристики определяются автоматически</p>
 
             <form @submit.prevent="saveModel()" class="space-y-3 text-xs">
                 <div>
                     <label class="block font-semibold text-slate-700 mb-1">Наименование модели *</label>
-                    <input type="text" x-model="modelForm.name" required placeholder="Например: HP ProDesk 400 G6" class="w-full border border-slate-200 rounded-lg px-3 py-2">
+                    <input type="text" x-model="modelForm.name" @input.debounce.350ms="onModelNameInput()" required placeholder="Например: HP ProDesk 400 G6 MT" class="w-full border border-slate-200 rounded-lg px-3 py-2">
+                    <p class="text-[10px] text-slate-400 mt-1">Автоматически подбирает тип, производителя и характеристики</p>
                 </div>
                 <div class="grid grid-cols-2 gap-3">
                     <div>
@@ -1059,8 +1235,14 @@
                     </div>
                 </div>
                 <div>
-                    <label class="block font-semibold text-slate-700 mb-1">Типовые характеристики</label>
-                    <input type="text" x-model="modelForm.specs_template" placeholder="Core i5-10400 / 16GB / 512GB SSD" class="w-full border border-slate-200 rounded-lg px-3 py-2">
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="font-semibold text-slate-700">Типовые характеристики</label>
+                        <button type="button" @click="suggestSpecsForModel(true)" class="text-[11px] text-brand-600 hover:text-brand-800 font-semibold flex items-center gap-1 hover:underline">
+                            ⚡ Средние по ПК в парке
+                        </button>
+                    </div>
+                    <input type="text" x-model="modelForm.specs_template" placeholder="Core i5 / 16 GB RAM / 512 GB SSD" class="w-full border border-slate-200 rounded-lg px-3 py-2">
+                    <p class="text-[10px] text-slate-400 mt-1">Рассчитывается как среднее по характеристикам компьютеров в организации</p>
                 </div>
                 <div>
                     <label class="block font-semibold text-slate-700 mb-1">Примечания</label>

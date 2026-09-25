@@ -61,6 +61,28 @@ document.addEventListener('alpine:init', () => {
             notes: ''
         },
 
+        // Сетевые коммутаторы (Switch Settings)
+        isTestingSwitch: false,
+        switchTestResult: null,
+        addSwitchConfig: {
+            ip_address: '',
+            management_type: 'omada',
+            management_port: 8043,
+            username: 'admin',
+            password: '',
+            snmp_community: 'public',
+            total_ports: 24
+        },
+        editSwitchConfig: {
+            ip_address: '',
+            management_type: 'omada',
+            management_port: 8043,
+            username: 'admin',
+            password: '',
+            snmp_community: 'public',
+            total_ports: 24
+        },
+
         // Редактирование техники
         showEditModal: false,
         editForm: {
@@ -78,6 +100,7 @@ document.addEventListener('alpine:init', () => {
         },
 
         // Справочник моделей
+        isSyncingModels: false,
         showModelModal: false,
         modelSearchQuery: '',
         modelCategoryFilter: '',
@@ -310,6 +333,32 @@ document.addEventListener('alpine:init', () => {
         },
 
         // Ручное добавление техники
+        openAddEquipment() {
+            this.addForm = {
+                inventory_number: '',
+                serial_number: '',
+                name: '',
+                asset_type: 'workstation',
+                condition: 'working',
+                status: 'at_workplace',
+                cabinet: '',
+                branch_id: this.selectedBranchId || '',
+                current_user_id: '',
+                notes: ''
+            };
+            this.addSwitchConfig = {
+                ip_address: '',
+                management_type: 'omada',
+                management_port: 8043,
+                username: 'admin',
+                password: '',
+                snmp_community: 'public',
+                total_ports: 24
+            };
+            this.switchTestResult = null;
+            this.showAddModal = true;
+        },
+
         async submitManualAdd() {
             if (!this.addForm.inventory_number || !this.addForm.name) {
                 this.showToast('Укажите инвентарный номер и наименование', 'error');
@@ -318,7 +367,8 @@ document.addEventListener('alpine:init', () => {
             try {
                 const payload = {
                     ...this.addForm,
-                    branch_id: this.addForm.branch_id ? parseInt(this.addForm.branch_id) : (this.selectedBranchId ? parseInt(this.selectedBranchId) : null)
+                    branch_id: this.addForm.branch_id ? parseInt(this.addForm.branch_id) : (this.selectedBranchId ? parseInt(this.selectedBranchId) : null),
+                    switch_config: this.addForm.asset_type === 'switch' ? this.addSwitchConfig : null
                 };
                 const res = await fetch('/api/v1/repair/equipment', {
                     method: 'POST',
@@ -510,16 +560,43 @@ document.addEventListener('alpine:init', () => {
                 current_user_id: item.current_user_id || '',
                 notes: item.notes || ''
             };
+            this.switchTestResult = null;
+            if (item.switch_config) {
+                this.editSwitchConfig = {
+                    ip_address: item.switch_config.ip_address || '',
+                    management_type: item.switch_config.management_type || 'omada',
+                    management_port: item.switch_config.management_port || 8043,
+                    username: item.switch_config.username || 'admin',
+                    password: item.switch_config.password || '',
+                    snmp_community: item.switch_config.snmp_community || 'public',
+                    total_ports: item.switch_config.total_ports || 24
+                };
+            } else {
+                this.editSwitchConfig = {
+                    ip_address: '',
+                    management_type: 'omada',
+                    management_port: 8043,
+                    username: 'admin',
+                    password: '',
+                    snmp_community: 'public',
+                    total_ports: 24
+                };
+            }
             this.showEditModal = true;
         },
 
         async saveEquipmentEdit() {
             if (!this.editForm.id) return;
             try {
+                const payload = {
+                    ...this.editForm,
+                    branch_id: this.editForm.branch_id ? parseInt(this.editForm.branch_id) : null,
+                    switch_config: this.editForm.asset_type === 'switch' ? this.editSwitchConfig : null
+                };
                 const res = await fetch(`/api/v1/repair/equipment/${this.editForm.id}`, {
                     method: 'PUT',
                     headers: this.getAuthHeaders(),
-                    body: JSON.stringify(this.editForm)
+                    body: JSON.stringify(payload)
                 });
                 if (res.ok) {
                     this.showToast('Оборудование успешно обновлено', 'success');
@@ -567,7 +644,161 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
-        // Справочник моделей
+        // --- УМНОЕ РАСПОЗНАВАНИЕ ТИПА И ХАРАКТЕРИСТИК ТЕХНИКИ ---
+        async onEquipmentNameInput(formType) {
+            const form = formType === 'add' ? this.addForm : (formType === 'edit' ? this.editForm : this.acceptForm);
+            const name = (form.name || '').trim();
+            if (name.length < 3) return;
+
+            const lower = name.toLowerCase();
+            if (lower.includes('коммутатор') || lower.includes('switch') || lower.includes('tl-sg') || lower.includes('procurve') || lower.includes('mikrotik') || lower.includes('omada') || lower.includes('edgecore') || lower.includes('catalyst')) {
+                form.asset_type = 'switch';
+                this.updateSwitchDefaultPort(formType);
+            } else if (lower.includes('ноутбук') || lower.includes('laptop') || lower.includes('thinkpad') || lower.includes('latitude') || lower.includes('probook') || lower.includes('elitebook')) {
+                form.asset_type = 'laptop';
+            } else if (lower.includes('принтер') || lower.includes('мфу') || lower.includes('laserjet') || lower.includes('ecosys') || lower.includes('canon') || lower.includes('kyocera') || lower.includes('xerox') || lower.includes('epson')) {
+                form.asset_type = 'printer';
+            } else if (lower.includes('ибп') || lower.includes('ups') || lower.includes('apc') || lower.includes('smart-ups') || lower.includes('back-ups') || lower.includes('ippon')) {
+                form.asset_type = 'ups';
+            } else if (lower.includes('монитор') || lower.includes('monitor') || lower.includes('syncmaster') || lower.includes('ultrasharp')) {
+                form.asset_type = 'monitor';
+            } else if (lower.includes('пк') || lower.includes('pc') || lower.includes('prodesk') || lower.includes('elitedesk') || lower.includes('optiplex') || lower.includes('thinkcentre')) {
+                form.asset_type = 'workstation';
+            }
+
+            try {
+                const res = await fetch(`/api/v1/repair/models/suggest-specs?name=${encodeURIComponent(name)}`, {
+                    headers: this.getAuthHeaders()
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.suggested_category && (!form.asset_type || form.asset_type === 'other')) {
+                        form.asset_type = data.suggested_category;
+                    }
+                    if (data.average_specs && (!form.notes || form.notes === '')) {
+                        form.notes = `Характеристики: ${data.average_specs}`;
+                    }
+                }
+            } catch (e) {
+                console.error('Suggest specs error:', e);
+            }
+        },
+
+        updateSwitchDefaultPort(formType) {
+            const cfg = formType === 'add' ? this.addSwitchConfig : this.editSwitchConfig;
+            const t = (cfg.management_type || 'snmp').toLowerCase();
+            if (t === 'omada') cfg.management_port = 8043;
+            else if (t === 'mikrotik' || t === 'ssh_cli') cfg.management_port = 22;
+            else if (t === 'snmp') cfg.management_port = 161;
+            else if (t === 'hp' || t === 'tplink') cfg.management_port = 23;
+            else cfg.management_port = 22;
+        },
+
+        async testSwitchConnection(formType) {
+            const cfg = formType === 'add' ? this.addSwitchConfig : this.editSwitchConfig;
+            if (!cfg.ip_address || !cfg.ip_address.trim()) {
+                this.showToast('Укажите IP-адрес коммутатора для проверки', 'error');
+                return;
+            }
+            this.isTestingSwitch = true;
+            this.switchTestResult = null;
+            try {
+                const res = await fetch('/api/v1/repair/equipment/test-switch-connection', {
+                    method: 'POST',
+                    headers: this.getAuthHeaders(),
+                    body: JSON.stringify(cfg)
+                });
+                const data = await res.json();
+                this.switchTestResult = data;
+                if (data.success) {
+                    this.showToast(data.message, 'success');
+                } else {
+                    this.showToast(data.message, 'error');
+                }
+            } catch (e) {
+                this.switchTestResult = {
+                    success: false,
+                    message: `Сетевая ошибка при проверке: ${e.message}`
+                };
+                this.showToast(this.switchTestResult.message, 'error');
+            } finally {
+                this.isTestingSwitch = false;
+            }
+        },
+
+        async syncSwitchEquipment(item) {
+            if (!item || !item.id) return;
+            try {
+                this.showToast(`Опрос коммутатора ${item.name}...`, 'info');
+                const res = await fetch(`/api/v1/repair/equipment/${item.id}/sync-switch`, {
+                    method: 'POST',
+                    headers: this.getAuthHeaders()
+                });
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    this.showToast(data.message || 'Синхронизация коммутатора выполнена успешно!', 'success');
+                    await this.loadEquipment();
+                    if (this.selectedEquipment && this.selectedEquipment.id === item.id) {
+                        await this.viewDetail(item);
+                    }
+                } else {
+                    this.showToast(data.message || data.detail || 'Ошибка опроса коммутатора', 'error');
+                }
+            } catch (e) {
+                this.showToast(`Ошибка синхронизации: ${e.message}`, 'error');
+            }
+        },
+
+        // --- СПРАВОЧНИК МОДЕЛЕЙ ---
+        async syncModelsFromAD() {
+            this.isSyncingModels = true;
+            try {
+                const res = await fetch('/api/v1/repair/models/sync-from-ad', {
+                    method: 'POST',
+                    headers: this.getAuthHeaders()
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    this.showToast(data.message, 'success');
+                    await this.loadModels();
+                } else {
+                    this.showToast(data.detail || 'Ошибка синхронизации моделей', 'error');
+                }
+            } catch (e) {
+                this.showToast('Сетевой сбой при синхронизации моделей', 'error');
+            } finally {
+                this.isSyncingModels = false;
+            }
+        },
+
+        async suggestSpecsForModel(force = false) {
+            const name = (this.modelForm.name || '').trim();
+            if (name.length < 2) return;
+            try {
+                const res = await fetch(`/api/v1/repair/models/suggest-specs?name=${encodeURIComponent(name)}`, {
+                    headers: this.getAuthHeaders()
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.suggested_vendor && (!this.modelForm.vendor || force)) {
+                        this.modelForm.vendor = data.suggested_vendor;
+                    }
+                    if (data.suggested_category && (!this.modelForm.category || this.modelForm.category === 'other' || force)) {
+                        this.modelForm.category = data.suggested_category;
+                    }
+                    if (data.average_specs && (!this.modelForm.specs_template || force)) {
+                        this.modelForm.specs_template = data.average_specs;
+                    }
+                }
+            } catch (e) {
+                console.error('Suggest specs error:', e);
+            }
+        },
+
+        onModelNameInput() {
+            this.suggestSpecsForModel(false);
+        },
+
         openCreateModel() {
             this.modelForm = {
                 id: null,

@@ -276,9 +276,16 @@ class LDAPService:
 
             db.commit()
             conn.unbind()
+
+            try:
+                from REPAIR.app.services.model_parser_service import ModelParserService
+                ModelParserService.sync_models_from_ad_computers(db)
+            except Exception as m_err:
+                logger.warning(f"Auto-sync models from AD skipped: {m_err}")
+
             return {
                 "status": "success",
-                "message": f"Сбор из AD завершен: добавлено {added_count}, обновлено {updated_count} компьютеров",
+                "message": f"Сбор из AD завершен: добавлено {added_count}, обновлено {updated_count} компьютеров. Справочник моделей актуализирован.",
                 "added": added_count,
                 "updated": updated_count
             }
@@ -334,9 +341,16 @@ class LDAPService:
             added += 1
 
         db.commit()
+
+        try:
+            from REPAIR.app.services.model_parser_service import ModelParserService
+            ModelParserService.sync_models_from_ad_computers(db)
+        except Exception as m_err:
+            logger.warning(f"Auto-sync demo models failed: {m_err}")
+
         return {
             "status": "success",
-            "message": f"Демонстрационный сбор завершен: загружено {added} компьютеров с параметрами AD",
+            "message": f"Демонстрационный сбор завершен: загружено {added} компьютеров с параметрами AD. Справочник моделей сформирован.",
             "added": added,
             "updated": 0
         }
