@@ -7,10 +7,21 @@ logger = logging.getLogger("SHARED.database")
 
 # Поддержка SQLite и PostgreSQL
 connect_args = {}
-if DATABASE_URL.startswith("sqlite"):
-    connect_args = {"check_same_thread": False}
+effective_db_url = DATABASE_URL
 
-engine = create_engine(DATABASE_URL, connect_args=connect_args)
+if effective_db_url.startswith("sqlite"):
+    connect_args = {"check_same_thread": False}
+elif effective_db_url.startswith("postgres://"):
+    effective_db_url = effective_db_url.replace("postgres://", "postgresql+psycopg2://", 1)
+elif effective_db_url.startswith("postgresql://") and not effective_db_url.startswith("postgresql+"):
+    # В SQLAlchemy 2.0 схема "postgresql://" по умолчанию ищет драйвер 'psycopg' (psycopg3).
+    # Если установлен только psycopg2-binary, автоматически используем postgresql+psycopg2://.
+    try:
+        import psycopg
+    except ImportError:
+        effective_db_url = effective_db_url.replace("postgresql://", "postgresql+psycopg2://", 1)
+
+engine = create_engine(effective_db_url, connect_args=connect_args)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
