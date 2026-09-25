@@ -77,9 +77,9 @@ services:
     volumes:
       - ./BD/redis_data:/data
 
-  # Шлюз WhatsApp (Evolution API v2) — ТОЛЬКО ДЛЯ КАРТРИДЖЕЙ
+  # Шлюз WhatsApp (Evolution API) — ТОЛЬКО ДЛЯ КАРТРИДЖЕЙ
   whatsapp-gateway:
-    image: evoapicloud/evolution-api:v2.1.1
+    image: evoapicloud/evolution-api
     container_name: it_cartridge_whatsapp
     restart: unless-stopped
     ports:
