@@ -11,7 +11,71 @@ document.addEventListener('alpine:init', () => {
 
         placedAssets: [],
         unplacedAssets: [],
+        allPlacedAssets: [],
         switchesList: [],
+
+        // Вкладки и фильтрация активов
+        assetsTab: 'unplaced', // 'unplaced' | 'placed'
+        assetSearch: '',
+        assetTypeFilter: 'all',
+        assetNetFilter: 'all',
+
+        // Модалка быстрого перемещения / назначения в кабинет
+        showAssignModal: false,
+        assignAsset: null,
+        assignFloorZones: [],
+        assignForm: {
+            floor_id: '',
+            zone_id: '',
+            cabinet: ''
+        },
+
+        get filteredUnplacedAssets() {
+            let list = this.unplacedAssets || [];
+            if (this.assetTypeFilter && this.assetTypeFilter !== 'all') {
+                list = list.filter(a => a.asset_type === this.assetTypeFilter);
+            }
+            if (this.assetSearch && this.assetSearch.trim()) {
+                const q = this.assetSearch.trim().toLowerCase();
+                list = list.filter(a => {
+                    const inv = (a.inventory_number || '').toLowerCase();
+                    const name = (a.name || '').toLowerCase();
+                    const cab = (a.cabinet || '').toLowerCase();
+                    const host = (a.hostname || '').toLowerCase();
+                    const ip = (a.ip_address || '').toLowerCase();
+                    const mac = (a.mac_address || '').toLowerCase();
+                    return inv.includes(q) || name.includes(q) || cab.includes(q) || host.includes(q) || ip.includes(q) || mac.includes(q);
+                });
+            }
+            return list;
+        },
+
+        get filteredPlacedAssets() {
+            let list = (this.allPlacedAssets && this.allPlacedAssets.length > 0) ? this.allPlacedAssets : (this.placedAssets || []);
+            if (this.assetTypeFilter && this.assetTypeFilter !== 'all') {
+                list = list.filter(a => a.asset_type === this.assetTypeFilter);
+            }
+            if (this.assetNetFilter && this.assetNetFilter !== 'all') {
+                list = list.filter(a => a.network_location_status === this.assetNetFilter);
+            }
+            if (this.assetSearch && this.assetSearch.trim()) {
+                const q = this.assetSearch.trim().toLowerCase();
+                list = list.filter(a => {
+                    const inv = (a.inventory_number || '').toLowerCase();
+                    const name = (a.name || '').toLowerCase();
+                    const cab = (a.cabinet || '').toLowerCase();
+                    const fl = (a.floor_name || '').toLowerCase();
+                    const zn = (a.zone_name || '').toLowerCase();
+                    const sw = (a.connected_switch_name || '').toLowerCase();
+                    const swCab = (a.connected_cabinet || '').toLowerCase();
+                    const host = (a.hostname || '').toLowerCase();
+                    const ip = (a.ip_address || '').toLowerCase();
+                    const mac = (a.mac_address || '').toLowerCase();
+                    return inv.includes(q) || name.includes(q) || cab.includes(q) || fl.includes(q) || zn.includes(q) || sw.includes(q) || swCab.includes(q) || host.includes(q) || ip.includes(q) || mac.includes(q);
+                });
+            }
+            return list;
+        },
 
         selectedAsset: null,
         activeSwitch: null,
@@ -119,6 +183,7 @@ document.addEventListener('alpine:init', () => {
             }
 
             await this.loadUnplacedAssets();
+            await this.loadAllPlacedAssets();
         },
 
         getAuthHeaders() {
@@ -161,8 +226,9 @@ document.addEventListener('alpine:init', () => {
                     this.floors = await res.json();
                     if (this.floors.length > 0) {
                         this.selectedFloorId = this.floors[0].id;
-                        this.selectFloor(this.floors[0]);
+                        await this.selectFloor(this.floors[0]);
                     }
+                    await this.loadAllPlacedAssets();
                 }
             } catch (e) {
                 console.error(e);
@@ -183,6 +249,19 @@ document.addEventListener('alpine:init', () => {
                 const res = await fetch(`/api/v1/location/floors/${this.selectedFloorId}/assets`, { headers: this.getAuthHeaders() });
                 if (res.ok) {
                     this.placedAssets = await res.json();
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        },
+
+        async loadAllPlacedAssets() {
+            try {
+                let url = '/api/v1/location/placed-assets';
+                if (this.selectedBranchId) url += `?branch_id=${this.selectedBranchId}`;
+                const res = await fetch(url, { headers: this.getAuthHeaders() });
+                if (res.ok) {
+                    this.allPlacedAssets = await res.json();
                 }
             } catch (e) {
                 console.error(e);
@@ -498,6 +577,7 @@ document.addEventListener('alpine:init', () => {
                 this.showToast('Положение сохранено', 'info');
                 await this.loadFloorAssets();
                 await this.loadFloorSwitches();
+                await this.loadAllPlacedAssets();
             } catch (e) {
                 this.showToast('Ошибка сохранения позиции', 'error');
             }
@@ -528,6 +608,7 @@ document.addEventListener('alpine:init', () => {
 
             await this.updateAssetPos(asset.id, normX, normY);
             await this.loadUnplacedAssets();
+            await this.loadAllPlacedAssets();
             this.renderFloor();
         },
 
@@ -625,6 +706,216 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
+        // Переход и центрирование камеры на объекте (поиск на карте)
+        async focusAsset(asset) {
+            if (!asset) return;
+
+            // Если объект размещен на другом этаже, сначала переключаемся на нужный этаж
+            if (asset.floor_id && asset.floor_id != this.selectedFloorId) {
+                const targetFloor = this.floors.find(f => f.id == asset.floor_id);
+                if (targetFloor) {
+                    await this.selectFloor(targetFloor);
+                    setTimeout(() => {
+                        this.panAndHighlightAsset(asset);
+                    }, 300);
+                    return;
+                }
+            }
+
+            this.panAndHighlightAsset(asset);
+        },
+
+        // Плавная анимация камеры к координатам актива и световая индикация
+        panAndHighlightAsset(asset) {
+            if (!this.stage) return;
+
+            if (asset.coords_x == null || asset.coords_y == null) {
+                this.showToast('Объект не имеет точных координат на плане этажа. Нажмите "Переместить", чтобы привязать к кабинету.', 'info');
+                return;
+            }
+
+            const cWidth = this.stage.width();
+            const cHeight = this.stage.height();
+            const ax = asset.coords_x * cWidth;
+            const ay = asset.coords_y * cHeight;
+            const targetScale = 1.75;
+
+            const newX = (cWidth / 2) - (ax * targetScale);
+            const newY = (cHeight / 2) - (ay * targetScale);
+
+            new Konva.Tween({
+                node: this.stage,
+                duration: 0.5,
+                x: newX,
+                y: newY,
+                scaleX: targetScale,
+                scaleY: targetScale,
+                easing: Konva.Easings.EaseInOut
+            }).play();
+
+            this.pulseHighlightRing(ax, ay);
+
+            // Информативное оповещение
+            if (asset.network_location_status === 'roaming') {
+                this.showToast(`⚠️ РОУМИНГ: ${asset.name} (${asset.inventory_number}) обнаружен в "${asset.connected_cabinet || 'другом порту'}"!`, 'info');
+            } else if (asset.connected_switch_name) {
+                this.showToast(`📍 ${asset.name} (${asset.inventory_number}): ${asset.cabinet || 'Кабинет'} [SW: ${asset.connected_switch_name}, порт ${asset.connected_port_number}]`, 'info');
+            } else {
+                this.showToast(`📍 ${asset.name} (${asset.inventory_number}): ${asset.cabinet || 'Кабинет не указан'}`, 'info');
+            }
+        },
+
+        // Пульсирующее неоновое кольцо подсветки найденного актива
+        pulseHighlightRing(x, y) {
+            if (!this.animLayer) return;
+
+            const outerRing = new Konva.Circle({
+                x: x,
+                y: y,
+                radius: 18,
+                stroke: '#a855f7',
+                strokeWidth: 4,
+                shadowColor: '#c084fc',
+                shadowBlur: 16,
+                opacity: 1
+            });
+
+            const innerRing = new Konva.Circle({
+                x: x,
+                y: y,
+                radius: 8,
+                fill: 'rgba(168, 85, 247, 0.45)'
+            });
+
+            this.animLayer.add(innerRing);
+            this.animLayer.add(outerRing);
+            this.animLayer.batchDraw();
+
+            const tween = new Konva.Tween({
+                node: outerRing,
+                duration: 1.4,
+                radius: 64,
+                strokeWidth: 1,
+                opacity: 0,
+                easing: Konva.Easings.EaseOut,
+                onFinish: () => {
+                    outerRing.destroy();
+                    innerRing.destroy();
+                    this.animLayer.batchDraw();
+                }
+            });
+            tween.play();
+        },
+
+        // Открытие модалки перемещения / назначения в кабинет
+        openAssignCabinetModal(asset) {
+            this.assignAsset = asset;
+            const defaultFloorId = asset.floor_id || this.selectedFloorId || (this.floors[0] ? this.floors[0].id : '');
+            this.assignForm = {
+                floor_id: defaultFloorId,
+                zone_id: asset.zone_id || '',
+                cabinet: asset.cabinet || ''
+            };
+            this.updateAssignFloorZones();
+            this.showAssignModal = true;
+        },
+
+        onAssignFloorChanged() {
+            this.updateAssignFloorZones();
+            this.assignForm.zone_id = '';
+        },
+
+        updateAssignFloorZones() {
+            if (!this.assignForm.floor_id) {
+                this.assignFloorZones = [];
+                return;
+            }
+            const floor = this.floors.find(f => f.id == this.assignForm.floor_id);
+            this.assignFloorZones = (floor && floor.zones) ? floor.zones : [];
+        },
+
+        onAssignZoneSelected(zoneId) {
+            if (!zoneId) return;
+            const zone = this.assignFloorZones.find(z => z.id == zoneId);
+            if (zone) {
+                this.assignForm.cabinet = zone.name;
+            }
+        },
+
+        async submitAssignCabinet() {
+            if (!this.assignAsset) return;
+            if (!this.assignForm.cabinet || !this.assignForm.cabinet.trim()) {
+                this.showToast('Укажите название кабинета', 'error');
+                return;
+            }
+
+            try {
+                const payload = {
+                    cabinet: this.assignForm.cabinet.trim(),
+                    floor_id: this.assignForm.floor_id ? parseInt(this.assignForm.floor_id) : null,
+                    zone_id: this.assignForm.zone_id ? parseInt(this.assignForm.zone_id) : null
+                };
+
+                const res = await fetch(`/api/v1/location/assets/${this.assignAsset.id}/assign-cabinet`, {
+                    method: 'POST',
+                    headers: this.getAuthHeaders(),
+                    body: JSON.stringify(payload)
+                });
+
+                if (res.ok) {
+                    const updated = await res.json();
+                    this.showToast(`Устройство ${updated.name} размещено в "${updated.cabinet || 'кабинете'}"!`, 'success');
+                    this.showAssignModal = false;
+
+                    await this.loadUnplacedAssets();
+                    await this.loadAllPlacedAssets();
+
+                    if (updated.floor_id == this.selectedFloorId) {
+                        await this.loadFloorAssets();
+                        this.renderFloor();
+                        this.focusAsset(updated);
+                    } else if (updated.floor_id) {
+                        const targetFloor = this.floors.find(f => f.id == updated.floor_id);
+                        if (targetFloor) {
+                            await this.selectFloor(targetFloor);
+                            setTimeout(() => this.focusAsset(updated), 300);
+                        }
+                    }
+                } else {
+                    const err = await res.json();
+                    this.showToast(err.detail || 'Ошибка перемещения в кабинет', 'error');
+                }
+            } catch (e) {
+                this.showToast('Сетевая ошибка при перемещении актива', 'error');
+            }
+        },
+
+        async unplaceAsset(asset) {
+            if (!asset) return;
+            if (!confirm(`Снять "${asset.name}" (${asset.inventory_number}) с поэтажного плана? Он вернется в неразмещенные активы.`)) {
+                return;
+            }
+
+            try {
+                const res = await fetch(`/api/v1/location/assets/${asset.id}/unplace`, {
+                    method: 'POST',
+                    headers: this.getAuthHeaders()
+                });
+                if (res.ok) {
+                    this.showToast(`Актив ${asset.inventory_number} возвращен в неразмещенные`, 'info');
+                    await this.loadFloorAssets();
+                    await this.loadUnplacedAssets();
+                    await this.loadAllPlacedAssets();
+                    this.renderFloor();
+                } else {
+                    const err = await res.json();
+                    this.showToast(err.detail || 'Ошибка снятия с карты', 'error');
+                }
+            } catch (e) {
+                this.showToast('Сетевая ошибка при снятии с карты', 'error');
+            }
+        },
+
         triggerUploadFloorMap() {
             if (!this.selectedFloorId) {
                 this.showToast('Выберите этаж для загрузки плана', 'error');
@@ -708,6 +999,7 @@ document.addEventListener('alpine:init', () => {
                     this.showAddAssetModal = false;
                     await this.loadFloorAssets();
                     await this.loadUnplacedAssets();
+                    await this.loadAllPlacedAssets();
                     this.renderFloor();
                 } else {
                     const err = await res.json();
@@ -802,6 +1094,7 @@ document.addEventListener('alpine:init', () => {
                     this.showToast(msg, data.relocated_assets?.length > 0 ? 'success' : 'info');
                     await this.loadFloorSwitches();
                     await this.loadFloorAssets();
+                    await this.loadAllPlacedAssets();
                     const updated = this.switchesList.find(s => s.id === sw.id);
                     if (updated) this.activeSwitch = updated;
                     this.renderFloor();
@@ -894,6 +1187,7 @@ document.addEventListener('alpine:init', () => {
                     if (this.showPortModal) this.showPortModal = false;
                     await this.loadFloorSwitches();
                     await this.loadFloorAssets();
+                    await this.loadAllPlacedAssets();
                     const updated = this.switchesList.find(s => s.id === this.activeSwitch.id);
                     if (updated) this.activeSwitch = updated;
                     this.renderFloor();

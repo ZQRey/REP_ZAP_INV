@@ -82,6 +82,14 @@ class AssetPositionUpdate(BaseModel):
     floor_id: Optional[int] = None
 
 
+class AssignCabinetRequest(BaseModel):
+    cabinet: str
+    floor_id: Optional[int] = None
+    zone_id: Optional[int] = None
+    coords_x: Optional[float] = None
+    coords_y: Optional[float] = None
+
+
 class PlacedAssetResponse(BaseModel):
     id: int
     inventory_number: str
@@ -93,11 +101,20 @@ class PlacedAssetResponse(BaseModel):
     coords_y: Optional[float] = None
     zone_id: Optional[int] = None
     floor_id: Optional[int] = None
+    floor_name: Optional[str] = None
+    zone_name: Optional[str] = None
     cabinet: Optional[str] = None
     current_user_name: Optional[str] = None
     hostname: Optional[str] = None
     ip_address: Optional[str] = None
     mac_address: Optional[str] = None
+    # Данные L2/L3 сетевого коммутатора
+    connected_switch_name: Optional[str] = None
+    connected_switch_ip: Optional[str] = None
+    connected_port_number: Optional[int] = None
+    connected_socket_label: Optional[str] = None
+    connected_cabinet: Optional[str] = None
+    network_location_status: Optional[str] = None  # "online", "roaming", "offline", "disconnected"
 
     model_config = ConfigDict(from_attributes=True)
 

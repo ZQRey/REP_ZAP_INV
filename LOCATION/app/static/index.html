@@ -104,63 +104,277 @@
     <!-- Основное рабочее пространство (Workspace) -->
     <div class="flex-1 flex overflow-hidden relative">
 
-        <!-- Левая боковая панель: Пул неразмещенного оборудования -->
-        <aside class="w-72 bg-slate-900 border-r border-slate-800 flex flex-col shrink-0 z-20">
-            <div class="p-3 border-b border-slate-800 flex items-center justify-between">
-                <div>
-                    <h2 class="text-xs font-bold text-slate-200">Неразмещенные активы</h2>
-                    <p class="text-[10px] text-slate-400">Перетащите мышью на карту в нужный кабинет</p>
+        <!-- Левая боковая панель: Активы (Неразмещенные / Размещенные с сетевым статусом) -->
+        <aside class="w-84 bg-slate-900 border-r border-slate-800 flex flex-col shrink-0 z-20 shadow-xl">
+            <!-- Переключатель вкладок: Неразмещенные / Размещенные -->
+            <div class="p-3 border-b border-slate-800 bg-slate-950/60 space-y-2.5">
+                <div class="grid grid-cols-2 p-1 bg-slate-900 rounded-xl border border-slate-800 text-xs font-semibold">
+                    <button type="button" 
+                            @click="assetsTab = 'unplaced'"
+                            class="py-1.5 px-2 rounded-lg text-center transition flex items-center justify-center gap-1.5"
+                            :class="assetsTab === 'unplaced' ? 'bg-purple-600 text-white shadow-md' : 'text-slate-400 hover:text-white'">
+                        <span>Неразмещенные</span>
+                        <span class="px-1.5 py-0.2 rounded-full text-[10px] font-bold"
+                              :class="assetsTab === 'unplaced' ? 'bg-purple-800 text-white' : 'bg-slate-800 text-slate-300'"
+                              x-text="filteredUnplacedAssets.length"></span>
+                    </button>
+                    <button type="button" 
+                            @click="assetsTab = 'placed'"
+                            class="py-1.5 px-2 rounded-lg text-center transition flex items-center justify-center gap-1.5"
+                            :class="assetsTab === 'placed' ? 'bg-purple-600 text-white shadow-md' : 'text-slate-400 hover:text-white'">
+                        <span>Размещенные</span>
+                        <span class="px-1.5 py-0.2 rounded-full text-[10px] font-bold"
+                              :class="assetsTab === 'placed' ? 'bg-purple-800 text-white' : 'bg-slate-800 text-slate-300'"
+                              x-text="filteredPlacedAssets.length"></span>
+                    </button>
                 </div>
-                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-950 text-purple-300 border border-purple-800" x-text="unplacedAssets.length"></span>
+
+                <!-- Строка поиска с фильтром -->
+                <div class="relative">
+                    <input type="text" 
+                           x-model="assetSearch" 
+                           placeholder="Поиск по инв.№, имени, кабинету, IP..." 
+                           class="w-full bg-slate-900 border border-slate-700/80 rounded-lg pl-8 pr-7 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500">
+                    <svg class="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                    <button x-show="assetSearch" 
+                            @click="assetSearch = ''" 
+                            class="absolute right-2.5 top-2 text-slate-500 hover:text-slate-300 text-xs">✕</button>
+                </div>
+
+                <!-- Выпадающие фильтры: тип техники и сетевой статус -->
+                <div class="grid grid-cols-2 gap-2">
+                    <select x-model="assetTypeFilter" class="bg-slate-900 border border-slate-700/80 rounded-lg px-2 py-1 text-[11px] text-slate-300 focus:ring-1 focus:ring-purple-500">
+                        <option value="all">Все типы техники</option>
+                        <option value="workstation">Компьютер (ПК)</option>
+                        <option value="laptop">Ноутбук</option>
+                        <option value="printer">Принтер / МФУ</option>
+                        <option value="switch">Коммутатор</option>
+                        <option value="ups">ИБП</option>
+                        <option value="other">Прочее</option>
+                    </select>
+
+                    <template x-if="assetsTab === 'placed'">
+                        <select x-model="assetNetFilter" class="bg-slate-900 border border-slate-700/80 rounded-lg px-2 py-1 text-[11px] text-slate-300 focus:ring-1 focus:ring-purple-500">
+                            <option value="all">Все сетевые статусы</option>
+                            <option value="online">🟢 В сети (Online)</option>
+                            <option value="roaming">⚠️ Роуминг (Перемещен)</option>
+                            <option value="offline">⚪ Офлайн</option>
+                            <option value="disconnected">🔌 Без линка</option>
+                        </select>
+                    </template>
+                    <template x-if="assetsTab === 'unplaced'">
+                        <div class="text-[10px] text-slate-500 flex items-center justify-end px-1">
+                            <span>Перетащите или нажмите кнопку</span>
+                        </div>
+                    </template>
+                </div>
             </div>
 
-            <!-- Список карточек для перетаскивания (Draggable) -->
-            <div class="flex-1 overflow-y-auto p-3 space-y-2.5">
-                <template x-if="unplacedAssets.length === 0">
-                    <div class="text-center py-10 text-xs text-slate-500">
-                        Все активы размещены на поэтажных планах!
+            <!-- ВКЛАДКА 1: НЕРАЗМЕЩЕННЫЕ АКТИВЫ -->
+            <div x-show="assetsTab === 'unplaced'" class="flex-1 overflow-y-auto p-3 space-y-2.5">
+                <template x-if="filteredUnplacedAssets.length === 0">
+                    <div class="text-center py-12 text-xs text-slate-500">
+                        <div class="w-8 h-8 mx-auto mb-2 text-slate-600">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        </div>
+                        <span x-show="unplacedAssets.length === 0">Все активы размещены на поэтажных планах!</span>
+                        <span x-show="unplacedAssets.length > 0">Не найдено активов по заданному фильтру</span>
                     </div>
                 </template>
-                <template x-for="asset in unplacedAssets" :key="asset.id">
+
+                <template x-for="asset in filteredUnplacedAssets" :key="asset.id">
                     <div draggable="true" 
                          @dragstart="$event.dataTransfer.setData('application/json', JSON.stringify(asset))"
-                         class="p-2.5 bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 hover:border-purple-500/50 rounded-xl cursor-grab active:cursor-grabbing transition shadow-sm space-y-1 group">
+                         class="p-2.5 bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 hover:border-purple-500/60 rounded-xl cursor-grab active:cursor-grabbing transition shadow-sm space-y-2 group">
+                        
                         <div class="flex items-center justify-between">
-                            <span class="font-bold text-xs text-slate-200 group-hover:text-purple-300 transition" x-text="asset.inventory_number"></span>
+                            <span class="font-bold text-xs text-slate-200 group-hover:text-purple-300 transition font-mono" x-text="asset.inventory_number"></span>
                             <span class="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase"
                                   :class="{
-                                      'bg-blue-950 text-blue-300': asset.asset_type === 'workstation',
-                                      'bg-indigo-950 text-indigo-300': asset.asset_type === 'laptop',
-                                      'bg-emerald-950 text-emerald-300': asset.asset_type === 'printer',
-                                      'bg-amber-950 text-amber-300': asset.asset_type === 'switch',
+                                      'bg-blue-950 text-blue-300 border border-blue-800/50': asset.asset_type === 'workstation',
+                                      'bg-indigo-950 text-indigo-300 border border-indigo-800/50': asset.asset_type === 'laptop',
+                                      'bg-emerald-950 text-emerald-300 border border-emerald-800/50': asset.asset_type === 'printer',
+                                      'bg-amber-950 text-amber-300 border border-amber-800/50': asset.asset_type === 'switch',
                                       'bg-slate-700 text-slate-300': asset.asset_type === 'other'
                                   }"
                                   x-text="asset.asset_type">
                             </span>
                         </div>
-                        <div class="text-[11px] text-slate-300 truncate font-medium" x-text="asset.name"></div>
-                        <div class="text-[10px] text-slate-400 flex justify-between">
-                            <span x-text="asset.cabinet || 'Кабинет не указан'"></span>
-                            <span x-show="asset.hostname" x-text="asset.hostname"></span>
+
+                        <div class="text-[11px] text-slate-200 truncate font-semibold" x-text="asset.name"></div>
+
+                        <div class="text-[10px] text-slate-400 flex flex-col gap-0.5 bg-slate-950/40 p-1.5 rounded-lg border border-slate-800/60">
+                            <div class="flex justify-between">
+                                <span class="text-slate-500">Кабинет:</span>
+                                <span class="text-slate-300 font-medium" x-text="asset.cabinet || 'Не указан'"></span>
+                            </div>
+                            <div class="flex justify-between" x-show="asset.hostname || asset.ip_address">
+                                <span class="text-slate-500">Сеть:</span>
+                                <span class="text-purple-300 truncate" x-text="(asset.hostname || '') + (asset.ip_address ? ' (' + asset.ip_address + ')' : '')"></span>
+                            </div>
+                        </div>
+
+                        <!-- Кнопка быстрого назначения в кабинет -->
+                        <div class="pt-1 flex items-center justify-between">
+                            <span class="text-[9px] text-slate-500 italic">Перетащите на план</span>
+                            <button type="button" 
+                                    @click.stop="openAssignCabinetModal(asset)"
+                                    class="px-2 py-1 bg-purple-600/20 hover:bg-purple-600 text-purple-300 hover:text-white rounded-lg text-[10px] font-bold border border-purple-500/40 transition flex items-center gap-1">
+                                <span>В кабинет</span>
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                            </button>
                         </div>
                     </div>
                 </template>
             </div>
 
+            <!-- ВКЛАДКА 2: РАЗМЕЩЕННЫЕ ОБЪЕКТЫ С СЕТЕВЫМ МОНИТОРИНГОМ -->
+            <div x-show="assetsTab === 'placed'" class="flex-1 overflow-y-auto p-3 space-y-2.5">
+                <template x-if="filteredPlacedAssets.length === 0">
+                    <div class="text-center py-12 text-xs text-slate-500">
+                        <div class="w-8 h-8 mx-auto mb-2 text-slate-600">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                        </div>
+                        <span>Размещенные объекты не найдены</span>
+                    </div>
+                </template>
+
+                <template x-for="asset in filteredPlacedAssets" :key="asset.id">
+                    <div @click="focusAsset(asset)"
+                         class="p-2.5 bg-slate-800/80 hover:bg-slate-800/95 border border-slate-700/80 hover:border-purple-500/70 rounded-xl cursor-pointer transition shadow-sm space-y-2 group">
+                        
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-1.5">
+                                <span class="font-bold text-xs text-slate-200 group-hover:text-purple-300 transition font-mono" x-text="asset.inventory_number"></span>
+                                <span class="px-1.5 py-0.2 rounded text-[9px] font-bold uppercase"
+                                      :class="{
+                                          'bg-blue-950 text-blue-300': asset.asset_type === 'workstation',
+                                          'bg-indigo-950 text-indigo-300': asset.asset_type === 'laptop',
+                                          'bg-emerald-950 text-emerald-300': asset.asset_type === 'printer',
+                                          'bg-amber-950 text-amber-300': asset.asset_type === 'switch',
+                                          'bg-slate-700 text-slate-300': asset.asset_type === 'other'
+                                      }"
+                                      x-text="asset.asset_type">
+                                </span>
+                            </div>
+
+                            <!-- Сетевой бейдж статуса L2 -->
+                            <div>
+                                <template x-if="asset.network_location_status === 'roaming'">
+                                    <span class="px-1.5 py-0.5 rounded text-[9px] font-black bg-amber-950 text-amber-300 border border-amber-500/80 animate-pulse flex items-center gap-1" title="Обнаружен в другом кабинете">
+                                        <span>⚠️ Роуминг</span>
+                                    </span>
+                                </template>
+                                <template x-if="asset.network_location_status === 'online'">
+                                    <span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-800/60 flex items-center gap-1">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                                        <span>В сети</span>
+                                    </span>
+                                </template>
+                                <template x-if="asset.network_location_status === 'offline'">
+                                    <span class="px-1.5 py-0.5 rounded text-[9px] font-medium bg-slate-950 text-slate-400 border border-slate-800">
+                                        Офлайн
+                                    </span>
+                                </template>
+                                <template x-if="asset.network_location_status === 'disconnected'">
+                                    <span class="px-1.5 py-0.5 rounded text-[9px] font-medium bg-slate-950 text-slate-500 border border-slate-800">
+                                        Без линка
+                                    </span>
+                                </template>
+                            </div>
+                        </div>
+
+                        <div class="text-[11px] text-slate-200 truncate font-semibold" x-text="asset.name"></div>
+
+                        <!-- Местоположение по документам -->
+                        <div class="text-[10px] text-slate-400 flex items-center gap-1">
+                            <svg class="w-3 h-3 text-purple-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                            <span class="text-slate-300 truncate" x-text="(asset.floor_name ? asset.floor_name + ' • ' : '') + (asset.cabinet || asset.zone_name || 'Кабинет не указан')"></span>
+                        </div>
+
+                        <!-- Сетевое подключение L2 / L3 (Где сейчас находится в сети) -->
+                        <div class="text-[10px] bg-slate-950/70 p-2 rounded-lg border border-slate-800/80 space-y-1">
+                            <template x-if="asset.connected_switch_name">
+                                <div>
+                                    <div class="flex items-center justify-between text-slate-300">
+                                        <span class="font-medium text-slate-400">Свитч:</span>
+                                        <span class="font-semibold text-blue-300 truncate max-w-[150px]" x-text="asset.connected_switch_name"></span>
+                                    </div>
+                                    <div class="flex items-center justify-between text-slate-400">
+                                        <span>Порт:</span>
+                                        <span class="text-slate-200 font-mono" x-text="'Порт ' + asset.connected_port_number + (asset.connected_socket_label ? ' (' + asset.connected_socket_label + ')' : '')"></span>
+                                    </div>
+                                    <template x-if="asset.connected_cabinet">
+                                        <div class="flex items-center justify-between pt-0.5 border-t border-slate-800/50">
+                                            <span class="text-slate-400">Порт в каб.:</span>
+                                            <span class="font-bold" :class="asset.network_location_status === 'roaming' ? 'text-amber-400' : 'text-slate-200'" x-text="asset.connected_cabinet"></span>
+                                        </div>
+                                    </template>
+                                    <template x-if="asset.network_location_status === 'roaming'">
+                                        <div class="text-[9px] text-amber-300 font-semibold bg-amber-950/80 border border-amber-700/60 p-1 rounded mt-1">
+                                            ⚠️ Устройство перемещено в <span class="font-bold underline" x-text="asset.connected_cabinet"></span>
+                                        </div>
+                                    </template>
+                                </div>
+                            </template>
+                            <template x-if="!asset.connected_switch_name">
+                                <div class="text-slate-500 italic text-center py-0.5">
+                                    Нет данных о коммутаторе
+                                </div>
+                            </template>
+                        </div>
+
+                        <!-- Кнопки действий -->
+                        <div class="flex items-center justify-between pt-1">
+                            <button type="button" 
+                                    @click.stop="focusAsset(asset)" 
+                                    class="text-[10px] text-purple-400 hover:text-purple-300 flex items-center gap-1 font-semibold">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                <span>На карте</span>
+                            </button>
+                            <div class="flex items-center gap-1.5">
+                                <button type="button" 
+                                        @click.stop="openAssignCabinetModal(asset)" 
+                                        class="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[10px] font-medium border border-slate-700" 
+                                        title="Сменить кабинет / этаж">
+                                    Переместить
+                                </button>
+                                <button type="button" 
+                                        @click.stop="selectedAsset = asset; showAssetModal = true;" 
+                                        class="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[10px] font-medium border border-slate-700" 
+                                        title="Подробная информация">
+                                    Инфо
+                                </button>
+                            </div>
+                        </div>
+
+                    </div>
+                </template>
+            </div>
+
             <!-- Легенда статусов на карте -->
-            <div class="p-3 border-t border-slate-800 bg-slate-900/50 text-[10px] text-slate-400 space-y-1.5">
-                <div class="font-bold text-slate-300 mb-1">Легенда карты:</div>
-                <div class="flex items-center gap-2">
-                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-                    <span>Активно / В рабочем состоянии</span>
+            <div class="p-3 border-t border-slate-800 bg-slate-950/70 text-[10px] text-slate-400 space-y-1.5 shrink-0">
+                <div class="font-bold text-slate-300 mb-1 flex justify-between">
+                    <span>Статусы на карте и в сети:</span>
+                    <button @click="loadFloorAssets(); loadUnplacedAssets(); loadAllPlacedAssets();" class="text-purple-400 hover:text-white" title="Обновить списки">↻ Обновить</button>
                 </div>
-                <div class="flex items-center gap-2">
-                    <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
-                    <span>Неисправно / В ремонте</span>
-                </div>
-                <div class="flex items-center gap-2">
-                    <span class="w-4 h-2 rounded bg-slate-700 border border-blue-500"></span>
-                    <span>Коммутатор (клик — панель портов)</span>
+                <div class="grid grid-cols-2 gap-x-2 gap-y-1">
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                        <span>В сети / Исправно</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                        <span>Роуминг</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+                        <span>Неисправно</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-slate-500"></span>
+                        <span>Офлайн</span>
+                    </div>
                 </div>
             </div>
         </aside>
@@ -473,43 +687,208 @@
     </div>
 
     <!-- ============================================== -->
+    <!-- ============================================== -->
     <!-- МОДАЛКА: КАРТОЧКА АКТИВА НА КАРТЕ              -->
     <!-- ============================================== -->
     <div x-show="showAssetModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md" style="display: none;">
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4" @click.outside="showAssetModal = false">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4 max-h-[92vh] overflow-y-auto" @click.outside="showAssetModal = false">
             <template x-if="selectedAsset">
                 <div class="space-y-4 text-xs">
-                    <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <!-- Заголовок -->
+                    <div class="flex items-start justify-between border-b border-slate-800 pb-3 gap-2">
                         <div>
                             <h3 class="text-base font-bold text-white" x-text="selectedAsset.name"></h3>
-                            <div class="text-slate-400" x-text="'Инвентарный №: ' + selectedAsset.inventory_number"></div>
+                            <div class="text-slate-400 font-mono text-[11px]" x-text="'Инвентарный №: ' + selectedAsset.inventory_number"></div>
                         </div>
-                        <span class="px-2.5 py-1 rounded-full font-bold text-[10px]"
-                              :class="selectedAsset.condition === 'working' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-rose-950 text-rose-400 border border-rose-800'"
-                              x-text="selectedAsset.condition === 'working' ? 'В рабочем состоянии 🟢' : 'В нерабочем состоянии 🔴'">
-                        </span>
+                        <div class="flex flex-col items-end gap-1">
+                            <span class="px-2.5 py-1 rounded-full font-bold text-[10px]"
+                                  :class="selectedAsset.condition === 'working' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-rose-950 text-rose-400 border border-rose-800'"
+                                  x-text="selectedAsset.condition === 'working' ? 'В рабочем состоянии 🟢' : 'В нерабочем состоянии 🔴'">
+                            </span>
+                            <span class="text-[10px] text-slate-400 uppercase font-semibold" x-text="selectedAsset.asset_type"></span>
+                        </div>
                     </div>
 
+                    <!-- Паспортные и учетные данные -->
                     <div class="space-y-2 bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">
-                        <div class="flex justify-between"><span class="text-slate-500">Тип:</span><span class="text-slate-200 font-bold" x-text="selectedAsset.asset_type"></span></div>
-                        <div class="flex justify-between"><span class="text-slate-500">Кабинет:</span><span class="text-slate-200 font-bold" x-text="selectedAsset.cabinet || '—'"></span></div>
+                        <div class="flex justify-between"><span class="text-slate-500">Учетный кабинет:</span><span class="text-slate-200 font-bold" x-text="selectedAsset.cabinet || '—'"></span></div>
+                        <div class="flex justify-between"><span class="text-slate-500">Этаж:</span><span class="text-slate-200 font-medium" x-text="selectedAsset.floor_name || (currentFloor ? currentFloor.name : '—')"></span></div>
                         <div class="flex justify-between"><span class="text-slate-500">Ответственный:</span><span class="text-slate-200 font-bold" x-text="selectedAsset.current_user_name || '—'"></span></div>
-                        <div class="flex justify-between"><span class="text-slate-500">Имя хоста:</span><span class="text-slate-200 font-bold" x-text="selectedAsset.hostname || '—'"></span></div>
-                        <div class="flex justify-between"><span class="text-slate-500">IP адрес:</span><span class="text-slate-200 font-bold" x-text="selectedAsset.ip_address || 'DHCP'"></span></div>
+                        <div class="flex justify-between"><span class="text-slate-500">Имя хоста:</span><span class="text-slate-200 font-mono" x-text="selectedAsset.hostname || '—'"></span></div>
+                        <div class="flex justify-between"><span class="text-slate-500">IP адрес:</span><span class="text-slate-200 font-mono" x-text="selectedAsset.ip_address || 'DHCP'"></span></div>
+                        <div class="flex justify-between" x-show="selectedAsset.mac_address"><span class="text-slate-500">MAC-адрес:</span><span class="text-purple-300 font-mono font-bold" x-text="selectedAsset.mac_address"></span></div>
                     </div>
 
-                    <!-- Кнопка трассировки кабеля -->
-                    <div class="pt-2">
-                        <button type="button" @click="traceCableToAsset(selectedAsset); showAssetModal = false;" class="w-full py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl shadow-lg shadow-purple-600/25 flex items-center justify-center gap-2 transition">
+                    <!-- Мониторинг сети L2 / L3 коммутатора -->
+                    <div class="p-3 bg-slate-950/80 rounded-xl border border-slate-800 space-y-2">
+                        <div class="flex items-center justify-between font-bold text-slate-300 text-[11px]">
+                            <span>Сетевое подключение L2/L3:</span>
+                            <template x-if="selectedAsset.network_location_status === 'roaming'">
+                                <span class="px-2 py-0.5 rounded text-[10px] font-black bg-amber-950 text-amber-300 border border-amber-500/80 animate-pulse">
+                                    ⚠️ ОБНАРУЖЕН РОУМИНГ
+                                </span>
+                            </template>
+                            <template x-if="selectedAsset.network_location_status === 'online'">
+                                <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-800/80">
+                                    🟢 ЛИНК АКТИВЕН (UP)
+                                </span>
+                            </template>
+                            <template x-if="selectedAsset.network_location_status === 'offline'">
+                                <span class="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-800 text-slate-400">
+                                    ⚪ ЛИНК НЕ АКТИВЕН (DOWN)
+                                </span>
+                            </template>
+                            <template x-if="selectedAsset.network_location_status === 'disconnected'">
+                                <span class="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-900 text-slate-500">
+                                    🔌 БЕЗ ПРИВЯЗКИ К СВИТЧУ
+                                </span>
+                            </template>
+                        </div>
+
+                        <template x-if="selectedAsset.connected_switch_name">
+                            <div class="space-y-1.5 text-[11px] pt-1 border-t border-slate-800/60">
+                                <div class="flex justify-between">
+                                    <span class="text-slate-400">Коммутатор:</span>
+                                    <span class="text-blue-300 font-semibold" x-text="selectedAsset.connected_switch_name + (selectedAsset.connected_switch_ip ? ' (' + selectedAsset.connected_switch_ip + ')' : '')"></span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-slate-400">Порт коммутатора:</span>
+                                    <span class="text-slate-200 font-mono font-bold" x-text="'Порт ' + selectedAsset.connected_port_number"></span>
+                                </div>
+                                <div class="flex justify-between" x-show="selectedAsset.connected_socket_label">
+                                    <span class="text-slate-400">Розетка (Patch Panel):</span>
+                                    <span class="text-slate-200 font-medium" x-text="selectedAsset.connected_socket_label"></span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-slate-400">Кабинет розетки:</span>
+                                    <span class="font-bold text-slate-200" x-text="selectedAsset.connected_cabinet || 'Не указан на порту'"></span>
+                                </div>
+
+                                <template x-if="selectedAsset.network_location_status === 'roaming'">
+                                    <div class="p-2 bg-amber-950/70 border border-amber-600/70 rounded-lg text-amber-200 space-y-1 mt-2">
+                                        <div class="font-bold flex items-center gap-1.5 text-amber-300">
+                                            <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                            <span>Устройство физически переехало!</span>
+                                        </div>
+                                        <p class="text-[10px] leading-tight">
+                                            По документам закреплено за <b x-text="selectedAsset.cabinet || '—'"></b>, однако MAC обнаружен на порту <b x-text="selectedAsset.connected_port_number"></b> в помещении <b x-text="selectedAsset.connected_cabinet || 'другом кабинете'"></b>.
+                                        </p>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+
+                        <template x-if="!selectedAsset.connected_switch_name">
+                            <div class="text-[11px] text-slate-500 italic py-1 text-center">
+                                Устройство не обнаружено ни на одном отслеживаемом коммутаторе (возможно, выключено или подключено в хаб).
+                            </div>
+                        </template>
+                    </div>
+
+                    <!-- Действия с объектом -->
+                    <div class="space-y-2 pt-1">
+                        <!-- Кнопка трассировки кабеля -->
+                        <button type="button" 
+                                @click="traceCableToAsset(selectedAsset); showAssetModal = false;" 
+                                class="w-full py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl shadow-lg shadow-purple-600/25 flex items-center justify-center gap-2 transition">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
                             <span>Трассировать кабель от коммутатора</span>
                         </button>
+
+                        <div class="grid grid-cols-2 gap-2">
+                            <button type="button" 
+                                    @click="openAssignCabinetModal(selectedAsset); showAssetModal = false;" 
+                                    class="py-2 bg-slate-800 hover:bg-slate-700 text-purple-300 border border-purple-800/50 font-semibold rounded-xl flex items-center justify-center gap-1.5 transition">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+                                <span>Сменить кабинет / этаж</span>
+                            </button>
+
+                            <button type="button" 
+                                    @click="unplaceAsset(selectedAsset); showAssetModal = false;" 
+                                    class="py-2 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/50 font-semibold rounded-xl flex items-center justify-center gap-1.5 transition">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                <span>Снять с карты</span>
+                            </button>
+                        </div>
                     </div>
 
-                    <div class="flex justify-end pt-1">
-                        <button type="button" @click="showAssetModal = false" class="px-4 py-2 text-slate-400 hover:text-white">Закрыть</button>
+                    <div class="flex justify-end pt-2 border-t border-slate-800">
+                        <button type="button" @click="showAssetModal = false" class="px-4 py-1.5 text-slate-400 hover:text-white">Закрыть</button>
                     </div>
                 </div>
+            </template>
+        </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- МОДАЛКА: ПЕРЕМЕЩЕНИЕ / НАЗНАЧЕНИЕ В КАБИНЕТ    -->
+    <!-- ============================================== -->
+    <div x-show="showAssignModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md" style="display: none;">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4" @click.outside="showAssignModal = false">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div>
+                    <h3 class="text-base font-bold text-white">Переместить актив в кабинет</h3>
+                    <p class="text-xs text-slate-400">Назначение зоны и автоматическое размещение на плане</p>
+                </div>
+                <button @click="showAssignModal = false" class="text-slate-400 hover:text-white">✕</button>
+            </div>
+
+            <template x-if="assignAsset">
+                <form @submit.prevent="submitAssignCabinet()" class="space-y-3.5 text-xs">
+                    <!-- Информация об объекте -->
+                    <div class="p-3 bg-slate-950/60 rounded-xl border border-slate-800/80 space-y-1">
+                        <div class="flex justify-between items-center">
+                            <span class="font-bold text-white text-sm" x-text="assignAsset.name"></span>
+                            <span class="font-mono text-purple-300 font-bold bg-purple-950/80 px-2 py-0.5 rounded border border-purple-800/60" x-text="assignAsset.inventory_number"></span>
+                        </div>
+                        <div class="text-[11px] text-slate-400 flex justify-between pt-1">
+                            <span>Текущий кабинет:</span>
+                            <span class="text-slate-200 font-semibold" x-text="assignAsset.cabinet || 'Не назначен'"></span>
+                        </div>
+                        <template x-if="assignAsset.connected_switch_name">
+                            <div class="text-[11px] text-blue-300 flex justify-between pt-0.5">
+                                <span>Сетевой порт:</span>
+                                <span class="font-medium" x-text="assignAsset.connected_switch_name + ' (порт ' + assignAsset.connected_port_number + ')'"></span>
+                            </div>
+                        </template>
+                    </div>
+
+                    <!-- Выбор этажа -->
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">Этаж размещения *</label>
+                        <select x-model="assignForm.floor_id" @change="onAssignFloorChanged()" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white focus:ring-1 focus:ring-purple-500">
+                            <template x-for="f in floors" :key="f.id">
+                                <option :value="f.id" x-text="f.name"></option>
+                            </template>
+                        </select>
+                    </div>
+
+                    <!-- Выбор кабинета из зон плана -->
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">Кабинет / Помещение на плане *</label>
+                        <select x-model="assignForm.zone_id" @change="onAssignZoneSelected($event.target.value)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white focus:ring-1 focus:ring-purple-500">
+                            <option value="">— Выберите помещение / зону на этаже —</option>
+                            <template x-for="z in assignFloorZones" :key="z.id">
+                                <option :value="z.id" x-text="z.name + (z.responsible_person ? ' (отв: ' + z.responsible_person + ')' : '')"></option>
+                            </template>
+                        </select>
+                        <p class="text-[10px] text-slate-500 mt-1">При выборе зоны на плане актив автоматически центрируется внутри помещения</p>
+                    </div>
+
+                    <!-- Название кабинета (текстом) -->
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">Название кабинета (для документов и паспорта) *</label>
+                        <input type="text" x-model="assignForm.cabinet" required placeholder="Например: Кабинет 302 или Серверная" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white focus:ring-1 focus:ring-purple-500">
+                    </div>
+
+                    <div class="flex items-center justify-between pt-3 border-t border-slate-800">
+                        <button type="button" @click="showAssignModal = false" class="px-4 py-2 text-xs text-slate-400 hover:text-white">Отмена</button>
+                        <button type="submit" class="px-4 py-2 text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 rounded-lg shadow-md shadow-purple-600/30 flex items-center gap-1.5">
+                            <span>Разместить в кабинете</span>
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                        </button>
+                    </div>
+                </form>
             </template>
         </div>
     </div>
