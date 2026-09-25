@@ -148,9 +148,14 @@ document.addEventListener('alpine:init', () => {
             notes: ''
         },
 
-        // Отчеты
-        reportFilterCondition: '',
-        reportFilterType: '',
+        // Отчеты и аналитика
+        reportType: 'general',          // 'general' (Общий реестр) | 'condition_repairs' (Состояние и ремонты)
+        reportPeriod: 'all',            // 'all' | 'current_year' | 'current_month' | 'custom'
+        reportStartDate: '',
+        reportEndDate: '',
+        reportFilterCondition: '',      // '' | 'working' | 'broken'
+        reportFilterType: '',           // '' | 'workstation' | ...
+        reportRepairCountFilter: '',    // '' | 'has_repairs' | 'frequent' | 'no_repairs'
         reportSearch: '',
         reportData: null,
 
@@ -1072,14 +1077,50 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
-        // Загрузка отчетов
+        // Переключение типа отчета (Общий реестр / Состояние и ремонты)
+        setReportType(type) {
+            this.reportType = type;
+            this.loadReport();
+        },
+
+        // Переключение периода отчета (Общий, Год, Месяц, Произвольный)
+        setReportPeriod(p) {
+            this.reportPeriod = p;
+            const now = new Date();
+            const yyyy = now.getFullYear();
+            const mm = String(now.getMonth() + 1).padStart(2, '0');
+            const dd = String(now.getDate()).padStart(2, '0');
+            const todayStr = `${yyyy}-${mm}-${dd}`;
+
+            if (p === 'current_year') {
+                this.reportStartDate = `${yyyy}-01-01`;
+                this.reportEndDate = todayStr;
+            } else if (p === 'current_month') {
+                this.reportStartDate = `${yyyy}-${mm}-01`;
+                this.reportEndDate = todayStr;
+            } else if (p === 'all') {
+                this.reportStartDate = '';
+                this.reportEndDate = '';
+            } else if (p === 'custom') {
+                if (!this.reportStartDate) this.reportStartDate = `${yyyy}-${mm}-01`;
+                if (!this.reportEndDate) this.reportEndDate = todayStr;
+            }
+            this.loadReport();
+        },
+
+        // Загрузка отчетов с фильтрами по периодам и типам
         async loadReport() {
             this.isLoading = true;
             try {
                 let url = '/api/v1/repair/reports/data?';
+                url += `report_type=${encodeURIComponent(this.reportType || 'general')}&`;
+                url += `period=${encodeURIComponent(this.reportPeriod || 'all')}&`;
+                if (this.reportStartDate) url += `start_date=${encodeURIComponent(this.reportStartDate)}&`;
+                if (this.reportEndDate) url += `end_date=${encodeURIComponent(this.reportEndDate)}&`;
                 if (this.selectedBranchId) url += `branch_id=${this.selectedBranchId}&`;
-                if (this.reportFilterCondition) url += `condition_filter=${this.reportFilterCondition}&`;
-                if (this.reportFilterType) url += `asset_type_filter=${this.reportFilterType}&`;
+                if (this.reportFilterCondition) url += `condition_filter=${encodeURIComponent(this.reportFilterCondition)}&`;
+                if (this.reportFilterType) url += `asset_type_filter=${encodeURIComponent(this.reportFilterType)}&`;
+                if (this.reportRepairCountFilter) url += `repair_count_filter=${encodeURIComponent(this.reportRepairCountFilter)}&`;
                 if (this.reportSearch) url += `search=${encodeURIComponent(this.reportSearch)}&`;
 
                 const res = await fetch(url, { headers: this.getAuthHeaders() });
@@ -1097,23 +1138,32 @@ document.addEventListener('alpine:init', () => {
         // Выгрузка Excel отчета
         downloadExcelReport() {
             let url = '/api/v1/repair/reports/export/excel?';
+            url += `report_type=${encodeURIComponent(this.reportType || 'general')}&`;
+            url += `period=${encodeURIComponent(this.reportPeriod || 'all')}&`;
+            if (this.reportStartDate) url += `start_date=${encodeURIComponent(this.reportStartDate)}&`;
+            if (this.reportEndDate) url += `end_date=${encodeURIComponent(this.reportEndDate)}&`;
             if (this.selectedBranchId) url += `branch_id=${this.selectedBranchId}&`;
-            if (this.reportFilterCondition) url += `condition_filter=${this.reportFilterCondition}&`;
-            if (this.reportFilterType) url += `asset_type_filter=${this.reportFilterType}&`;
+            if (this.reportFilterCondition) url += `condition_filter=${encodeURIComponent(this.reportFilterCondition)}&`;
+            if (this.reportFilterType) url += `asset_type_filter=${encodeURIComponent(this.reportFilterType)}&`;
+            if (this.reportRepairCountFilter) url += `repair_count_filter=${encodeURIComponent(this.reportRepairCountFilter)}&`;
             if (this.reportSearch) url += `search=${encodeURIComponent(this.reportSearch)}&`;
             
-            // Скачивание через открытие окна с авторизационным заголовком через fetch blob
             fetch(url, { headers: this.getAuthHeaders() })
-                .then(resp => resp.blob())
+                .then(resp => {
+                    if (!resp.ok) throw new Error('Ошибка формирования файла');
+                    return resp.blob();
+                })
                 .then(blob => {
                     const dlUrl = window.URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.style.display = 'none';
                     a.href = dlUrl;
-                    a.download = `equipment_report_${new Date().toISOString().slice(0, 10)}.xlsx`;
+                    const typeSlug = this.reportType === 'condition_repairs' ? 'repairs_reliability' : 'equipment_registry';
+                    a.download = `${typeSlug}_${this.reportPeriod}_${new Date().toISOString().slice(0, 10)}.xlsx`;
                     document.body.appendChild(a);
                     a.click();
                     window.URL.revokeObjectURL(dlUrl);
+                    this.showToast('Файл отчета Excel (.xlsx) успешно скачан', 'success');
                 })
                 .catch(() => this.showToast('Ошибка выгрузки Excel', 'error'));
         },

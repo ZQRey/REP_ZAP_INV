@@ -770,67 +770,196 @@
         <!-- ВКЛАДКА 7: ОТЧЕТЫ И АНАЛИТИКА                  -->
         <!-- ============================================== -->
         <div x-show="currentTab === 'reports'" class="space-y-6">
-            <!-- Панель фильтров отчета -->
-            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
-                <div class="flex flex-wrap items-center gap-3">
-                    <span class="text-xs font-bold text-slate-700">Фильтр отчета:</span>
-                    <!-- Состояние: Рабочая / Сломанная техника -->
-                    <select x-model="reportFilterCondition" @change="loadReport()" class="text-xs bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 font-medium">
-                        <option value="">Все состояния</option>
-                        <option value="working">🟢 Только рабочая техника</option>
-                        <option value="broken">🔴 Только сломанная техника</option>
-                    </select>
-
-                    <select x-model="reportFilterType" @change="loadReport()" class="text-xs bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 font-medium">
-                        <option value="">Все категории</option>
-                        <option value="workstation">Компьютеры</option>
-                        <option value="laptop">Ноутбуки</option>
-                        <option value="monitor">Мониторы</option>
-                        <option value="printer">Принтеры / МФУ</option>
-                        <option value="ups">ИБП</option>
-                    </select>
+            <!-- Заголовок и переключатель вида отчета -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                    <h2 class="text-lg font-black text-slate-900 flex items-center gap-2">
+                        <span>Отчёты и Аналитика</span>
+                        <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-brand-50 text-brand-700 border border-brand-200" x-text="reportData?.period_label || 'За всё время'"></span>
+                    </h2>
+                    <p class="text-xs text-slate-500 mt-0.5">Формирование аналитических срезов, надёжности парка оборудования и экспорт в Excel</p>
                 </div>
+                <!-- Переключатель режима отчёта -->
+                <div class="inline-flex p-1 bg-slate-100 rounded-xl border border-slate-200 text-xs font-bold self-start sm:self-auto">
+                    <button type="button" @click="setReportType('general')" :class="reportType === 'general' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'" class="px-3.5 py-1.5 rounded-lg transition flex items-center gap-1.5">
+                        <svg class="w-4 h-4 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        <span>Общий реестр</span>
+                    </button>
+                    <button type="button" @click="setReportType('condition_repairs')" :class="reportType === 'condition_repairs' ? 'bg-white text-purple-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'" class="px-3.5 py-1.5 rounded-lg transition flex items-center gap-1.5">
+                        <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                        <span>Состояние и ремонты (надёжность)</span>
+                    </button>
+                </div>
+            </div>
 
-                <div class="flex items-center gap-2">
+            <!-- Панель управления отчетом и фильтры по периодам -->
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                <!-- 1. Быстрые фильтры периодов (4 режима) -->
+                <div class="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="text-xs font-bold text-slate-700 mr-1">Период отчёта:</span>
+                        
+                        <!-- Отчёт общий -->
+                        <button type="button" @click="setReportPeriod('all')" :class="reportPeriod === 'all' ? 'bg-slate-900 text-white shadow' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064"/></svg>
+                            <span>Отчёт общий</span>
+                        </button>
+
+                        <!-- Отчёт за текущий год -->
+                        <button type="button" @click="setReportPeriod('current_year')" :class="reportPeriod === 'current_year' ? 'bg-brand-600 text-white shadow' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                            <span>За текущий год</span>
+                        </button>
+
+                        <!-- Отчёт за текущий месяц -->
+                        <button type="button" @click="setReportPeriod('current_month')" :class="reportPeriod === 'current_month' ? 'bg-purple-600 text-white shadow' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            <span>За текущий месяц</span>
+                        </button>
+
+                        <!-- Отчёт за определённый период -->
+                        <button type="button" @click="setReportPeriod('custom')" :class="reportPeriod === 'custom' ? 'bg-amber-600 text-white shadow' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
+                            <span>Определённый период</span>
+                        </button>
+                    </div>
+
+                    <!-- Кнопка скачивания Excel -->
                     <button @click="downloadExcelReport()" class="px-4 py-2 text-xs font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm flex items-center gap-2 transition">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                         <span>Скачать Excel (.xlsx)</span>
                     </button>
                 </div>
+
+                <!-- 2. Выбор интервала дат для определенного периода -->
+                <div x-show="reportPeriod === 'custom'" class="flex flex-wrap items-center gap-3 p-3 bg-amber-50/70 border border-amber-200 rounded-xl text-xs">
+                    <span class="font-bold text-amber-900 flex items-center gap-1">
+                        <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                        <span>Интервал дат:</span>
+                    </span>
+                    <div class="flex items-center gap-2">
+                        <span class="text-slate-600">С:</span>
+                        <input type="date" x-model="reportStartDate" class="bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs focus:ring-2 focus:ring-amber-500">
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-slate-600">По:</span>
+                        <input type="date" x-model="reportEndDate" class="bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs focus:ring-2 focus:ring-amber-500">
+                    </div>
+                    <button type="button" @click="loadReport()" class="px-3.5 py-1 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg transition shadow-sm">Применить период</button>
+                </div>
+
+                <!-- 3. Фильтры и строка поиска -->
+                <div class="flex flex-wrap items-center justify-between gap-3 text-xs">
+                    <div class="flex flex-wrap items-center gap-2.5">
+                        <!-- Состояние: Рабочая / Сломанная техника -->
+                        <select x-model="reportFilterCondition" @change="loadReport()" class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 font-medium">
+                            <option value="">Все состояния</option>
+                            <option value="working">🟢 Только рабочая техника</option>
+                            <option value="broken">🔴 Только сломанная техника</option>
+                        </select>
+
+                        <!-- Категория оборудования -->
+                        <select x-model="reportFilterType" @change="loadReport()" class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 font-medium">
+                            <option value="">Все категории</option>
+                            <option value="workstation">Компьютеры</option>
+                            <option value="laptop">Ноутбуки</option>
+                            <option value="monitor">Мониторы</option>
+                            <option value="printer">Принтеры / МФУ</option>
+                            <option value="server">Серверы</option>
+                            <option value="switch">Коммутаторы</option>
+                            <option value="ups">ИБП</option>
+                        </select>
+
+                        <!-- Фильтр по частоте ремонтов (для отчета надёжности) -->
+                        <template x-if="reportType === 'condition_repairs'">
+                            <select x-model="reportRepairCountFilter" @change="loadReport()" class="bg-purple-50 border border-purple-200 text-purple-900 rounded-lg px-3 py-1.5 font-semibold">
+                                <option value="">Все по ремонтам</option>
+                                <option value="has_repairs">Были в ремонте (1+)</option>
+                                <option value="frequent">⚠️ Частые ремонты (2+)</option>
+                                <option value="no_repairs">🛡️ Без ремонтов (0)</option>
+                            </select>
+                        </template>
+                    </div>
+
+                    <!-- Поиск -->
+                    <div class="relative w-full sm:w-72">
+                        <input type="text" x-model="reportSearch" @input.debounce.300ms="loadReport()" placeholder="Поиск по инв. №, имени, кабинету..." class="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-3 py-1.5 text-xs focus:ring-2 focus:ring-brand-500">
+                        <svg class="w-4 h-4 text-slate-400 absolute left-2.5 top-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                    </div>
+                </div>
             </div>
 
-            <!-- KPI Карточки состояния -->
+            <!-- KPI Карточки отчета -->
             <template x-if="reportData && reportData.summary">
-                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm text-center">
-                        <div class="text-[11px] font-bold text-slate-400 uppercase">Всего единиц</div>
-                        <div class="text-2xl font-black text-slate-900 mt-1" x-text="reportData.summary.total_count"></div>
-                    </div>
-                    <div class="bg-emerald-50/60 p-4 rounded-xl border border-emerald-200 shadow-sm text-center">
-                        <div class="text-[11px] font-bold text-emerald-800 uppercase">Рабочая техника 🟢</div>
-                        <div class="text-2xl font-black text-emerald-700 mt-1" x-text="reportData.summary.working_count"></div>
-                    </div>
-                    <div class="bg-rose-50/60 p-4 rounded-xl border border-rose-200 shadow-sm text-center">
-                        <div class="text-[11px] font-bold text-rose-800 uppercase">Сломанная техника 🔴</div>
-                        <div class="text-2xl font-black text-rose-700 mt-1" x-text="reportData.summary.broken_count"></div>
-                    </div>
-                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm text-center">
-                        <div class="text-[11px] font-bold text-slate-400 uppercase">В работе (места)</div>
-                        <div class="text-2xl font-black text-slate-900 mt-1" x-text="reportData.summary.at_workplace"></div>
-                    </div>
-                    <div class="bg-amber-50/60 p-4 rounded-xl border border-amber-200 shadow-sm text-center">
-                        <div class="text-[11px] font-bold text-amber-800 uppercase">В ремонте / СЦ</div>
-                        <div class="text-2xl font-black text-amber-700 mt-1" x-text="reportData.summary.pending_sc + reportData.summary.at_sc"></div>
-                    </div>
-                    <div class="bg-purple-50/60 p-4 rounded-xl border border-purple-200 shadow-sm text-center">
-                        <div class="text-[11px] font-bold text-purple-800 uppercase">Готово к установке</div>
-                        <div class="text-2xl font-black text-purple-700 mt-1" x-text="reportData.summary.returned_it"></div>
-                    </div>
+                <div>
+                    <!-- KPI для Режима 1: Общий реестр -->
+                    <template x-if="reportType === 'general'">
+                        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm text-center">
+                                <div class="text-[11px] font-bold text-slate-400 uppercase">Всего единиц</div>
+                                <div class="text-2xl font-black text-slate-900 mt-1" x-text="reportData.summary.total_count"></div>
+                            </div>
+                            <div class="bg-emerald-50/60 p-4 rounded-xl border border-emerald-200 shadow-sm text-center">
+                                <div class="text-[11px] font-bold text-emerald-800 uppercase">Рабочая техника 🟢</div>
+                                <div class="text-2xl font-black text-emerald-700 mt-1" x-text="reportData.summary.working_count"></div>
+                            </div>
+                            <div class="bg-rose-50/60 p-4 rounded-xl border border-rose-200 shadow-sm text-center">
+                                <div class="text-[11px] font-bold text-rose-800 uppercase">Сломанная техника 🔴</div>
+                                <div class="text-2xl font-black text-rose-700 mt-1" x-text="reportData.summary.broken_count"></div>
+                            </div>
+                            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm text-center">
+                                <div class="text-[11px] font-bold text-slate-400 uppercase">В работе (места)</div>
+                                <div class="text-2xl font-black text-slate-900 mt-1" x-text="reportData.summary.at_workplace"></div>
+                            </div>
+                            <div class="bg-amber-50/60 p-4 rounded-xl border border-amber-200 shadow-sm text-center">
+                                <div class="text-[11px] font-bold text-amber-800 uppercase">В ремонте / СЦ</div>
+                                <div class="text-2xl font-black text-amber-700 mt-1" x-text="reportData.summary.pending_sc + reportData.summary.at_sc"></div>
+                            </div>
+                            <div class="bg-purple-50/60 p-4 rounded-xl border border-purple-200 shadow-sm text-center">
+                                <div class="text-[11px] font-bold text-purple-800 uppercase">Готово к установке</div>
+                                <div class="text-2xl font-black text-purple-700 mt-1" x-text="reportData.summary.returned_it"></div>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- KPI для Режима 2: Состояние и ремонты (надёжность) -->
+                    <template x-if="reportType === 'condition_repairs'">
+                        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm text-center">
+                                <div class="text-[11px] font-bold text-slate-400 uppercase">Техники в выборке</div>
+                                <div class="text-2xl font-black text-slate-900 mt-1" x-text="reportData.summary.total_count"></div>
+                            </div>
+                            <div class="bg-emerald-50/60 p-4 rounded-xl border border-emerald-200 shadow-sm text-center">
+                                <div class="text-[11px] font-bold text-emerald-800 uppercase">В работе 🟢 / Сломано 🔴</div>
+                                <div class="text-xl font-black text-slate-900 mt-1">
+                                    <span class="text-emerald-700" x-text="reportData.summary.working_count"></span>
+                                    <span class="text-slate-300">/</span>
+                                    <span class="text-rose-700" x-text="reportData.summary.broken_count"></span>
+                                </div>
+                            </div>
+                            <div class="bg-amber-50/60 p-4 rounded-xl border border-amber-200 shadow-sm text-center">
+                                <div class="text-[11px] font-bold text-amber-800 uppercase">Отправок в ремонт (период)</div>
+                                <div class="text-2xl font-black text-amber-700 mt-1" x-text="reportData.summary.total_repairs"></div>
+                            </div>
+                            <div class="bg-purple-50/60 p-4 rounded-xl border border-purple-200 shadow-sm text-center">
+                                <div class="text-[11px] font-bold text-purple-800 uppercase">Затраты на ремонт (₸)</div>
+                                <div class="text-xl font-black text-purple-700 mt-1 truncate" x-text="reportData.summary.total_repair_cost_formatted"></div>
+                            </div>
+                            <div class="bg-rose-50/60 p-4 rounded-xl border border-rose-200 shadow-sm text-center">
+                                <div class="text-[11px] font-bold text-rose-800 uppercase">Частые ремонты (2+) ⚠️</div>
+                                <div class="text-2xl font-black text-rose-700 mt-1" x-text="reportData.summary.frequent_repair_count"></div>
+                            </div>
+                            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 shadow-sm text-center">
+                                <div class="text-[11px] font-bold text-slate-600 uppercase">Без поломок 🛡️</div>
+                                <div class="text-2xl font-black text-slate-800 mt-1" x-text="reportData.summary.never_repaired_count"></div>
+                            </div>
+                        </div>
+                    </template>
                 </div>
             </template>
 
-            <!-- Таблица отчета -->
-            <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <!-- ТАБЛИЦА 1: Общий реестр техники -->
+            <div x-show="reportType === 'general'" class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                 <div class="overflow-x-auto">
                     <table class="w-full text-left text-xs">
                         <thead class="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200 uppercase">
@@ -840,15 +969,22 @@
                                 <th class="px-4 py-3">Категория</th>
                                 <th class="px-4 py-3">Техническое состояние</th>
                                 <th class="px-4 py-3">Статус</th>
+                                <th class="px-4 py-3">Отправок в ремонт</th>
                                 <th class="px-4 py-3">Филиал / Кабинет</th>
                                 <th class="px-4 py-3">Ответственный</th>
+                                <th class="px-4 py-3 text-right">Действия</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100 font-medium">
+                            <template x-if="reportData && reportData.items && reportData.items.length === 0">
+                                <tr>
+                                    <td colspan="9" class="p-8 text-center text-slate-400">Техника по указанным фильтрам не найдена</td>
+                                </tr>
+                            </template>
                             <template x-if="reportData && reportData.items">
                                 <template x-for="item in reportData.items" :key="item.id">
                                     <tr class="hover:bg-slate-50/80 transition">
-                                        <td class="px-4 py-3 font-bold text-slate-900" x-text="item.inventory_number"></td>
+                                        <td class="px-4 py-3 font-bold text-slate-900 cursor-pointer hover:text-brand-600" @click="viewDetail(item)" x-text="item.inventory_number"></td>
                                         <td class="px-4 py-3 text-slate-900" x-text="item.name"></td>
                                         <td class="px-4 py-3 text-slate-600" x-text="item.asset_type_label"></td>
                                         <td class="px-4 py-3">
@@ -859,8 +995,100 @@
                                             </span>
                                         </td>
                                         <td class="px-4 py-3 text-slate-600" x-text="item.status_label"></td>
+                                        <td class="px-4 py-3">
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold"
+                                                  :class="item.repairs_count >= 2 ? 'bg-rose-100 text-rose-800' : (item.repairs_count === 1 ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600')">
+                                                <span x-text="item.repairs_count + ' раз'"></span>
+                                            </span>
+                                        </td>
                                         <td class="px-4 py-3 text-slate-600" x-text="item.branch_name + ', ' + item.cabinet"></td>
                                         <td class="px-4 py-3 text-slate-700" x-text="item.user_name"></td>
+                                        <td class="px-4 py-3 text-right">
+                                            <button type="button" @click="viewDetail(item)" class="px-2.5 py-1 text-xs font-semibold text-brand-700 bg-brand-50 hover:bg-brand-100 rounded-lg transition">Карточка</button>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ТАБЛИЦА 2: Отчет об состоянии техники (количество отправок на ремонт) -->
+            <div x-show="reportType === 'condition_repairs'" class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200 uppercase">
+                            <tr>
+                                <th class="px-4 py-3">Инв. №</th>
+                                <th class="px-4 py-3">Наименование / Модель</th>
+                                <th class="px-4 py-3">Категория</th>
+                                <th class="px-4 py-3">Состояние</th>
+                                <th class="px-4 py-3">Текущий статус</th>
+                                <th class="px-4 py-3">Отправок в ремонт</th>
+                                <th class="px-4 py-3">Затраты (₸)</th>
+                                <th class="px-4 py-3">Последняя неисправность / причина</th>
+                                <th class="px-4 py-3">Филиал / Кабинет / Сотрудник</th>
+                                <th class="px-4 py-3 text-right">Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 font-medium">
+                            <template x-if="reportData && reportData.items && reportData.items.length === 0">
+                                <tr>
+                                    <td colspan="10" class="p-8 text-center text-slate-400">Данные по ремонтам за выбранный период не найдены</td>
+                                </tr>
+                            </template>
+                            <template x-if="reportData && reportData.items">
+                                <template x-for="item in reportData.items" :key="item.id">
+                                    <tr class="hover:bg-slate-50/80 transition" :class="item.repairs_count >= 2 ? 'bg-rose-50/20' : ''">
+                                        <td class="px-4 py-3 font-bold text-slate-900 cursor-pointer hover:text-brand-600" @click="viewDetail(item)" x-text="item.inventory_number"></td>
+                                        <td class="px-4 py-3">
+                                            <div class="font-bold text-slate-900" x-text="item.name"></div>
+                                            <div class="text-[11px] text-slate-400" x-show="item.serial_number && item.serial_number !== '—'" x-text="'S/N: ' + item.serial_number"></div>
+                                        </td>
+                                        <td class="px-4 py-3 text-slate-600" x-text="item.asset_type_label"></td>
+                                        <td class="px-4 py-3">
+                                            <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-bold"
+                                                  :class="item.condition === 'working' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'">
+                                                <span class="w-1.5 h-1.5 rounded-full" :class="item.condition === 'working' ? 'bg-emerald-500' : 'bg-rose-500'"></span>
+                                                <span x-text="item.condition === 'working' ? 'Исправно' : 'Неисправно'"></span>
+                                            </span>
+                                        </td>
+                                        <td class="px-4 py-3 text-slate-600" x-text="item.status_label"></td>
+                                        <td class="px-4 py-3">
+                                            <template x-if="item.repairs_count >= 2">
+                                                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-black bg-rose-100 text-rose-800 border border-rose-300">
+                                                    <span>⚠️</span>
+                                                    <span x-text="item.repairs_count + ' ремонтов'"></span>
+                                                </span>
+                                            </template>
+                                            <template x-if="item.repairs_count === 1">
+                                                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                                                    <span>🔧</span>
+                                                    <span>1 ремонт</span>
+                                                </span>
+                                            </template>
+                                            <template x-if="item.repairs_count === 0">
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-500">
+                                                    <span>0 ремонтов</span>
+                                                </span>
+                                            </template>
+                                        </td>
+                                        <td class="px-4 py-3 font-bold text-slate-900" x-text="item.repairs_cost_formatted"></td>
+                                        <td class="px-4 py-3">
+                                            <div class="text-slate-800 line-clamp-1" :title="item.last_repair_issue" x-text="item.last_repair_issue"></div>
+                                            <div class="text-[10px] text-slate-400 mt-0.5" x-show="item.last_repair_date !== '—'">
+                                                <span x-text="'Дата: ' + item.last_repair_date"></span>
+                                                <span x-show="item.last_vendor_name && item.last_vendor_name !== '—'" x-text="' (' + item.last_vendor_name + ')'"></span>
+                                            </div>
+                                        </td>
+                                        <td class="px-4 py-3 text-slate-600">
+                                            <div class="font-medium text-slate-800" x-text="item.branch_name + ', каб. ' + item.cabinet"></div>
+                                            <div class="text-[11px] text-slate-500" x-text="item.user_name"></div>
+                                        </td>
+                                        <td class="px-4 py-3 text-right">
+                                            <button type="button" @click="viewDetail(item)" class="px-2.5 py-1 text-xs font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-lg transition">Карточка</button>
+                                        </td>
                                     </tr>
                                 </template>
                             </template>
