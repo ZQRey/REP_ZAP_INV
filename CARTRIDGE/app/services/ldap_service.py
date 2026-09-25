@@ -11,11 +11,38 @@ from app.services.settings_service import SettingsService
 
 class LDAPService:
     @staticmethod
+    def normalize_bind_user(bind_user: str, base_dn: str = "") -> str:
+        """
+        Нормализует учетную запись для подключения к Active Directory.
+        Поддерживает:
+        - UPN: svc_ldap@gp1.loc
+        - Down-Level: DOMAIN\\svc_ldap
+        - DN: CN=svc_ldap,OU=Service,DC=gp1,DC=loc
+        - Просто логин: svc_ldap -> если base_dn='DC=gp1,DC=loc', преобразует в svc_ldap@gp1.loc
+        """
+        if not bind_user:
+            return ""
+        u = bind_user.strip()
+        if "@" not in u and "\\" not in u and not u.upper().startswith("CN="):
+            if base_dn and "DC=" in base_dn.upper():
+                dc_parts = [
+                    part.split("=")[1].strip()
+                    for part in base_dn.split(",")
+                    if part.strip().upper().startswith("DC=") and "=" in part
+                ]
+                if dc_parts:
+                    domain = ".".join(dc_parts)
+                    return f"{u}@{domain}"
+        return u
+
+    @classmethod
     def _create_connection(
+        cls,
         host: str,
         bind_user: str,
         bind_password: str,
-        connect_timeout: int = 5
+        connect_timeout: int = 5,
+        base_dn: str = ""
     ) -> Connection:
         """Создает и возвращает объект Connection библиотеки ldap3."""
         use_ssl = host.startswith("ldaps://")
@@ -44,9 +71,11 @@ class LDAPService:
             connect_timeout=connect_timeout
         )
 
+        effective_user = cls.normalize_bind_user(bind_user, base_dn)
+
         conn = Connection(
             server,
-            user=bind_user,
+            user=effective_user,
             password=bind_password,
             auto_bind=True,
             read_only=True
@@ -76,7 +105,7 @@ class LDAPService:
             }
 
         try:
-            conn = cls._create_connection(h, u, p, connect_timeout=5)
+            conn = cls._create_connection(h, u, p, connect_timeout=5, base_dn=b)
             # Тестовый поиск
             search_ok = conn.search(
                 search_base=b,
@@ -128,7 +157,7 @@ class LDAPService:
             }
 
         try:
-            conn = cls._create_connection(host, bind_user, bind_password, connect_timeout=10)
+            conn = cls._create_connection(host, bind_user, bind_password, connect_timeout=10, base_dn=base_dn)
         except Exception as e:
             return {
                 "success": False,

@@ -24,6 +24,9 @@ document.addEventListener('alpine:init', () => {
         showSettingsModal: false,
         settingsData: {},
         isSyncingAD: false,
+        isTestingLDAP: false,
+        showBindPwd: false,
+        ldapTestResult: { success: false, message: '' },
 
         toast: { show: false, message: '', type: 'info' },
 
@@ -180,6 +183,7 @@ document.addEventListener('alpine:init', () => {
                 const res = await fetch('/api/settings', { headers: this.getAuthHeaders() });
                 if (res.ok) {
                     this.settingsData = await res.json();
+                    this.ldapTestResult = { success: false, message: '' };
                     this.showSettingsModal = true;
                 }
             } catch (e) {
@@ -187,16 +191,54 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
+        async testLdapConnection() {
+            this.isTestingLDAP = true;
+            this.ldapTestResult = { success: false, message: '' };
+            try {
+                const res = await fetch('/api/settings/ldap/test', {
+                    method: 'POST',
+                    headers: this.getAuthHeaders(),
+                    body: JSON.stringify({
+                        host: this.settingsData.ad_host,
+                        base_dn: this.settingsData.ad_base_dn,
+                        bind_user: this.settingsData.ad_bind_user,
+                        bind_password: this.settingsData.ad_bind_password
+                    })
+                });
+                const data = await res.json();
+                this.ldapTestResult = {
+                    success: !!data.success,
+                    message: data.message || (data.success ? 'Подключение успешно установлено!' : 'Ошибка подключения к AD')
+                };
+                if (data.success) {
+                    this.showToast(data.message || 'Подключение к AD успешно!', 'success');
+                } else {
+                    this.showToast(data.message || 'Ошибка подключения к AD', 'error');
+                }
+            } catch (e) {
+                this.ldapTestResult = {
+                    success: false,
+                    message: 'Сетевая ошибка при проверке: ' + e.message
+                };
+                this.showToast('Ошибка запроса проверки AD', 'error');
+            } finally {
+                this.isTestingLDAP = false;
+            }
+        },
+
         async saveSettings() {
             try {
                 const res = await fetch('/api/settings', {
-                    method: 'PUT',
+                    method: 'POST',
                     headers: this.getAuthHeaders(),
                     body: JSON.stringify({ settings: this.settingsData })
                 });
                 if (res.ok) {
                     this.showToast('Настройки успешно сохранены', 'success');
                     this.showSettingsModal = false;
+                } else {
+                    const err = await res.json();
+                    this.showToast(err.detail || 'Ошибка сохранения настроек', 'error');
                 }
             } catch (e) {
                 this.showToast('Ошибка сохранения настроек', 'error');
@@ -206,13 +248,13 @@ document.addEventListener('alpine:init', () => {
         async syncADUsers() {
             this.isSyncingAD = true;
             try {
-                const res = await fetch('/api/settings/ad-sync', {
+                const res = await fetch('/api/settings/ldap/sync', {
                     method: 'POST',
                     headers: this.getAuthHeaders()
                 });
                 const data = await res.json();
-                if (res.ok) {
-                    this.showToast(data.message, 'success');
+                if (res.ok && (data.success || data.status === 'success')) {
+                    this.showToast(data.message || 'Сотрудники из AD успешно синхронизированы', 'success');
                 } else {
                     this.showToast(data.message || 'Ошибка синхронизации AD', 'error');
                 }

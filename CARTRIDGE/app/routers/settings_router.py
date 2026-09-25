@@ -31,6 +31,7 @@ def get_settings(
 
 
 @router.post("")
+@router.put("")
 def update_settings(
     payload: SettingsDict,
     db: Session = Depends(get_db),
@@ -63,6 +64,7 @@ def test_ldap_connection(
 
 
 @router.post("/ldap/sync")
+@router.post("/ad-sync")
 def sync_ad_users(
     db: Session = Depends(get_db),
     current_user: AppUser = Depends(require_superadmin)

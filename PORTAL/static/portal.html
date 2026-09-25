@@ -323,24 +323,52 @@
             <div class="space-y-4 text-xs">
                 <!-- AD / LDAP -->
                 <div class="bg-slate-50 p-4 rounded-xl space-y-3 border border-slate-200">
-                    <div class="flex items-center justify-between">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
                         <span class="font-bold text-slate-900">Интеграция с Active Directory (LDAP)</span>
-                        <button type="button" @click="syncADUsers()" :disabled="isSyncingAD" class="px-2.5 py-1 text-[11px] font-bold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-lg border border-indigo-200 transition">
-                            <span x-text="isSyncingAD ? 'Синхронизация...' : 'Синхронизировать пользователей'"></span>
-                        </button>
+                        <div class="flex items-center gap-2">
+                            <button type="button" @click="testLdapConnection()" :disabled="isTestingLDAP" class="px-2.5 py-1 text-[11px] font-bold bg-amber-50 text-amber-800 hover:bg-amber-100 rounded-lg border border-amber-200 transition">
+                                <span x-text="isTestingLDAP ? 'Проверка...' : 'Тест подключения'"></span>
+                            </button>
+                            <button type="button" @click="syncADUsers()" :disabled="isSyncingAD" class="px-2.5 py-1 text-[11px] font-bold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-lg border border-indigo-200 transition">
+                                <span x-text="isSyncingAD ? 'Синхронизация...' : 'Синхронизировать пользователей'"></span>
+                            </button>
+                        </div>
                     </div>
+
+                    <!-- Статус теста LDAP -->
+                    <div x-show="ldapTestResult.message" class="p-2.5 rounded-lg text-xs font-medium transition" :class="ldapTestResult.success ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-rose-50 text-rose-800 border border-rose-200'" style="display: none;">
+                        <div class="flex items-center justify-between">
+                            <span x-text="ldapTestResult.message"></span>
+                            <button type="button" @click="ldapTestResult.message = ''" class="text-xs font-bold opacity-60 hover:opacity-100 ml-2">&times;</button>
+                        </div>
+                    </div>
+
                     <div>
-                        <label class="block font-semibold text-slate-700 mb-1">LDAP Host (ldap://...)</label>
-                        <input type="text" x-model="settingsData.ad_host" class="w-full border border-slate-200 rounded-lg px-3 py-2 bg-white">
+                        <label class="block font-semibold text-slate-700 mb-1">LDAP Host (ldap://... или ldaps://...)</label>
+                        <input type="text" x-model="settingsData.ad_host" placeholder="ldap://192.168.1.10:389" class="w-full border border-slate-200 rounded-lg px-3 py-2 bg-white">
                     </div>
+
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Base DN (Корень каталога домена)</label>
+                        <input type="text" x-model="settingsData.ad_base_dn" placeholder="DC=gp1,DC=loc" class="w-full border border-slate-200 rounded-lg px-3 py-2 bg-white">
+                        <p class="text-[10px] text-slate-400 mt-0.5">Пример: DC=gp1,DC=loc</p>
+                    </div>
+
                     <div class="grid grid-cols-2 gap-3">
                         <div>
-                            <label class="block font-semibold text-slate-700 mb-1">Base DN</label>
-                            <input type="text" x-model="settingsData.ad_base_dn" class="w-full border border-slate-200 rounded-lg px-3 py-2 bg-white">
+                            <label class="block font-semibold text-slate-700 mb-1">Bind User (Учетная запись AD)</label>
+                            <input type="text" x-model="settingsData.ad_bind_user" placeholder="svc_ldap@gp1.loc" class="w-full border border-slate-200 rounded-lg px-3 py-2 bg-white">
+                            <p class="text-[10px] text-slate-400 mt-0.5">Короткое имя (svc_ldap@gp1.loc или DOMAIN\svc_ldap)</p>
                         </div>
                         <div>
-                            <label class="block font-semibold text-slate-700 mb-1">Bind User</label>
-                            <input type="text" x-model="settingsData.ad_bind_user" class="w-full border border-slate-200 rounded-lg px-3 py-2 bg-white">
+                            <label class="block font-semibold text-slate-700 mb-1 flex items-center justify-between">
+                                <span>Пароль AD (Bind Password)</span>
+                                <button type="button" @click="showBindPwd = !showBindPwd" class="text-slate-400 hover:text-slate-600 text-[10px] font-medium">
+                                    <span x-text="showBindPwd ? 'Скрыть' : 'Показать'"></span>
+                                </button>
+                            </label>
+                            <input :type="showBindPwd ? 'text' : 'password'" x-model="settingsData.ad_bind_password" placeholder="••••••••" class="w-full border border-slate-200 rounded-lg px-3 py-2 bg-white">
+                            <p class="text-[10px] text-slate-400 mt-0.5">Пароль для подключения к LDAP</p>
                         </div>
                     </div>
                 </div>

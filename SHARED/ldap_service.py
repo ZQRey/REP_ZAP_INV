@@ -16,6 +16,31 @@ class LDAPService:
         return {s.key: (s.value or "") for s in settings}
 
     @staticmethod
+    def normalize_bind_user(bind_user: str, base_dn: str = "") -> str:
+        """
+        Нормализует учетную запись для подключения к Active Directory.
+        Поддерживает:
+        - UPN: svc_ldap@gp1.loc
+        - Down-Level: DOMAIN\\svc_ldap
+        - DN: CN=svc_ldap,OU=Service,DC=gp1,DC=loc
+        - Просто логин: svc_ldap -> если base_dn='DC=gp1,DC=loc', преобразует в svc_ldap@gp1.loc
+        """
+        if not bind_user:
+            return ""
+        u = bind_user.strip()
+        if "@" not in u and "\\" not in u and not u.upper().startswith("CN="):
+            if base_dn and "DC=" in base_dn.upper():
+                dc_parts = [
+                    part.split("=")[1].strip()
+                    for part in base_dn.split(",")
+                    if part.strip().upper().startswith("DC=") and "=" in part
+                ]
+                if dc_parts:
+                    domain = ".".join(dc_parts)
+                    return f"{u}@{domain}"
+        return u
+
+    @staticmethod
     def sync_ad_users(db: Session) -> Dict[str, Any]:
         """
         Синхронизирует учетные записи сотрудников из Active Directory в таблицу ad_users.
@@ -34,7 +59,8 @@ class LDAPService:
         try:
             from ldap3 import Server, Connection, ALL, SUBTREE
             server = Server(host, get_info=ALL, connect_timeout=5)
-            conn = Connection(server, user=bind_user, password=bind_pwd, auto_bind=True)
+            effective_user = LDAPService.normalize_bind_user(bind_user, base_dn)
+            conn = Connection(server, user=effective_user, password=bind_pwd, auto_bind=True)
 
             attrs = ["sAMAccountName", "displayName", "department", "physicalDeliveryOfficeName", "telephoneNumber", "mobile"]
             conn.search(
@@ -117,7 +143,8 @@ class LDAPService:
         try:
             from ldap3 import Server, Connection, ALL, SUBTREE
             server = Server(host, get_info=ALL, connect_timeout=5)
-            conn = Connection(server, user=bind_user, password=bind_pwd, auto_bind=True)
+            effective_user = LDAPService.normalize_bind_user(bind_user, base_dn)
+            conn = Connection(server, user=effective_user, password=bind_pwd, auto_bind=True)
 
             attrs = [
                 "sAMAccountName",

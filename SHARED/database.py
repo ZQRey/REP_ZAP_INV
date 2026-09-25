@@ -73,6 +73,15 @@ def init_db():
                     )
                 )
 
+        # Автоматическое обновление устаревших шаблонных значений LDAP до короткого формата
+        bind_user_setting = db.query(models.SystemSetting).filter(models.SystemSetting.key == "ad_bind_user").first()
+        if bind_user_setting and bind_user_setting.value == "CN=svc_ldap,OU=Service,DC=company,DC=local":
+            bind_user_setting.value = "svc_ldap@gp1.loc"
+
+        base_dn_setting = db.query(models.SystemSetting).filter(models.SystemSetting.key == "ad_base_dn").first()
+        if base_dn_setting and base_dn_setting.value == "DC=company,DC=local":
+            base_dn_setting.value = "DC=gp1,DC=loc"
+
         # 2. Главный филиал по умолчанию
         main_branch = db.query(models.Branch).first()
         if not main_branch:

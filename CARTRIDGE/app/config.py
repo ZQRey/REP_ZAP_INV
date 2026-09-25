@@ -17,8 +17,8 @@ DEBUG = os.getenv("DEBUG", "False").lower() in ("true", "1", "yes")
 DEFAULT_SETTINGS = {
     # Active Directory / LDAP
     "ad_host": "ldap://192.168.1.10:389",
-    "ad_base_dn": "DC=company,DC=local",
-    "ad_bind_user": "CN=svc_ldap,OU=Service,DC=company,DC=local",
+    "ad_base_dn": "DC=gp1,DC=loc",
+    "ad_bind_user": "svc_ldap@gp1.loc",
     "ad_bind_password": "",
     "ad_attr_name": "displayName",
     "ad_attr_cabinet": "physicalDeliveryOfficeName",
@@ -42,9 +42,9 @@ DEFAULT_SETTINGS = {
 
 SETTING_DESCRIPTIONS = {
     "ad_host": "LDAP Сервер (IP или доменное имя с протоколом ldap:// или ldaps://)",
-    "ad_base_dn": "Базовый DN каталога (Base DN)",
-    "ad_bind_user": "Учетная запись для подключения (Bind DN или user@domain)",
-    "ad_bind_password": "Пароль учетной записи для подключения к LDAP",
+    "ad_base_dn": "Базовый DN каталога Active Directory (например, DC=gp1,DC=loc)",
+    "ad_bind_user": "Учетная запись для подключения к AD (короткое имя svc_ldap@gp1.loc, DOMAIN\\svc_ldap или DN)",
+    "ad_bind_password": "Пароль учетной записи для подключения к Active Directory (LDAP)",
     "ad_attr_name": "Атрибут ФИО / имени пользователя в AD",
     "ad_attr_cabinet": "Атрибут номера кабинета в AD",
     "ad_attr_department": "Атрибут подразделения/отдела в AD",
