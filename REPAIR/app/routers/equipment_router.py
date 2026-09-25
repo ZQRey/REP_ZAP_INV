@@ -260,26 +260,95 @@ def find_by_inv_or_serial(
     db: Session = Depends(get_db),
     current_user: AppUser = Depends(get_current_user)
 ):
-    """Поиск оборудования по инвентарному или серийному номеру для быстрого ввода."""
-    term = query_str.strip()
-    asset = db.query(Asset).options(
+    """
+    Интеллектуальный поиск оборудования:
+    - Поиск по точному инвентарному номеру или серийному номеру
+    - Поиск по имени компьютера из AD (hostname)
+    - Поиск с префиксом "AD-" и без него (напр. "BUH-PC01" найдет "AD-BUH-PC01")
+    - Поиск по частичному вхождению и возврат списка альтернативных совпадений
+    """
+    raw_term = query_str.strip()
+    if not raw_term:
+        return {"found": False, "equipment": None, "suggestions": []}
+
+    import re
+    clean_term = re.sub(r'^(?:AD-|ИНВ-|INV-|№)\s*', '', raw_term, flags=re.I).strip()
+
+    # 1. Приоритет: точные и нормализованные совпадения
+    exact_conds = [
+        Asset.inventory_number.ilike(raw_term),
+        Asset.hostname.ilike(raw_term),
+        Asset.serial_number.ilike(raw_term)
+    ]
+    if not raw_term.upper().startswith("AD-"):
+        exact_conds.append(Asset.inventory_number.ilike(f"AD-{raw_term}"))
+    if clean_term:
+        exact_conds.append(Asset.inventory_number.ilike(f"AD-{clean_term}"))
+        exact_conds.append(Asset.hostname.ilike(clean_term))
+        exact_conds.append(Asset.inventory_number.ilike(clean_term))
+
+    best_match = db.query(Asset).options(
         joinedload(Asset.branch),
         joinedload(Asset.responsible_ad_user),
         joinedload(Asset.switch_device)
-    ).filter(
-        or_(
-            Asset.inventory_number.ilike(term),
-            Asset.serial_number.ilike(term),
-            Asset.hostname.ilike(term)
-        )
-    ).first()
+    ).filter(or_(*exact_conds)).first()
 
-    if not asset:
-        return {"found": False, "equipment": None}
+    # 2. Поиск по подстроке для получения подсказок (suggestions)
+    partial_conds = []
+    search_token = clean_term or raw_term
+    if len(search_token) >= 2:
+        partial_conds.extend([
+            Asset.hostname.ilike(f"%{search_token}%"),
+            Asset.inventory_number.ilike(f"%{search_token}%"),
+            Asset.serial_number.ilike(f"%{search_token}%"),
+            Asset.notes.ilike(f"%{search_token}%")
+        ])
+
+    all_matches = []
+    if partial_conds:
+        all_matches = db.query(Asset).options(
+            joinedload(Asset.branch),
+            joinedload(Asset.responsible_ad_user),
+            joinedload(Asset.switch_device)
+        ).filter(or_(*partial_conds)).limit(10).all()
+
+    if not best_match and all_matches:
+        best_match = all_matches[0]
+
+    if not best_match:
+        return {
+            "found": False,
+            "equipment": None,
+            "suggestions": [],
+            "message": f"Оборудование по запросу '{raw_term}' не найдено в реестре."
+        }
+
+    # Формируем список вариантов/подсказок
+    suggestions = []
+    seen_ids = set()
+    candidate_list = ([best_match] if best_match else []) + all_matches
+    for a in candidate_list:
+        if a.id not in seen_ids:
+            seen_ids.add(a.id)
+            inv_val = a.inventory_number or (f"AD-{a.hostname.upper()}" if a.hostname else f"INV-{a.id}")
+            name_val = a.name or (f"Компьютер {a.hostname.upper()}" if a.hostname else "Оборудование")
+            suggestions.append({
+                "id": a.id,
+                "inventory_number": inv_val,
+                "name": name_val,
+                "hostname": a.hostname,
+                "cabinet": a.cabinet,
+                "serial_number": a.serial_number,
+                "asset_type": a.asset_type.value if hasattr(a.asset_type, "value") else str(a.asset_type),
+                "branch_id": a.branch_id,
+                "current_user_id": a.current_user_id
+            })
 
     return {
         "found": True,
-        "equipment": _to_equipment_response(asset)
+        "equipment": _to_equipment_response(best_match),
+        "matches_count": len(suggestions),
+        "suggestions": suggestions[:6]
     }
 
 

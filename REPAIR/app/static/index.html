@@ -287,11 +287,57 @@
 
                 <form @submit.prevent="submitAcceptance()" class="space-y-4 text-xs">
                     <div>
-                        <label class="block font-semibold text-slate-700 mb-1">Инвентарный номер *</label>
-                        <div class="flex gap-2">
-                            <input type="text" x-model="acceptForm.inventory_number" @blur="searchInvForAccept()" required placeholder="Например: ИНВ-00124 или AD-PC-IT01" class="flex-1 border border-slate-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand-500">
-                            <button type="button" @click="searchInvForAccept()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-semibold">Найти</button>
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="block font-semibold text-slate-700">Инвентарный номер / Имя ПК из AD *</label>
+                            <span class="text-[11px] text-slate-400">Поиск с префиксом "AD-" или без него</span>
                         </div>
+                        <div class="flex gap-2">
+                            <div class="relative flex-1">
+                                <input type="text" 
+                                       x-model="acceptForm.inventory_number" 
+                                       @keydown.enter.prevent="searchInvForAccept()"
+                                       @blur="if (!acceptSuggestions.length && acceptForm.inventory_number) searchInvForAccept()" 
+                                       required 
+                                       placeholder="Например: buh-pc01, AD-PC-IT01 или ИНВ-00124" 
+                                       class="w-full border border-slate-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand-500 text-xs">
+                                <template x-if="isSearchingInv">
+                                    <div class="absolute right-3 top-2.5 text-brand-600">
+                                        <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+                                    </div>
+                                </template>
+                            </div>
+                            <button type="button" 
+                                    @click="searchInvForAccept()" 
+                                    :disabled="isSearchingInv"
+                                    class="px-3.5 py-2 bg-brand-50 hover:bg-brand-100 text-brand-700 border border-brand-200 rounded-lg font-semibold flex items-center gap-1.5 transition disabled:opacity-50">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                                <span>Найти</span>
+                            </button>
+                        </div>
+                        <p class="text-[11px] text-slate-400 mt-1">
+                            Поддерживается поиск по имени ПК из Active Directory (с префиксом <code class="bg-slate-100 px-1 py-0.5 rounded text-slate-600">AD-</code> или без), по серийному номеру и инвентарнику.
+                        </p>
+
+                        <!-- Список подсказок совпадений при поиске -->
+                        <template x-if="acceptSuggestions && acceptSuggestions.length > 0">
+                            <div class="mt-2.5 p-2.5 bg-indigo-50/70 border border-indigo-100 rounded-lg">
+                                <div class="text-[11px] font-semibold text-indigo-900 mb-1.5 flex items-center justify-between">
+                                    <span>Найдено несколько похожих устройств в AD/реестре:</span>
+                                    <button type="button" @click="acceptSuggestions = []" class="text-indigo-400 hover:text-indigo-600 text-xs">&times;</button>
+                                </div>
+                                <div class="flex flex-wrap gap-1.5">
+                                    <template x-for="sug in acceptSuggestions" :key="sug.id">
+                                        <button type="button" 
+                                                @mousedown.prevent="selectAcceptSuggestion(sug)"
+                                                class="px-2 py-1 bg-white hover:bg-indigo-100 border border-indigo-200 text-indigo-800 rounded text-[11px] font-medium flex items-center gap-1 shadow-sm transition">
+                                            <span class="font-bold" x-text="sug.hostname || sug.inventory_number"></span>
+                                            <span class="text-indigo-400" x-show="sug.hostname && sug.inventory_number !== sug.hostname" x-text="'(' + sug.inventory_number + ')'"></span>
+                                            <span class="text-[10px] text-slate-400" x-show="sug.cabinet" x-text="'каб. ' + sug.cabinet"></span>
+                                        </button>
+                                    </template>
+                                </div>
+                            </div>
+                        </template>
                     </div>
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">

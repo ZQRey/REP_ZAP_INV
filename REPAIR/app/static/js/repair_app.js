@@ -24,6 +24,8 @@ document.addEventListener('alpine:init', () => {
         // Загрузки
         isLoading: false,
         isAdSyncing: false,
+        isSearchingInv: false,
+        acceptSuggestions: [],
 
         // Модальные окна
         showAddModal: false,
@@ -273,10 +275,25 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
-        // Поиск по инвентарному номеру в форме приемки
+        // Выбор предложенного совпадения из AD при поиске
+        selectAcceptSuggestion(eq) {
+            this.acceptForm.inventory_number = eq.inventory_number;
+            this.acceptForm.name = eq.name;
+            this.acceptForm.serial_number = eq.serial_number || '';
+            this.acceptForm.asset_type = eq.asset_type;
+            this.acceptForm.cabinet = eq.cabinet || '';
+            if (eq.branch_id) this.acceptForm.branch_id = eq.branch_id;
+            if (eq.current_user_id) this.acceptForm.current_user_id = eq.current_user_id;
+            this.acceptSuggestions = [];
+            const label = eq.hostname ? `${eq.hostname} (${eq.inventory_number})` : eq.inventory_number;
+            this.showToast(`Выбрано оборудование: ${label}`, 'success');
+        },
+
+        // Поиск по инвентарному номеру или имени ПК в форме приемки
         async searchInvForAccept() {
-            const inv = this.acceptForm.inventory_number.trim();
+            const inv = this.acceptForm.inventory_number ? this.acceptForm.inventory_number.trim() : '';
             if (!inv) return;
+            this.isSearchingInv = true;
             try {
                 const res = await fetch(`/api/v1/repair/equipment/find-by-inv?query_str=${encodeURIComponent(inv)}`, {
                     headers: this.getAuthHeaders()
@@ -285,17 +302,29 @@ document.addEventListener('alpine:init', () => {
                     const data = await res.json();
                     if (data.found && data.equipment) {
                         const eq = data.equipment;
+                        this.acceptForm.inventory_number = eq.inventory_number;
                         this.acceptForm.name = eq.name;
                         this.acceptForm.serial_number = eq.serial_number || '';
                         this.acceptForm.asset_type = eq.asset_type;
                         this.acceptForm.cabinet = eq.cabinet || '';
-                        this.acceptForm.branch_id = eq.branch_id || this.selectedBranchId;
-                        this.acceptForm.current_user_id = eq.current_user_id || '';
-                        this.showToast(`Найдено: ${eq.name}`, 'info');
+                        if (eq.branch_id) this.acceptForm.branch_id = eq.branch_id;
+                        if (eq.current_user_id) this.acceptForm.current_user_id = eq.current_user_id;
+
+                        this.acceptSuggestions = (data.suggestions && data.suggestions.length > 1) ? data.suggestions : [];
+                        const label = eq.hostname ? `${eq.hostname} (${eq.inventory_number})` : eq.inventory_number;
+                        this.showToast(`Найдено в AD / реестре: ${label}`, 'success');
+                    } else {
+                        this.acceptSuggestions = [];
+                        this.showToast(data.message || `Оборудование по запросу "${inv}" не найдено в базе. Проверьте имя ПК или заполните поля вручную.`, 'warning');
                     }
+                } else {
+                    this.showToast('Ошибка при поиске оборудования', 'error');
                 }
             } catch (e) {
                 console.error(e);
+                this.showToast('Ошибка сетевого запроса при поиске', 'error');
+            } finally {
+                this.isSearchingInv = false;
             }
         },
 
