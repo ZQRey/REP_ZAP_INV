@@ -211,7 +211,27 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
+        normalizeLdapHost(host) {
+            if (!host) return host;
+            let h = host.trim();
+            // Исправляем популярную опечатку слитного порта: e.g. dc01.gp1.loc389 -> dc01.gp1.loc:389
+            const match = h.match(/^(.*?[a-zA-Z\-_])(389|636|3268|3269)$/);
+            if (match) {
+                h = `${match[1]}:${match[2]}`;
+            }
+            return h;
+        },
+
+        onLdapHostBlur() {
+            if (this.settingsData.ad_host) {
+                this.settingsData.ad_host = this.normalizeLdapHost(this.settingsData.ad_host);
+            }
+        },
+
         async testLdapConnection() {
+            if (this.settingsData.ad_host) {
+                this.settingsData.ad_host = this.normalizeLdapHost(this.settingsData.ad_host);
+            }
             this.isTestingLDAP = true;
             this.ldapTestResult = { success: false, message: '' };
             try {
@@ -226,27 +246,31 @@ document.addEventListener('alpine:init', () => {
                     })
                 });
                 const data = await res.json();
+                const displayMsg = data.detail || data.message || (data.success ? 'Подключение успешно установлено!' : 'Ошибка подключения к AD');
                 this.ldapTestResult = {
                     success: !!data.success,
-                    message: data.message || (data.success ? 'Подключение успешно установлено!' : 'Ошибка подключения к AD')
+                    message: displayMsg
                 };
                 if (data.success) {
-                    this.showToast(data.message || 'Подключение к AD успешно!', 'success');
+                    this.showToast(displayMsg, 'success');
                 } else {
-                    this.showToast(data.message || 'Ошибка подключения к AD', 'error');
+                    this.showToast(displayMsg, 'error');
                 }
             } catch (e) {
                 this.ldapTestResult = {
                     success: false,
                     message: 'Сетевая ошибка при проверке: ' + e.message
                 };
-                this.showToast('Ошибка запроса проверки AD', 'error');
+                this.showToast('Ошибка запроса проверки AD: ' + e.message, 'error');
             } finally {
                 this.isTestingLDAP = false;
             }
         },
 
         async saveSettings() {
+            if (this.settingsData.ad_host) {
+                this.settingsData.ad_host = this.normalizeLdapHost(this.settingsData.ad_host);
+            }
             try {
                 const res = await fetch('/api/settings', {
                     method: 'POST',

@@ -258,19 +258,31 @@ def update_switch(
 def delete_switch(
     switch_id: int,
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_role(["superadmin", "admin"]))
+    current_user: AppUser = Depends(require_role(["superadmin", "admin", "technician"]))
 ):
-    """Удалить коммутатор с карты."""
-    sw = db.query(NetworkSwitch).filter(NetworkSwitch.id == switch_id).first()
-    if not sw:
-        raise HTTPException(status_code=404, detail="Коммутатор не найден")
+    """Удалить коммутатор с карты с очисткой портов."""
+    try:
+        sw = db.query(NetworkSwitch).filter(NetworkSwitch.id == switch_id).first()
+        if not sw:
+            raise HTTPException(status_code=404, detail="Коммутатор не найден")
 
-    asset = sw.asset
-    db.delete(sw)
-    if asset:
-        db.delete(asset)
-    db.commit()
-    return {"success": True, "message": "Коммутатор успешно удален"}
+        asset = sw.asset
+        # Удаляем все порты коммутатора
+        db.query(SwitchPort).filter(SwitchPort.switch_id == sw.id).delete(synchronize_session=False)
+        db.delete(sw)
+        if asset:
+            db.query(SwitchPort).filter(SwitchPort.connected_asset_id == asset.id).update(
+                {"connected_asset_id": None}, synchronize_session=False
+            )
+            db.query(EquipmentHistoryLog).filter(EquipmentHistoryLog.asset_id == asset.id).delete(synchronize_session=False)
+            db.delete(asset)
+        db.commit()
+        return {"success": True, "message": "Коммутатор успешно удален"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Ошибка удаления коммутатора: {str(e)}")
 
 
 @router.put("/switches/{switch_id}/ports/{port_number}", response_model=SwitchPortResponse)

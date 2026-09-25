@@ -1,3 +1,5 @@
+import re
+import socket
 from datetime import datetime
 from typing import Dict, Any, List, Tuple, Optional
 from sqlalchemy.orm import Session
@@ -10,6 +12,50 @@ from app.services.settings_service import SettingsService
 
 
 class LDAPService:
+    @staticmethod
+    def parse_ldap_server(host_input: str) -> Tuple[str, int, bool]:
+        """
+        Нормализует строку хоста LDAP.
+        Поддерживает:
+        - 'ldap://dc01.gp1.loc:389' -> ('dc01.gp1.loc', 389, False)
+        - 'ldaps://dc01.gp1.loc:636' -> ('dc01.gp1.loc', 636, True)
+        - 'ldap://dc01.gp1.loc389' (опечатка: пропущено двоеточие) -> ('dc01.gp1.loc', 389, False)
+        - 'dc01.gp1.loc' -> ('dc01.gp1.loc', 389, False)
+        - '192.168.1.10:389' -> ('192.168.1.10', 389, False)
+        """
+        raw = (host_input or "").strip()
+        use_ssl = False
+
+        if raw.lower().startswith("ldaps://"):
+            use_ssl = True
+            raw = raw[8:]
+        elif raw.lower().startswith("ldap://"):
+            raw = raw[7:]
+
+        raw = raw.strip("/").strip()
+        default_port = 636 if use_ssl else 389
+        server_address = raw
+        port = default_port
+
+        if ":" in raw:
+            parts = raw.split(":", 1)
+            server_address = parts[0].strip()
+            port_part = parts[1].strip().split("/")[0]
+            try:
+                port = int(port_part)
+            except ValueError:
+                port = default_port
+        else:
+            # Опечатка: склеенный номер порта в конце домена (напр. .loc389, .local389, .lan389, .com389)
+            m = re.match(r'^(.*?[a-zA-Z\-_])(389|636|3268|3269)$', raw)
+            if m:
+                server_address = m.group(1)
+                port = int(m.group(2))
+                if port in (636, 3269):
+                    use_ssl = True
+
+        return server_address, port, use_ssl
+
     @staticmethod
     def normalize_bind_user(bind_user: str, base_dn: str = "") -> str:
         """
@@ -45,23 +91,7 @@ class LDAPService:
         base_dn: str = ""
     ) -> Connection:
         """Создает и возвращает объект Connection библиотеки ldap3."""
-        use_ssl = host.startswith("ldaps://")
-        
-        # Очищаем хост от префикса если нужно для Server
-        server_address = host
-        if host.startswith("ldap://"):
-            server_address = host.replace("ldap://", "")
-        elif host.startswith("ldaps://"):
-            server_address = host.replace("ldaps://", "")
-
-        port = 636 if use_ssl else 389
-        if ":" in server_address:
-            parts = server_address.split(":")
-            server_address = parts[0]
-            try:
-                port = int(parts[1])
-            except ValueError:
-                pass
+        server_address, port, use_ssl = cls.parse_ldap_server(host)
 
         server = Server(
             host=server_address,
@@ -91,7 +121,7 @@ class LDAPService:
         bind_user: str = None,
         bind_password: str = None
     ) -> Dict[str, Any]:
-        """Проверяет подключение к LDAP/AD серверу."""
+        """Проверяет подключение к LDAP/AD серверу с предварительной диагностикой DNS/порта."""
         settings = SettingsService.get_all(db)
         h = host or settings.get("ad_host")
         u = bind_user or settings.get("ad_bind_user")
@@ -101,32 +131,86 @@ class LDAPService:
         if not h or not u:
             return {
                 "success": False,
-                "message": "Не указан адрес LDAP сервера или учетная запись Bind DN."
+                "message": "Не указан адрес LDAP сервера или учетная запись Bind User."
             }
 
+        server_address, port, use_ssl = cls.parse_ldap_server(h)
+        proto = "ldaps" if use_ssl else "ldap"
+        normalized_target = f"{proto}://{server_address}:{port}"
+
+        # 1. Проверка DNS разрешения
+        resolved_ip = None
+        try:
+            resolved_ip = socket.gethostbyname(server_address)
+        except socket.gaierror:
+            return {
+                "success": False,
+                "message": (
+                    f"Ошибка DNS: Не удалось разрешить имя хоста '{server_address}'. "
+                    f"Проверьте правильность доменного имени или укажите прямой IP-адрес контроллера домена "
+                    f"(например: ldap://192.168.1.10:{port})."
+                )
+            }
+        except Exception:
+            pass
+
+        # 2. Быстрая проверка доступности сокета TCP
+        if resolved_ip:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(3.0)
+            try:
+                sock.connect((resolved_ip, port))
+                sock.close()
+            except Exception as sock_err:
+                return {
+                    "success": False,
+                    "message": (
+                        f"Сетевая ошибка: Сервер {server_address} ({resolved_ip}) найден, но порт {port} "
+                        f"недоступен или заблокирован брандмауэром ({sock_err})."
+                    )
+                }
+
+        # 3. Аутентификация и проверка Base DN
         try:
             conn = cls._create_connection(h, u, p, connect_timeout=5, base_dn=b)
             # Тестовый поиск
             search_ok = conn.search(
-                search_base=b,
+                search_base=b if b else "",
                 search_filter="(objectClass=*)",
                 search_scope=SUBTREE,
                 size_limit=1
             )
             conn.unbind()
+            ip_info = f" ({resolved_ip})" if resolved_ip else ""
             return {
                 "success": True,
-                "message": f"Подключение к серверу {h} успешно установлено. Доступ к Base DN подтвержден."
+                "message": f"Подключение к {normalized_target}{ip_info} успешно установлено! Учетная запись авторизована и доступ к Base DN подтвержден."
             }
         except LDAPException as e:
+            err_str = str(e)
+            if "52e" in err_str:
+                return {
+                    "success": False,
+                    "message": f"Ошибка учетных данных AD (data 52e): Неверный логин или пароль для '{u}'. Проверьте Bind User и Bind Password."
+                }
+            elif "532" in err_str or "533" in err_str:
+                return {
+                    "success": False,
+                    "message": f"Ошибка AD (data 532/533): Учетная запись '{u}' отключена или срок действия пароля истек."
+                }
+            elif "775" in err_str:
+                return {
+                    "success": False,
+                    "message": f"Ошибка AD (data 775): Учетная запись '{u}' заблокирована в домене."
+                }
             return {
                 "success": False,
-                "message": f"Ошибка LDAP: {str(e)}"
+                "message": f"Ошибка LDAP ({normalized_target}): {err_str}"
             }
         except Exception as e:
             return {
                 "success": False,
-                "message": f"Сетевая или системная ошибка: {str(e)}"
+                "message": f"Ошибка при обращении к {normalized_target}: {str(e)}"
             }
 
     @classmethod

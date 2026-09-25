@@ -547,17 +547,23 @@ document.addEventListener('alpine:init', () => {
                     headers: this.getAuthHeaders()
                 });
                 if (res.ok) {
-                    this.showToast('Оборудование удалено', 'success');
+                    this.showToast('Оборудование успешно удалено', 'success');
                     if (this.showDetailModal && this.selectedEquipment?.id === item.id) {
                         this.showDetailModal = false;
                     }
                     await this.loadEquipment();
                 } else {
-                    const err = await res.json();
-                    this.showToast(err.detail || 'Ошибка удаления', 'error');
+                    let errMsg = 'Ошибка удаления';
+                    try {
+                        const err = await res.json();
+                        errMsg = err.detail || err.message || errMsg;
+                    } catch (_) {
+                        errMsg = `Ошибка сервера (HTTP ${res.status})`;
+                    }
+                    this.showToast(errMsg, 'error');
                 }
             } catch (e) {
-                this.showToast('Ошибка удаления оборудования', 'error');
+                this.showToast(`Ошибка удаления оборудования: ${e.message}`, 'error');
             }
         },
 

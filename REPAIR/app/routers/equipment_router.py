@@ -1,3 +1,4 @@
+import logging
 from typing import Optional, List
 from datetime import datetime
 from fastapi import APIRouter, Depends, Query, HTTPException, status
@@ -13,9 +14,15 @@ from SHARED.models import (
     Branch,
     ADUser,
     AppUser,
-    EquipmentHistoryLog
+    EquipmentHistoryLog,
+    SwitchPort,
+    NetworkSwitch,
+    RepairBatchItem,
+    RepairPartUsed
 )
 from SHARED.auth_service import get_current_user, require_role
+
+logger = logging.getLogger("REPAIR.equipment_router")
 from REPAIR.app.schemas import (
     EquipmentResponse,
     EquipmentDetailResponse,
@@ -401,16 +408,46 @@ def update_equipment(
 def delete_equipment(
     asset_id: int,
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_role(["superadmin", "admin"]))
+    current_user: AppUser = Depends(require_role(["superadmin", "admin", "technician"]))
 ):
-    """Списание или удаление единицы техники."""
-    asset = db.query(Asset).filter(Asset.id == asset_id).first()
-    if not asset:
-        raise HTTPException(status_code=404, detail="Оборудование не найдено")
+    """Списание или удаление единицы техники с предварительной очисткой зависимостей."""
+    try:
+        asset = db.query(Asset).filter(Asset.id == asset_id).first()
+        if not asset:
+            raise HTTPException(status_code=404, detail="Оборудование не найдено")
 
-    db.delete(asset)
-    db.commit()
-    return {"success": True, "message": f"Оборудование '{asset.inventory_number}' успешно удалено"}
+        inv_num = asset.inventory_number
+
+        # 1. Отвязать порт сетевого коммутатора, если этот актив был подключен к порту
+        db.query(SwitchPort).filter(SwitchPort.connected_asset_id == asset_id).update(
+            {"connected_asset_id": None}, synchronize_session=False
+        )
+
+        # 2. Если этот актив сам является коммутатором, удалить его порты и запись в network_switches
+        switch = db.query(NetworkSwitch).filter(NetworkSwitch.asset_id == asset_id).first()
+        if switch:
+            db.query(SwitchPort).filter(SwitchPort.switch_id == switch.id).delete(synchronize_session=False)
+            db.delete(switch)
+
+        # 3. Удалить связанные записи в актах ремонта
+        batch_items = db.query(RepairBatchItem).filter(RepairBatchItem.asset_id == asset_id).all()
+        for item in batch_items:
+            db.query(RepairPartUsed).filter(RepairPartUsed.repair_item_id == item.id).delete(synchronize_session=False)
+            db.delete(item)
+
+        # 4. Удалить историю жизненного цикла
+        db.query(EquipmentHistoryLog).filter(EquipmentHistoryLog.asset_id == asset_id).delete(synchronize_session=False)
+
+        # 5. Удалить сам актив
+        db.delete(asset)
+        db.commit()
+        return {"success": True, "message": f"Оборудование '{inv_num}' успешно удалено"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.exception(f"Error deleting equipment {asset_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Ошибка удаления оборудования: {str(e)}")
 
 
 # ==========================================

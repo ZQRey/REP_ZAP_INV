@@ -87,7 +87,7 @@ def update_equipment_model(
 def delete_equipment_model(
     model_id: int,
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_role(["superadmin", "admin"]))
+    current_user: AppUser = Depends(require_role(["superadmin", "admin", "technician"]))
 ):
     """Удалить модель из справочника."""
     model_obj = db.query(EquipmentModel).filter(EquipmentModel.id == model_id).first()

@@ -1,3 +1,5 @@
+import re
+import socket
 import logging
 from datetime import datetime
 from typing import Optional, List, Dict, Any, Tuple
@@ -9,6 +11,49 @@ logger = logging.getLogger("SHARED.ldap_service")
 
 
 class LDAPService:
+    @staticmethod
+    def parse_ldap_server(host_input: str) -> Tuple[str, int, bool]:
+        """
+        Нормализует строку хоста LDAP.
+        Поддерживает:
+        - 'ldap://dc01.gp1.loc:389' -> ('dc01.gp1.loc', 389, False)
+        - 'ldaps://dc01.gp1.loc:636' -> ('dc01.gp1.loc', 636, True)
+        - 'ldap://dc01.gp1.loc389' (опечатка: пропущено двоеточие) -> ('dc01.gp1.loc', 389, False)
+        - 'dc01.gp1.loc' -> ('dc01.gp1.loc', 389, False)
+        - '192.168.1.10:389' -> ('192.168.1.10', 389, False)
+        """
+        raw = (host_input or "").strip()
+        use_ssl = False
+
+        if raw.lower().startswith("ldaps://"):
+            use_ssl = True
+            raw = raw[8:]
+        elif raw.lower().startswith("ldap://"):
+            raw = raw[7:]
+
+        raw = raw.strip("/").strip()
+        default_port = 636 if use_ssl else 389
+        server_address = raw
+        port = default_port
+
+        if ":" in raw:
+            parts = raw.split(":", 1)
+            server_address = parts[0].strip()
+            port_part = parts[1].strip().split("/")[0]
+            try:
+                port = int(port_part)
+            except ValueError:
+                port = default_port
+        else:
+            m = re.match(r'^(.*?[a-zA-Z\-_])(389|636|3268|3269)$', raw)
+            if m:
+                server_address = m.group(1)
+                port = int(m.group(2))
+                if port in (636, 3269):
+                    use_ssl = True
+
+        return server_address, port, use_ssl
+
     @staticmethod
     def get_ldap_settings(db: Session) -> Dict[str, str]:
         """Получает текущие настройки подключения к Active Directory из базы данных."""
@@ -58,7 +103,8 @@ class LDAPService:
 
         try:
             from ldap3 import Server, Connection, ALL, SUBTREE
-            server = Server(host, get_info=ALL, connect_timeout=5)
+            server_address, port, use_ssl = LDAPService.parse_ldap_server(host)
+            server = Server(server_address, port=port, use_ssl=use_ssl, get_info=ALL, connect_timeout=5)
             effective_user = LDAPService.normalize_bind_user(bind_user, base_dn)
             conn = Connection(server, user=effective_user, password=bind_pwd, auto_bind=True)
 
@@ -142,7 +188,8 @@ class LDAPService:
 
         try:
             from ldap3 import Server, Connection, ALL, SUBTREE
-            server = Server(host, get_info=ALL, connect_timeout=5)
+            server_address, port, use_ssl = LDAPService.parse_ldap_server(host)
+            server = Server(server_address, port=port, use_ssl=use_ssl, get_info=ALL, connect_timeout=5)
             effective_user = LDAPService.normalize_bind_user(bind_user, base_dn)
             conn = Connection(server, user=effective_user, password=bind_pwd, auto_bind=True)
 
