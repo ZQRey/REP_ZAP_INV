@@ -419,15 +419,28 @@ def delete_equipment(
         inv_num = asset.inventory_number
 
         # 1. Отвязать порт сетевого коммутатора, если этот актив был подключен к порту
-        db.query(SwitchPort).filter(SwitchPort.connected_asset_id == asset_id).update(
-            {"connected_asset_id": None}, synchronize_session=False
-        )
+        try:
+            from sqlalchemy import text
+            db.execute(
+                text("UPDATE switch_ports SET connected_asset_id = NULL WHERE connected_asset_id = :aid"),
+                {"aid": asset_id}
+            )
+        except Exception as p_err:
+            logger.warning(f"switch_ports unbind skipped: {p_err}")
 
         # 2. Если этот актив сам является коммутатором, удалить его порты и запись в network_switches
-        switch = db.query(NetworkSwitch).filter(NetworkSwitch.asset_id == asset_id).first()
-        if switch:
-            db.query(SwitchPort).filter(SwitchPort.switch_id == switch.id).delete(synchronize_session=False)
-            db.delete(switch)
+        try:
+            from sqlalchemy import text
+            db.execute(
+                text("DELETE FROM switch_ports WHERE switch_id IN (SELECT id FROM network_switches WHERE asset_id = :aid)"),
+                {"aid": asset_id}
+            )
+            db.execute(
+                text("DELETE FROM network_switches WHERE asset_id = :aid"),
+                {"aid": asset_id}
+            )
+        except Exception as sw_err:
+            logger.warning(f"network_switches delete skipped: {sw_err}")
 
         # 3. Удалить связанные записи в актах ремонта
         batch_items = db.query(RepairBatchItem).filter(RepairBatchItem.asset_id == asset_id).all()

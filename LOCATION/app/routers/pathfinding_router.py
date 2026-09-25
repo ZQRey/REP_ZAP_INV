@@ -49,7 +49,10 @@ def get_location_stats(
 
     zones_count = db.query(Zone).count()
     placed_assets = db.query(Asset).filter(Asset.coords_x != None, Asset.coords_y != None).count()
-    switches_count = db.query(NetworkSwitch).count()
+    try:
+        switches_count = db.query(NetworkSwitch.id).count()
+    except Exception:
+        switches_count = 0
 
     return {
         "floors": floors_count,

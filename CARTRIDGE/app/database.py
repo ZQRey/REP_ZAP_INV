@@ -27,46 +27,40 @@ def init_db():
     from app.services.auth_service import AuthService
     Base.metadata.create_all(bind=engine)
 
-    # 0. Автоматическая миграция схемы для существующих баз данных SQLite
+    # 0. Автоматическая миграция схемы для существующих баз данных (PostgreSQL и SQLite)
     try:
-        with engine.connect() as conn:
-            # cartridges.branch_id
-            cols_cart = [
-                row[1] for row in conn.exec_driver_sql("PRAGMA table_info(cartridges);").fetchall()
-            ]
-            if cols_cart and "branch_id" not in cols_cart:
-                conn.exec_driver_sql("ALTER TABLE cartridges ADD COLUMN branch_id INTEGER REFERENCES branches(id) ON DELETE SET NULL;")
-                conn.commit()
-            if cols_cart and "condition" not in cols_cart:
-                conn.exec_driver_sql("ALTER TABLE cartridges ADD COLUMN condition VARCHAR(20) DEFAULT 'working';")
-                conn.commit()
+        from sqlalchemy import inspect, text
+        inspector = inspect(engine)
+        existing_tables = set(inspector.get_table_names())
 
-            # batches.branch_id
-            cols_batch = [
-                row[1] for row in conn.exec_driver_sql("PRAGMA table_info(batches);").fetchall()
-            ]
-            if cols_batch and "branch_id" not in cols_batch:
-                conn.exec_driver_sql("ALTER TABLE batches ADD COLUMN branch_id INTEGER REFERENCES branches(id) ON DELETE SET NULL;")
-                conn.commit()
+        with engine.begin() as conn:
+            # cartridges
+            if "cartridges" in existing_tables:
+                cols_cart = {c["name"] for c in inspector.get_columns("cartridges")}
+                if "branch_id" not in cols_cart:
+                    conn.execute(text("ALTER TABLE cartridges ADD COLUMN branch_id INTEGER;"))
+                if "condition" not in cols_cart:
+                    conn.execute(text("ALTER TABLE cartridges ADD COLUMN condition VARCHAR(20) DEFAULT 'working';"))
 
-            # app_users.wa_instance_name
-            cols_users = [
-                row[1] for row in conn.exec_driver_sql("PRAGMA table_info(app_users);").fetchall()
-            ]
-            if cols_users and "wa_instance_name" not in cols_users:
-                conn.exec_driver_sql("ALTER TABLE app_users ADD COLUMN wa_instance_name VARCHAR(100);")
-                conn.commit()
+            # batches
+            if "batches" in existing_tables:
+                cols_batch = {c["name"] for c in inspector.get_columns("batches")}
+                if "branch_id" not in cols_batch:
+                    conn.execute(text("ALTER TABLE batches ADD COLUMN branch_id INTEGER;"))
 
-            # branches.it_office and branches.wa_message_template
-            cols_branches = [
-                row[1] for row in conn.exec_driver_sql("PRAGMA table_info(branches);").fetchall()
-            ]
-            if cols_branches and "it_office" not in cols_branches:
-                conn.exec_driver_sql("ALTER TABLE branches ADD COLUMN it_office VARCHAR(255);")
-                conn.commit()
-            if cols_branches and "wa_message_template" not in cols_branches:
-                conn.exec_driver_sql("ALTER TABLE branches ADD COLUMN wa_message_template TEXT;")
-                conn.commit()
+            # app_users
+            if "app_users" in existing_tables:
+                cols_users = {c["name"] for c in inspector.get_columns("app_users")}
+                if "wa_instance_name" not in cols_users:
+                    conn.execute(text("ALTER TABLE app_users ADD COLUMN wa_instance_name VARCHAR(100);"))
+
+            # branches
+            if "branches" in existing_tables:
+                cols_branches = {c["name"] for c in inspector.get_columns("branches")}
+                if "it_office" not in cols_branches:
+                    conn.execute(text("ALTER TABLE branches ADD COLUMN it_office VARCHAR(255);"))
+                if "wa_message_template" not in cols_branches:
+                    conn.execute(text("ALTER TABLE branches ADD COLUMN wa_message_template TEXT;"))
     except Exception as ex:
         print(f"[MIGRATION CHECK] Schema migration warning: {ex}")
     
