@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Учет и ремонт техники | IT Service Desk</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            800: '#1e40af',
+                            900: '#1e3a8a',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.5/dist/cdn.min.js"></script>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/repair/static/css/repair.css">
+    <script src="/repair/static/js/repair_app.js"></script>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col" x-data="repairApp">
+
+    <!-- Toast Notification -->
+    <div x-show="toast.show" 
+         x-transition:enter="transition ease-out duration-300 transform"
+         x-transition:enter-start="opacity-0 translate-y-2"
+         x-transition:enter-end="opacity-100 translate-y-0"
+         x-transition:leave="transition ease-in duration-200 transform"
+         x-transition:leave-start="opacity-100 translate-y-0"
+         x-transition:leave-end="opacity-0 translate-y-2"
+         class="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3 rounded-xl shadow-2xl border text-sm font-medium"
+         :class="{
+            'bg-slate-900 text-white border-slate-700': toast.type === 'info',
+            'bg-emerald-600 text-white border-emerald-500': toast.type === 'success',
+            'bg-rose-600 text-white border-rose-500': toast.type === 'error'
+         }"
+         style="display: none;">
+        <span x-text="toast.message"></span>
+    </div>
+
+    <!-- Верхняя шапка (Header) -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-4">
+                <a href="/" class="flex items-center gap-2 group text-slate-500 hover:text-brand-600 transition" title="Вернуться на Главный Портал">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+                    <span class="text-xs font-semibold uppercase tracking-wider hidden sm:inline">Портал</span>
+                </a>
+                <div class="h-5 w-px bg-slate-200"></div>
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-brand-600 flex items-center justify-center text-white shadow-md shadow-brand-500/20">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/></svg>
+                    </div>
+                    <div>
+                        <h1 class="text-base font-bold text-slate-900 leading-tight">Учет и ремонт техники</h1>
+                        <p class="text-xs text-slate-500">Оборудование, Active Directory и сервисный центр</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Правый блок: выбор филиала, пользователь, выход -->
+            <div class="flex items-center gap-3 sm:gap-4">
+                <!-- Селектор филиала -->
+                <div class="flex items-center gap-2">
+                    <span class="text-xs text-slate-400 font-medium hidden md:inline">Филиал:</span>
+                    <select x-model="selectedBranchId" @change="loadEquipment(); loadBatches();" class="text-xs bg-slate-100 hover:bg-slate-200 border-0 rounded-lg px-2.5 py-1.5 font-medium text-slate-700 focus:ring-2 focus:ring-brand-500 transition">
+                        <option value="">Все филиалы</option>
+                        <template x-for="b in branches" :key="b.id">
+                            <option :value="b.id" x-text="b.name"></option>
+                        </template>
+                    </select>
+                </div>
+
+                <!-- Быстрые переходы между системами -->
+                <div class="hidden lg:flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl">
+                    <a href="/cartridges" class="px-2.5 py-1 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 hover:bg-white transition">Картриджи</a>
+                    <span class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-white text-brand-600 shadow-sm">Техника</span>
+                    <a href="/location" class="px-2.5 py-1 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 hover:bg-white transition">Карта сети</a>
+                </div>
+
+                <!-- Профиль пользователя -->
+                <div class="flex items-center gap-2 pl-2 border-l border-slate-200">
+                    <div class="w-8 h-8 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center font-bold text-xs">
+                        <span x-text="currentUser ? currentUser.username.substring(0,2).toUpperCase() : 'IT'"></span>
+                    </div>
+                    <div class="hidden sm:block text-left">
+                        <div class="text-xs font-bold text-slate-800 leading-none" x-text="currentUser ? currentUser.full_name : 'Загрузка...'"></div>
+                        <div class="text-[10px] text-slate-400 capitalize" x-text="currentUser ? currentUser.role : ''"></div>
+                    </div>
+                    <button @click="logout()" title="Выйти" class="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-slate-100 transition">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Основная навигация по вкладкам / стадиям -->
+    <div class="bg-white border-b border-slate-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex overflow-x-auto scrollbar-none gap-2 py-2">
+            <button @click="currentTab = 'all'" :class="currentTab === 'all' ? 'bg-brand-50 text-brand-700 font-semibold border-brand-200' : 'text-slate-600 hover:bg-slate-100 border-transparent'" class="px-3.5 py-2 text-xs rounded-lg border flex items-center gap-2 whitespace-nowrap transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
+                <span>Все оборудование</span>
+                <span class="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-200 text-slate-700" x-text="counts.all"></span>
+            </button>
+
+            <button @click="currentTab = 'accept'" :class="currentTab === 'accept' ? 'bg-brand-50 text-brand-700 font-semibold border-brand-200' : 'text-slate-600 hover:bg-slate-100 border-transparent'" class="px-3.5 py-2 text-xs rounded-lg border flex items-center gap-2 whitespace-nowrap transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                <span>1. Приемка в IT-отделе</span>
+            </button>
+
+            <button @click="currentTab = 'send_sc'" :class="currentTab === 'send_sc' ? 'bg-amber-50 text-amber-800 font-semibold border-amber-200' : 'text-slate-600 hover:bg-slate-100 border-transparent'" class="px-3.5 py-2 text-xs rounded-lg border flex items-center gap-2 whitespace-nowrap transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+                <span>2. Отправка в СЦ</span>
+                <span class="px-1.5 py-0.5 rounded-full text-[10px] font-bold" :class="counts.pending_sc > 0 ? 'bg-amber-200 text-amber-900' : 'bg-slate-200 text-slate-700'" x-text="counts.pending_sc"></span>
+            </button>
+
+            <button @click="currentTab = 'return_sc'" :class="currentTab === 'return_sc' ? 'bg-purple-50 text-purple-800 font-semibold border-purple-200' : 'text-slate-600 hover:bg-slate-100 border-transparent'" class="px-3.5 py-2 text-xs rounded-lg border flex items-center gap-2 whitespace-nowrap transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>
+                <span>3. Принятие из СЦ</span>
+                <span class="px-1.5 py-0.5 rounded-full text-[10px] font-bold" :class="counts.at_sc > 0 ? 'bg-purple-200 text-purple-900' : 'bg-slate-200 text-slate-700'" x-text="counts.at_sc"></span>
+            </button>
+
+            <button @click="currentTab = 'install_wp'" :class="currentTab === 'install_wp' ? 'bg-emerald-50 text-emerald-800 font-semibold border-emerald-200' : 'text-slate-600 hover:bg-slate-100 border-transparent'" class="px-3.5 py-2 text-xs rounded-lg border flex items-center gap-2 whitespace-nowrap transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                <span>4. Установка на место</span>
+                <span class="px-1.5 py-0.5 rounded-full text-[10px] font-bold" :class="counts.returned_it > 0 ? 'bg-emerald-200 text-emerald-900' : 'bg-slate-200 text-slate-700'" x-text="counts.returned_it"></span>
+            </button>
+
+            <button @click="currentTab = 'models'" :class="currentTab === 'models' ? 'bg-brand-50 text-brand-700 font-semibold border-brand-200' : 'text-slate-600 hover:bg-slate-100 border-transparent'" class="px-3.5 py-2 text-xs rounded-lg border flex items-center gap-2 whitespace-nowrap transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                <span>Справочник моделей</span>
+            </button>
+
+            <button @click="currentTab = 'reports'; loadReport();" :class="currentTab === 'reports' ? 'bg-brand-50 text-brand-700 font-semibold border-brand-200' : 'text-slate-600 hover:bg-slate-100 border-transparent'" class="px-3.5 py-2 text-xs rounded-lg border flex items-center gap-2 whitespace-nowrap transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                <span>Отчеты и Аналитика</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Основное содержимое (Main Content) -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full">
+
+        <!-- ============================================== -->
+        <!-- ВКЛАДКА 1: ВСЕ ОБОРУДОВАНИЕ                    -->
+        <!-- ============================================== -->
+        <div x-show="currentTab === 'all'" class="space-y-5">
+            <!-- Панель управления и фильтров -->
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+                <div class="flex flex-wrap items-center gap-3 flex-1">
+                    <!-- Поиск -->
+                    <div class="relative flex-1 min-w-[200px]">
+                        <input type="text" x-model="searchQuery" @input.debounce.300ms="loadEquipment()" placeholder="Поиск по инв. №, названию, хосту..." class="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-3 py-2 focus:ring-2 focus:ring-brand-500 focus:bg-white transition">
+                        <svg class="w-4 h-4 text-slate-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                    </div>
+
+                    <!-- Фильтр по состоянию (Рабочее / Сломанное) -->
+                    <select x-model="filterCondition" @change="loadEquipment()" class="text-xs bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 font-medium text-slate-700">
+                        <option value="">Все состояния</option>
+                        <option value="working">🟢 В рабочем состоянии</option>
+                        <option value="broken">🔴 В нерабочем состоянии</option>
+                    </select>
+
+                    <!-- Фильтр по типу -->
+                    <select x-model="filterType" @change="loadEquipment()" class="text-xs bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 font-medium text-slate-700">
+                        <option value="">Все типы</option>
+                        <option value="workstation">Компьютеры (ПК)</option>
+                        <option value="laptop">Ноутбуки</option>
+                        <option value="monitor">Мониторы</option>
+                        <option value="printer">Принтеры / МФУ</option>
+                        <option value="ups">ИБП</option>
+                        <option value="switch">Коммутаторы</option>
+                        <option value="other">Прочее</option>
+                    </select>
+
+                    <!-- Фильтр по статусу -->
+                    <select x-model="filterStatus" @change="loadEquipment()" class="text-xs bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 font-medium text-slate-700">
+                        <option value="">Все статусы</option>
+                        <option value="at_workplace">На рабочем месте</option>
+                        <option value="pending_sc">Принято в IT (Ожидает СЦ)</option>
+                        <option value="at_sc">В сервисном центре</option>
+                        <option value="returned_it">Принято из СЦ (Готово)</option>
+                    </select>
+                </div>
+
+                <!-- Кнопки действий -->
+                <div class="flex items-center gap-2">
+                    <button @click="triggerADSync()" :disabled="isAdSyncing" class="px-3.5 py-2 text-xs font-semibold rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 flex items-center gap-1.5 transition disabled:opacity-50">
+                        <svg class="w-4 h-4" :class="isAdSyncing ? 'animate-spin' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                        <span x-text="isAdSyncing ? 'Сбор из AD...' : 'Собрать ПК из AD'"></span>
+                    </button>
+                    <button @click="showAddModal = true" class="px-3.5 py-2 text-xs font-semibold rounded-lg bg-brand-600 hover:bg-brand-700 text-white shadow-sm flex items-center gap-1.5 transition">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                        <span>Добавить технику</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Таблица оборудования -->
+            <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200 uppercase tracking-wider">
+                            <tr>
+                                <th class="px-4 py-3">Инв. №</th>
+                                <th class="px-4 py-3">Наименование / Модель</th>
+                                <th class="px-4 py-3">Категория</th>
+                                <th class="px-4 py-3">Состояние</th>
+                                <th class="px-4 py-3">Статус</th>
+                                <th class="px-4 py-3">Кабинет</th>
+                                <th class="px-4 py-3">Ответственный</th>
+                                <th class="px-4 py-3 text-right">Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 font-medium">
+                            <template x-if="equipmentList.length === 0">
+                                <tr>
+                                    <td colspan="8" class="text-center py-12 text-slate-400">
+                                        Оборудование не найдено. Нажмите "Собрать ПК из AD" или "Добавить технику".
+                                    </td>
+                                </tr>
+                            </template>
+                            <template x-for="item in equipmentList" :key="item.id">
+                                <tr class="hover:bg-slate-50/80 transition">
+                                    <td class="px-4 py-3 font-bold text-slate-900">
+                                        <div class="flex items-center gap-1.5">
+                                            <span x-text="item.inventory_number"></span>
+                                            <span x-show="item.ad_guid" class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200" title="Собрано из Active Directory">AD</span>
+                                        </div>
+                                        <div class="text-[10px] text-slate-400 font-normal" x-show="item.serial_number" x-text="'S/N: ' + item.serial_number"></div>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <div class="text-slate-900 font-semibold" x-text="item.name"></div>
+                                        <div class="text-[10px] text-slate-400" x-show="item.hostname" x-text="item.hostname + (item.os_name ? ' (' + item.os_name + ')' : '')"></div>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <span class="px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-100 text-slate-700" x-text="item.asset_type"></span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold"
+                                              :class="item.condition === 'working' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'">
+                                            <span class="w-1.5 h-1.5 rounded-full" :class="item.condition === 'working' ? 'bg-emerald-500' : 'bg-rose-500'"></span>
+                                            <span x-text="item.condition === 'working' ? 'В рабочем состоянии' : 'В нерабочем состоянии'"></span>
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <span class="text-slate-600 text-[11px]" x-text="item.status"></span>
+                                    </td>
+                                    <td class="px-4 py-3 text-slate-700" x-text="item.cabinet || '—'"></td>
+                                    <td class="px-4 py-3 text-slate-700" x-text="item.current_user_name || item.current_user_id || '—'"></td>
+                                    <td class="px-4 py-3 text-right">
+                                        <button @click="viewDetail(item)" class="text-brand-600 hover:text-brand-800 font-semibold hover:underline">Подробнее</button>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- ВКЛАДКА 2: ЭТАП 1 - ПРИЕМКА В IT-ОТДЕЛЕ         -->
+        <!-- ============================================== -->
+        <div x-show="currentTab === 'accept'" class="max-w-2xl mx-auto space-y-6">
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                <div class="border-b border-slate-100 pb-4 mb-5">
+                    <h2 class="text-lg font-bold text-slate-900">Этап 1: Приемка неисправной техники</h2>
+                    <p class="text-xs text-slate-500">Поступление сломанного оборудования от сотрудников в IT-отдел для дальнейшего ремонта</p>
+                </div>
+
+                <form @submit.prevent="submitAcceptance()" class="space-y-4 text-xs">
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Инвентарный номер *</label>
+                        <div class="flex gap-2">
+                            <input type="text" x-model="acceptForm.inventory_number" @blur="searchInvForAccept()" required placeholder="Например: ИНВ-00124 или AD-PC-IT01" class="flex-1 border border-slate-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand-500">
+                            <button type="button" @click="searchInvForAccept()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-semibold">Найти</button>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Наименование / Модель *</label>
+                            <input type="text" x-model="acceptForm.name" required placeholder="HP ProDesk 400 G6" class="w-full border border-slate-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand-500">
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Серийный номер (S/N)</label>
+                            <input type="text" x-model="acceptForm.serial_number" placeholder="CZ1234567" class="w-full border border-slate-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand-500">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Тип техники</label>
+                            <select x-model="acceptForm.asset_type" class="w-full border border-slate-200 rounded-lg px-3 py-2">
+                                <option value="workstation">Компьютер (ПК)</option>
+                                <option value="laptop">Ноутбук</option>
+                                <option value="monitor">Монитор</option>
+                                <option value="printer">Принтер / МФУ</option>
+                                <option value="ups">ИБП</option>
+                                <option value="switch">Сетевое оборудование</option>
+                                <option value="other">Прочее</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Кабинет *</label>
+                            <input type="text" x-model="acceptForm.cabinet" required placeholder="Кабинет 108" class="w-full border border-slate-200 rounded-lg px-3 py-2">
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Сотрудник (AD)</label>
+                            <select x-model="acceptForm.current_user_id" class="w-full border border-slate-200 rounded-lg px-3 py-2">
+                                <option value="">Не назначен</option>
+                                <template x-for="u in adUsers" :key="u.samaccountname">
+                                    <option :value="u.samaccountname" x-text="u.display_name + ' (' + u.samaccountname + ')'"></option>
+                                </template>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Заявленная неисправность *</label>
+                        <textarea x-model="acceptForm.reported_issue" rows="2" required placeholder="Опишите дефект: не включается, полосы на мониторе, замятие бумаги..." class="w-full border border-slate-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand-500"></textarea>
+                    </div>
+
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Состояние техники</label>
+                        <div class="p-2.5 rounded-lg bg-rose-50 border border-rose-200 flex items-center gap-2 text-rose-800 font-semibold">
+                            <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+                            <span>В нерабочем состоянии (будет переведено автоматически)</span>
+                        </div>
+                    </div>
+
+                    <div class="pt-2">
+                        <button type="submit" class="w-full py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-xl shadow-md transition">
+                            Принять технику в IT-отдел
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- ВКЛАДКА 3: ЭТАП 2 - ОТПРАВКА В СЕРВИСНЫЙ ЦЕНТР -->
+        <!-- ============================================== -->
+        <div x-show="currentTab === 'send_sc'" class="space-y-6">
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-base font-bold text-slate-900">Этап 2: Отправка в сервисный центр</h2>
+                    <p class="text-xs text-slate-500">Формирование партии для сдачи в ремонт и печать официального акта передачи А4</p>
+                </div>
+                <div class="flex items-center gap-3 w-full md:w-auto">
+                    <input type="text" x-model="scVendorName" placeholder="Сервисный центр..." class="text-xs border border-slate-200 rounded-lg px-3 py-2 w-full md:w-60">
+                    <button @click="createSCBatch()" :disabled="selectedForSC.length === 0" class="px-4 py-2 text-xs font-bold rounded-lg bg-amber-600 hover:bg-amber-700 text-white shadow-sm flex items-center gap-2 whitespace-nowrap transition disabled:opacity-50">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                        <span>Сформировать Акт передачи (<span x-text="selectedForSC.length"></span>)</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Таблица техники, ожидающей СЦ -->
+            <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="px-4 py-3 bg-slate-50 border-b border-slate-200 font-semibold text-xs text-slate-700 flex justify-between items-center">
+                    <span>Техника, ожидающая отправки в сервисный центр (в IT-отделе)</span>
+                    <button @click="selectedForSC = pendingSCItems.map(i => i.id)" class="text-brand-600 hover:underline">Выбрать все</button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-slate-50/50 text-slate-500 font-semibold border-b border-slate-100 uppercase">
+                            <tr>
+                                <th class="w-10 px-4 py-3"></th>
+                                <th class="px-4 py-3">Инв. №</th>
+                                <th class="px-4 py-3">Наименование</th>
+                                <th class="px-4 py-3">Кабинет</th>
+                                <th class="px-4 py-3">Ответственный</th>
+                                <th class="px-4 py-3">Состояние</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 font-medium">
+                            <template x-if="pendingSCItems.length === 0">
+                                <tr>
+                                    <td colspan="6" class="text-center py-10 text-slate-400">
+                                        Нет техники, ожидающей отправки в сервисный центр.
+                                    </td>
+                                </tr>
+                            </template>
+                            <template x-for="item in pendingSCItems" :key="item.id">
+                                <tr class="hover:bg-slate-50/80 transition">
+                                    <td class="px-4 py-3">
+                                        <input type="checkbox" :value="item.id" x-model="selectedForSC" class="rounded border-slate-300 text-brand-600 focus:ring-brand-500">
+                                    </td>
+                                    <td class="px-4 py-3 font-bold text-slate-900" x-text="item.inventory_number"></td>
+                                    <td class="px-4 py-3" x-text="item.name"></td>
+                                    <td class="px-4 py-3 text-slate-600" x-text="item.cabinet || '—'"></td>
+                                    <td class="px-4 py-3 text-slate-600" x-text="item.current_user_name || item.current_user_id || '—'"></td>
+                                    <td class="px-4 py-3">
+                                        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">В нерабочем состоянии</span>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Список ранее сформированных актов -->
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                <h3 class="text-sm font-bold text-slate-900">История актов передачи в СЦ</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <template x-for="b in batchesList" :key="b.id">
+                        <div class="border border-slate-200 rounded-xl p-4 hover:border-brand-300 transition space-y-2 bg-slate-50/50">
+                            <div class="flex items-center justify-between">
+                                <span class="font-bold text-slate-900" x-text="b.act_number"></span>
+                                <span class="px-2 py-0.5 rounded text-[10px] font-bold" :class="b.status === 'open' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'" x-text="b.status === 'open' ? 'В ремонте' : 'Закрыт'"></span>
+                            </div>
+                            <div class="text-xs text-slate-600" x-text="'СЦ: ' + b.vendor_name"></div>
+                            <div class="text-xs text-slate-400" x-text="'Позиций: ' + b.items_count + ' шт.'"></div>
+                            <div class="pt-2 border-t border-slate-200 flex justify-end">
+                                <a :href="'/print/repair-act/' + b.id" target="_blank" class="text-xs font-semibold text-brand-600 hover:text-brand-800 flex items-center gap-1">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                                    <span>Печать Акта А4</span>
+                                </a>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- ВКЛАДКА 4: ЭТАП 3 - ПРИНЯТИЕ ИЗ СЦ В IT-ОТДЕЛ   -->
+        <!-- ============================================== -->
+        <div x-show="currentTab === 'return_sc'" class="space-y-6">
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                <div>
+                    <h2 class="text-base font-bold text-slate-900">Этап 3: Принятие техники из СЦ</h2>
+                    <p class="text-xs text-slate-500">Возврат оборудования из ремонта. Отметка о принятии (WhatsApp не используется!).</p>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200 uppercase">
+                            <tr>
+                                <th class="px-4 py-3">Инв. №</th>
+                                <th class="px-4 py-3">Наименование</th>
+                                <th class="px-4 py-3">Кабинет</th>
+                                <th class="px-4 py-3">Ответственный</th>
+                                <th class="px-4 py-3">Статус</th>
+                                <th class="px-4 py-3 text-right">Действие</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 font-medium">
+                            <template x-if="atSCItems.length === 0">
+                                <tr>
+                                    <td colspan="6" class="text-center py-12 text-slate-400">
+                                        В сервисном центре сейчас нет техники.
+                                    </td>
+                                </tr>
+                            </template>
+                            <template x-for="item in atSCItems" :key="item.id">
+                                <tr class="hover:bg-slate-50/80 transition">
+                                    <td class="px-4 py-3 font-bold text-slate-900" x-text="item.inventory_number"></td>
+                                    <td class="px-4 py-3" x-text="item.name"></td>
+                                    <td class="px-4 py-3 text-slate-600" x-text="item.cabinet || '—'"></td>
+                                    <td class="px-4 py-3 text-slate-600" x-text="item.current_user_name || item.current_user_id || '—'"></td>
+                                    <td class="px-4 py-3">
+                                        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">В сервисном центре</span>
+                                    </td>
+                                    <td class="px-4 py-3 text-right">
+                                        <button @click="openReturnModal(item)" class="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-bold text-xs shadow-sm transition">
+                                            Принять в IT-отдел
+                                        </button>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- ВКЛАДКА 5: ЭТАП 4 - УСТАНОВКА НА РАБОЧЕЕ МЕСТО -->
+        <!-- ============================================== -->
+        <div x-show="currentTab === 'install_wp'" class="space-y-6">
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                <div>
+                    <h2 class="text-base font-bold text-slate-900">Этап 4: Установка техники на рабочее место</h2>
+                    <p class="text-xs text-slate-500">Отремонтированная техника готова к установке пользователю (WhatsApp не используется!).</p>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200 uppercase">
+                            <tr>
+                                <th class="px-4 py-3">Инв. №</th>
+                                <th class="px-4 py-3">Наименование</th>
+                                <th class="px-4 py-3">Кабинет</th>
+                                <th class="px-4 py-3">Ответственный</th>
+                                <th class="px-4 py-3">Состояние</th>
+                                <th class="px-4 py-3 text-right">Действие</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 font-medium">
+                            <template x-if="returnedITItems.length === 0">
+                                <tr>
+                                    <td colspan="6" class="text-center py-12 text-slate-400">
+                                        Нет отремонтированной техники, ожидающей установки.
+                                    </td>
+                                </tr>
+                            </template>
+                            <template x-for="item in returnedITItems" :key="item.id">
+                                <tr class="hover:bg-slate-50/80 transition">
+                                    <td class="px-4 py-3 font-bold text-slate-900" x-text="item.inventory_number"></td>
+                                    <td class="px-4 py-3" x-text="item.name"></td>
+                                    <td class="px-4 py-3 text-slate-600" x-text="item.cabinet || '—'"></td>
+                                    <td class="px-4 py-3 text-slate-600" x-text="item.current_user_name || item.current_user_id || '—'"></td>
+                                    <td class="px-4 py-3">
+                                        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">В рабочем состоянии 🟢</span>
+                                    </td>
+                                    <td class="px-4 py-3 text-right">
+                                        <button @click="openInstallModal(item)" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-xs shadow-sm transition">
+                                            Установить на рабочее место
+                                        </button>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- ВКЛАДКА 6: СПРАВОЧНИК МОДЕЛЕЙ                  -->
+        <!-- ============================================== -->
+        <div x-show="currentTab === 'models'" class="space-y-6">
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                <div>
+                    <h2 class="text-base font-bold text-slate-900">Справочник моделей оборудования</h2>
+                    <p class="text-xs text-slate-500">Каталог типовых моделей ПК, ноутбуков, принтеров и сетевых устройств</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <template x-for="m in modelsList" :key="m.id">
+                    <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="font-bold text-slate-900 text-sm" x-text="m.name"></span>
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 uppercase" x-text="m.category"></span>
+                        </div>
+                        <div class="text-xs text-slate-500" x-text="'Производитель: ' + (m.vendor || '—')"></div>
+                        <div class="text-xs text-slate-600 bg-slate-50 p-2 rounded-lg" x-text="m.specs_template || 'Характеристики не указаны'"></div>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- ВКЛАДКА 7: ОТЧЕТЫ И АНАЛИТИКА                  -->
+        <!-- ============================================== -->
+        <div x-show="currentTab === 'reports'" class="space-y-6">
+            <!-- Панель фильтров отчета -->
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+                <div class="flex flex-wrap items-center gap-3">
+                    <span class="text-xs font-bold text-slate-700">Фильтр отчета:</span>
+                    <!-- Состояние: Рабочая / Сломанная техника -->
+                    <select x-model="reportFilterCondition" @change="loadReport()" class="text-xs bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 font-medium">
+                        <option value="">Все состояния</option>
+                        <option value="working">🟢 Только рабочая техника</option>
+                        <option value="broken">🔴 Только сломанная техника</option>
+                    </select>
+
+                    <select x-model="reportFilterType" @change="loadReport()" class="text-xs bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 font-medium">
+                        <option value="">Все категории</option>
+                        <option value="workstation">Компьютеры</option>
+                        <option value="laptop">Ноутбуки</option>
+                        <option value="monitor">Мониторы</option>
+                        <option value="printer">Принтеры / МФУ</option>
+                        <option value="ups">ИБП</option>
+                    </select>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <button @click="downloadExcelReport()" class="px-4 py-2 text-xs font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm flex items-center gap-2 transition">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        <span>Скачать Excel (.xlsx)</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- KPI Карточки состояния -->
+            <template x-if="reportData && reportData.summary">
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm text-center">
+                        <div class="text-[11px] font-bold text-slate-400 uppercase">Всего единиц</div>
+                        <div class="text-2xl font-black text-slate-900 mt-1" x-text="reportData.summary.total_count"></div>
+                    </div>
+                    <div class="bg-emerald-50/60 p-4 rounded-xl border border-emerald-200 shadow-sm text-center">
+                        <div class="text-[11px] font-bold text-emerald-800 uppercase">Рабочая техника 🟢</div>
+                        <div class="text-2xl font-black text-emerald-700 mt-1" x-text="reportData.summary.working_count"></div>
+                    </div>
+                    <div class="bg-rose-50/60 p-4 rounded-xl border border-rose-200 shadow-sm text-center">
+                        <div class="text-[11px] font-bold text-rose-800 uppercase">Сломанная техника 🔴</div>
+                        <div class="text-2xl font-black text-rose-700 mt-1" x-text="reportData.summary.broken_count"></div>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm text-center">
+                        <div class="text-[11px] font-bold text-slate-400 uppercase">В работе (места)</div>
+                        <div class="text-2xl font-black text-slate-900 mt-1" x-text="reportData.summary.at_workplace"></div>
+                    </div>
+                    <div class="bg-amber-50/60 p-4 rounded-xl border border-amber-200 shadow-sm text-center">
+                        <div class="text-[11px] font-bold text-amber-800 uppercase">В ремонте / СЦ</div>
+                        <div class="text-2xl font-black text-amber-700 mt-1" x-text="reportData.summary.pending_sc + reportData.summary.at_sc"></div>
+                    </div>
+                    <div class="bg-purple-50/60 p-4 rounded-xl border border-purple-200 shadow-sm text-center">
+                        <div class="text-[11px] font-bold text-purple-800 uppercase">Готово к установке</div>
+                        <div class="text-2xl font-black text-purple-700 mt-1" x-text="reportData.summary.returned_it"></div>
+                    </div>
+                </div>
+            </template>
+
+            <!-- Таблица отчета -->
+            <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200 uppercase">
+                            <tr>
+                                <th class="px-4 py-3">Инв. №</th>
+                                <th class="px-4 py-3">Наименование</th>
+                                <th class="px-4 py-3">Категория</th>
+                                <th class="px-4 py-3">Техническое состояние</th>
+                                <th class="px-4 py-3">Статус</th>
+                                <th class="px-4 py-3">Филиал / Кабинет</th>
+                                <th class="px-4 py-3">Ответственный</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 font-medium">
+                            <template x-if="reportData && reportData.items">
+                                <template x-for="item in reportData.items" :key="item.id">
+                                    <tr class="hover:bg-slate-50/80 transition">
+                                        <td class="px-4 py-3 font-bold text-slate-900" x-text="item.inventory_number"></td>
+                                        <td class="px-4 py-3 text-slate-900" x-text="item.name"></td>
+                                        <td class="px-4 py-3 text-slate-600" x-text="item.asset_type_label"></td>
+                                        <td class="px-4 py-3">
+                                            <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold"
+                                                  :class="item.condition === 'working' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'">
+                                                <span class="w-1.5 h-1.5 rounded-full" :class="item.condition === 'working' ? 'bg-emerald-500' : 'bg-rose-500'"></span>
+                                                <span x-text="item.condition_label"></span>
+                                            </span>
+                                        </td>
+                                        <td class="px-4 py-3 text-slate-600" x-text="item.status_label"></td>
+                                        <td class="px-4 py-3 text-slate-600" x-text="item.branch_name + ', ' + item.cabinet"></td>
+                                        <td class="px-4 py-3 text-slate-700" x-text="item.user_name"></td>
+                                    </tr>
+                                </template>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- ============================================== -->
+    <!-- МОДАЛЬНЫЕ ОКНА                                 -->
+    <!-- ============================================== -->
+
+    <!-- Модалка принятия из СЦ (Этап 3) -->
+    <div x-show="showReturnModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" style="display: none;">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4" @click.outside="showReturnModal = false">
+            <h3 class="text-base font-bold text-slate-900">Принятие техники из СЦ в IT-отдел</h3>
+            <p class="text-xs text-slate-500" x-text="'Оборудование: ' + (returnTargetItem ? returnTargetItem.name + ' (' + returnTargetItem.inventory_number + ')' : '')"></p>
+
+            <div class="space-y-3 text-xs">
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Результат диагностики / ремонта</label>
+                    <input type="text" x-model="returnForm.diagnostic_result" class="w-full border border-slate-200 rounded-lg px-3 py-2">
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Выполненные работы</label>
+                    <textarea x-model="returnForm.work_performed" rows="2" class="w-full border border-slate-200 rounded-lg px-3 py-2"></textarea>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Стоимость ремонта (руб.)</label>
+                        <input type="number" step="0.01" x-model="returnForm.cost" class="w-full border border-slate-200 rounded-lg px-3 py-2">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Новое состояние</label>
+                        <select x-model="returnForm.condition" class="w-full border border-slate-200 rounded-lg px-3 py-2">
+                            <option value="working">🟢 В рабочем состоянии</option>
+                            <option value="broken">🔴 Не отремонтировано (брак)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                <button type="button" @click="showReturnModal = false" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg">Отмена</button>
+                <button type="button" @click="submitReturnFromSC()" class="px-4 py-2 text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 rounded-lg shadow-sm">Подтвердить приемку в IT</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модалка установки на рабочее место (Этап 4) -->
+    <div x-show="showInstallModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" style="display: none;">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4" @click.outside="showInstallModal = false">
+            <h3 class="text-base font-bold text-slate-900">Установка техники на рабочее место</h3>
+            <p class="text-xs text-slate-500" x-text="'Оборудование: ' + (installTargetItem ? installTargetItem.name + ' (' + installTargetItem.inventory_number + ')' : '')"></p>
+
+            <div class="space-y-3 text-xs">
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Кабинет установки *</label>
+                    <input type="text" x-model="installForm.cabinet" required class="w-full border border-slate-200 rounded-lg px-3 py-2">
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Ответственный сотрудник (AD)</label>
+                    <select x-model="installForm.current_user_id" class="w-full border border-slate-200 rounded-lg px-3 py-2">
+                        <option value="">Не назначен</option>
+                        <template x-for="u in adUsers" :key="u.samaccountname">
+                            <option :value="u.samaccountname" x-text="u.display_name + ' (' + u.samaccountname + ')'"></option>
+                        </template>
+                    </select>
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Заметки об установке</label>
+                    <input type="text" x-model="installForm.notes" placeholder="Установлен новый SSD, подключен к розетке LAN 2" class="w-full border border-slate-200 rounded-lg px-3 py-2">
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                <button type="button" @click="showInstallModal = false" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg">Отмена</button>
+                <button type="button" @click="submitInstallAtWorkplace()" class="px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-sm">Подтвердить установку</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модалка ручного добавления техники -->
+    <div x-show="showAddModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" style="display: none;">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4" @click.outside="showAddModal = false">
+            <h3 class="text-base font-bold text-slate-900">Регистрация техники (Ручной ввод)</h3>
+            <p class="text-xs text-slate-500">Мониторы, принтеры, ИБП и другое оборудование вводятся вручную</p>
+
+            <form @submit.prevent="submitManualAdd()" class="space-y-3 text-xs">
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Инвентарный номер *</label>
+                    <input type="text" x-model="addForm.inventory_number" required placeholder="ИНВ-ПРН-0042" class="w-full border border-slate-200 rounded-lg px-3 py-2">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Наименование / Модель *</label>
+                        <input type="text" x-model="addForm.name" required placeholder="HP LaserJet Pro M428" class="w-full border border-slate-200 rounded-lg px-3 py-2">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Серийный номер (S/N)</label>
+                        <input type="text" x-model="addForm.serial_number" placeholder="VNB3K12345" class="w-full border border-slate-200 rounded-lg px-3 py-2">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Тип техники</label>
+                        <select x-model="addForm.asset_type" class="w-full border border-slate-200 rounded-lg px-3 py-2">
+                            <option value="monitor">Монитор</option>
+                            <option value="printer">Принтер / МФУ</option>
+                            <option value="ups">ИБП</option>
+                            <option value="workstation">Компьютер (ПК)</option>
+                            <option value="laptop">Ноутбук</option>
+                            <option value="switch">Коммутатор</option>
+                            <option value="other">Прочее</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Техническое состояние</label>
+                        <select x-model="addForm.condition" class="w-full border border-slate-200 rounded-lg px-3 py-2">
+                            <option value="working">🟢 В рабочем состоянии</option>
+                            <option value="broken">🔴 В нерабочем состоянии</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Кабинет</label>
+                        <input type="text" x-model="addForm.cabinet" placeholder="Кабинет 204" class="w-full border border-slate-200 rounded-lg px-3 py-2">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Ответственный (AD)</label>
+                        <select x-model="addForm.current_user_id" class="w-full border border-slate-200 rounded-lg px-3 py-2">
+                            <option value="">Не назначен</option>
+                            <template x-for="u in adUsers" :key="u.samaccountname">
+                                <option :value="u.samaccountname" x-text="u.display_name"></option>
+                            </template>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                    <button type="button" @click="showAddModal = false" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg">Отмена</button>
+                    <button type="submit" class="px-4 py-2 text-xs font-bold text-white bg-brand-600 hover:bg-brand-700 rounded-lg shadow-sm">Зарегистрировать</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Модалка детальной карточки и истории жизненного цикла -->
+    <div x-show="showDetailModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" style="display: none;">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto" @click.outside="showDetailModal = false">
+            <template x-if="selectedEquipment">
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                        <div>
+                            <h3 class="text-base font-bold text-slate-900" x-text="selectedEquipment.name"></h3>
+                            <div class="text-xs text-slate-500" x-text="'Инвентарный №: ' + selectedEquipment.inventory_number"></div>
+                        </div>
+                        <span class="px-3 py-1 rounded-full text-xs font-bold"
+                              :class="selectedEquipment.condition === 'working' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'"
+                              x-text="selectedEquipment.condition === 'working' ? 'В рабочем состоянии 🟢' : 'В нерабочем состоянии 🔴'">
+                        </span>
+                    </div>
+
+                    <!-- Параметры -->
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs bg-slate-50 p-3 rounded-xl">
+                        <div>
+                            <div class="text-slate-400">Категория:</div>
+                            <div class="font-bold text-slate-800" x-text="selectedEquipment.asset_type"></div>
+                        </div>
+                        <div>
+                            <div class="text-slate-400">Серийный №:</div>
+                            <div class="font-bold text-slate-800" x-text="selectedEquipment.serial_number || '—'"></div>
+                        </div>
+                        <div>
+                            <div class="text-slate-400">Кабинет:</div>
+                            <div class="font-bold text-slate-800" x-text="selectedEquipment.cabinet || '—'"></div>
+                        </div>
+                        <div>
+                            <div class="text-slate-400">Ответственный:</div>
+                            <div class="font-bold text-slate-800" x-text="selectedEquipment.current_user_name || '—'"></div>
+                        </div>
+                        <div>
+                            <div class="text-slate-400">Имя хоста AD:</div>
+                            <div class="font-bold text-slate-800" x-text="selectedEquipment.hostname || '—'"></div>
+                        </div>
+                        <div>
+                            <div class="text-slate-400">ОС:</div>
+                            <div class="font-bold text-slate-800" x-text="selectedEquipment.os_name || '—'"></div>
+                        </div>
+                    </div>
+
+                    <!-- История операций -->
+                    <div class="space-y-2">
+                        <h4 class="text-xs font-bold text-slate-900 uppercase tracking-wider">История жизненного цикла</h4>
+                        <div class="border border-slate-200 rounded-xl divide-y divide-slate-100 max-h-56 overflow-y-auto">
+                            <template x-if="selectedEquipment.history.length === 0">
+                                <div class="p-3 text-xs text-slate-400 text-center">Записей в истории пока нет</div>
+                            </template>
+                            <template x-for="h in selectedEquipment.history" :key="h.id">
+                                <div class="p-3 text-xs space-y-1">
+                                    <div class="flex justify-between items-center">
+                                        <span class="font-bold text-slate-800" x-text="h.action"></span>
+                                        <span class="text-[10px] text-slate-400" x-text="new Date(h.timestamp).toLocaleString('ru-RU')"></span>
+                                    </div>
+                                    <div class="text-slate-600" x-text="h.details"></div>
+                                    <div class="text-[10px] text-slate-400" x-show="h.user_name" x-text="'Исполнитель: ' + h.user_name"></div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end pt-2">
+                        <button type="button" @click="showDetailModal = false" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg">Закрыть</button>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+
+</body>
+</html>

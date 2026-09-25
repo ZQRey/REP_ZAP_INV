@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Акт передачи техники {{ batch.act_number }}</title>
+    <style>
+        @page {
+            size: A4 portrait;
+            margin: 15mm 15mm 15mm 20mm;
+        }
+        * {
+            box-sizing: border-box;
+            font-family: "Times New Roman", Times, serif;
+            color: #111827;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            background: #fff;
+            font-size: 13pt;
+            line-height: 1.35;
+        }
+        .no-print {
+            padding: 12px;
+            background: #f1f5f9;
+            border-bottom: 1px solid #cbd5e1;
+            text-align: center;
+            font-family: Arial, sans-serif;
+            font-size: 11pt;
+        }
+        .btn-print {
+            background: #2563eb;
+            color: #fff;
+            border: none;
+            padding: 8px 18px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .page {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px 30px;
+        }
+        .header-org {
+            text-align: center;
+            font-size: 14pt;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+        .header-sub {
+            text-align: center;
+            font-size: 11pt;
+            margin-bottom: 25px;
+            color: #374151;
+        }
+        .doc-title {
+            text-align: center;
+            font-size: 16pt;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .doc-subtitle {
+            text-align: center;
+            font-size: 13pt;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+        .meta-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            font-size: 12pt;
+        }
+        .preamble {
+            text-indent: 30px;
+            text-align: justify;
+            margin-bottom: 15px;
+        }
+        table.items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0 25px 0;
+            font-size: 11pt;
+        }
+        table.items-table th, table.items-table td {
+            border: 1px solid #000;
+            padding: 6px 8px;
+        }
+        table.items-table th {
+            background-color: #f3f4f6;
+            text-align: center;
+            font-weight: bold;
+        }
+        .text-center { text-align: center; }
+        .text-left { text-align: left; }
+        
+        .signatures {
+            margin-top: 40px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .sig-col {
+            width: 46%;
+        }
+        .sig-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #000;
+            padding-bottom: 3px;
+        }
+        .sig-line {
+            margin-top: 35px;
+            border-bottom: 1px solid #000;
+            position: relative;
+        }
+        .sig-hint {
+            position: absolute;
+            top: 2px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 8pt;
+            color: #6b7280;
+        }
+        .mp-box {
+            margin-top: 25px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 11pt;
+        }
+
+        @media print {
+            .no-print { display: none !important; }
+            .page {
+                margin: 0;
+                padding: 0;
+                max-width: 100%;
+            }
+            body { font-size: 11pt; }
+            table.items-table { font-size: 10pt; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="no-print">
+        <button class="btn-print" onclick="window.print()">Распечатать Акт (A4)</button>
+        <button style="margin-left: 10px; padding: 8px 14px; cursor: pointer;" onclick="window.close()">Закрыть</button>
+    </div>
+
+    <div class="page">
+        <div class="header-org">{{ org_name }}</div>
+        <div class="header-sub">Филиал / Подразделение: {{ branch_title }} ({{ it_office }})</div>
+
+        <div class="doc-title">АКТ ПРИЕМА-ПЕРЕДАЧИ ОБОРУДОВАНИЯ</div>
+        <div class="doc-subtitle">В СЕРВИСНЫЙ ЦЕНТР № {{ batch.act_number }}</div>
+
+        <div class="meta-row">
+            <div><strong>Место составления:</strong> {{ branch_title }}</div>
+            <div><strong>Дата:</strong> {{ created_date_ru }}</div>
+        </div>
+
+        <div class="preamble">
+            Настоящий акт составлен между <strong>{{ org_name }}</strong> (далее — <em>«Заказчик»</em>), в лице представителя IT-службы, и сервисным центром <strong>{{ batch.vendor_name }}</strong> (далее — <em>«Исполнитель»</em>), о том, что Заказчик сдал, а Исполнитель принял для проведения технической диагностики, сервисного обслуживания и ремонтных работ следующее оборудование:
+        </div>
+
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th style="width: 30px;">№</th>
+                    <th style="width: 130px;">Инвентарный №</th>
+                    <th style="width: 110px;">Серийный №</th>
+                    <th>Наименование и модель</th>
+                    <th style="width: 90px;">Тип</th>
+                    <th>Заявленная неисправность</th>
+                    <th style="width: 90px;">Комплект</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in batch.items %}
+                <tr>
+                    <td class="text-center">{{ loop.index }}</td>
+                    <td class="text-center"><strong>{{ item.asset.inventory_number }}</strong></td>
+                    <td class="text-center">{{ item.asset.serial_number or '—' }}</td>
+                    <td>{{ item.asset.name }}</td>
+                    <td class="text-center">
+                        {% if item.asset.asset_type.value == 'workstation' %}ПК
+                        {% elif item.asset.asset_type.value == 'laptop' %}Ноутбук
+                        {% elif item.asset.asset_type.value == 'monitor' %}Монитор
+                        {% elif item.asset.asset_type.value == 'printer' %}Принтер
+                        {% elif item.asset.asset_type.value == 'ups' %}ИБП
+                        {% else %}Оборудование
+                        {% endif %}
+                    </td>
+                    <td>{{ item.reported_issue or 'Диагностика и ремонт' }}</td>
+                    <td class="text-center">Блок / Устр.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div style="margin-top: 10px; font-size: 11pt;">
+            Всего передано единиц оборудования: <strong>{{ batch.items|length }} ({{ batch.items|length }} шт.)</strong>.<br>
+            Внешний вид и механические повреждения при приеме: видимых сколов и трещин корпуса (кроме оговоренных выше) не обнаружено. Оборудование принято в ремонт без проведения внутренней экспертизы электронных компонентов.
+        </div>
+
+        {% if batch.notes %}
+        <div style="margin-top: 10px; font-size: 11pt;">
+            <strong>Особые примечания:</strong> {{ batch.notes }}
+        </div>
+        {% endif %}
+
+        <div class="signatures">
+            <div class="sig-col">
+                <div class="sig-title">СДАЛ (Заказчик):</div>
+                <div>Представитель IT-отдела:</div>
+                <div class="sig-line">
+                    <span class="sig-hint">(подпись / расшифровка подписи)</span>
+                </div>
+                <div class="mp-box">М.П.</div>
+            </div>
+
+            <div class="sig-col">
+                <div class="sig-title">ПРИНЯЛ (Исполнитель):</div>
+                <div>Представитель сервисного центра <strong>{{ batch.vendor_name }}</strong>:</div>
+                <div class="sig-line">
+                    <span class="sig-hint">(подпись / расшифровка подписи)</span>
+                </div>
+                <div class="mp-box">М.П.</div>
+            </div>
+        </div>
+
+    </div>
+
+</body>
+</html>

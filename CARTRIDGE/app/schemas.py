@@ -143,6 +143,7 @@ class CartridgeBase(BaseModel):
     model: str
     cabinet: str
     branch_id: Optional[int] = None
+    condition: Optional[str] = "working"
     notes: Optional[str] = None
 
 
@@ -158,6 +159,7 @@ class CartridgeUpdate(BaseModel):
     cabinet: Optional[str] = None
     branch_id: Optional[int] = None
     current_user_id: Optional[str] = None
+    condition: Optional[str] = None
     notes: Optional[str] = None
     status: Optional[CartridgeStatus] = None
 
@@ -169,6 +171,7 @@ class CartridgeAcceptanceRequest(BaseModel):
     cabinet: str
     branch_id: Optional[int] = None
     current_user_id: Optional[str] = None
+    condition: Optional[str] = "broken"
     notes: Optional[str] = None
     action_required: Optional[str] = "Заправка"
 
@@ -176,6 +179,7 @@ class CartridgeAcceptanceRequest(BaseModel):
 class CartridgeResponse(CartridgeBase):
     id: int
     status: CartridgeStatus
+    condition: Optional[str] = "working"
     branch_id: Optional[int] = None
     branch: Optional[BranchResponse] = None
     current_user_id: Optional[str] = None

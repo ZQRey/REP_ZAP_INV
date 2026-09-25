@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Главный IT Портал Предприятия | IT Enterprise Hub</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            800: '#1e40af',
+                            900: '#1e3a8a',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.5/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="/static/portal.css">
+    <script src="/static/portal.js"></script>
+</head>
+<body class="min-h-screen flex flex-col antialiased text-slate-800" x-data="portalApp">
+
+    <!-- Toast Notification -->
+    <div x-show="toast.show" 
+         x-transition
+         class="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3 rounded-xl shadow-2xl border text-sm font-medium"
+         :class="{
+            'bg-slate-900 text-white border-slate-700': toast.type === 'info',
+            'bg-emerald-600 text-white border-emerald-500': toast.type === 'success',
+            'bg-rose-600 text-white border-rose-500': toast.type === 'error'
+         }"
+         style="display: none;">
+        <span x-text="toast.message"></span>
+    </div>
+
+    <!-- Верхняя панель (Header) -->
+    <header class="bg-white/90 backdrop-blur-md border-b border-slate-200 sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 via-indigo-600 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-brand-500/25">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                </div>
+                <div>
+                    <h1 class="text-base font-black text-slate-900 leading-tight">IT Enterprise Hub</h1>
+                    <p class="text-xs text-slate-500 font-medium">Единый портал IT-службы и управления активами</p>
+                </div>
+            </div>
+
+            <!-- Правый блок: филиал, настройки, профиль -->
+            <div class="flex items-center gap-3" x-show="currentUser">
+                <!-- Селектор филиала -->
+                <div class="flex items-center gap-2">
+                    <span class="text-xs text-slate-400 font-medium hidden md:inline">Филиал:</span>
+                    <select x-model="selectedBranchId" @change="loadPortalStats()" class="text-xs bg-slate-100 hover:bg-slate-200 border-0 rounded-lg px-2.5 py-1.5 font-medium text-slate-700 focus:ring-2 focus:ring-brand-500 transition">
+                        <option value="">Все филиалы</option>
+                        <template x-for="b in branches" :key="b.id">
+                            <option :value="b.id" x-text="b.name"></option>
+                        </template>
+                    </select>
+                </div>
+
+                <!-- Кнопка системных настроек (для администраторов) -->
+                <template x-if="currentUser && (currentUser.role === 'superadmin' || currentUser.role === 'admin')">
+                    <button @click="openSettings()" class="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition" title="Системные настройки и AD">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    </button>
+                </template>
+
+                <!-- Профиль пользователя -->
+                <div class="flex items-center gap-2 pl-2 border-l border-slate-200">
+                    <div class="w-8 h-8 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center font-bold text-xs">
+                        <span x-text="currentUser ? currentUser.username.substring(0,2).toUpperCase() : 'IT'"></span>
+                    </div>
+                    <div class="hidden sm:block text-left">
+                        <div class="text-xs font-bold text-slate-800 leading-none" x-text="currentUser ? currentUser.full_name : ''"></div>
+                        <div class="text-[10px] text-brand-600 font-semibold uppercase mt-0.5" x-text="currentUser ? currentUser.role : ''"></div>
+                    </div>
+                    <button @click="logout()" title="Выйти" class="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-slate-100 transition">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Если пользователь не авторизован -->
+            <div x-show="!currentUser">
+                <button @click="showLoginModal = true" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold shadow-md transition">
+                    Войти в систему
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Основной блок с модулями (Main Portal Grid) -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 flex-1 w-full">
+
+        <div class="text-center max-w-3xl mx-auto mb-10">
+            <h2 class="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Единая экосистема IT-управления</h2>
+            <p class="text-sm text-slate-600 mt-2">
+                Все модули используют единую базу данных, общую систему учетных записей, структуру филиалов и синхронизацию с Active Directory.
+            </p>
+        </div>
+
+        <!-- 3 Карточки приложений -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+            <!-- КАРТОЧКА 1: ЗАПРАВКА КАРТРИДЖЕЙ -->
+            <div class="portal-card bg-white rounded-2xl border border-slate-200/80 p-6 flex flex-col justify-between shadow-sm hover:border-brand-300">
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shadow-inner">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                        </div>
+                        <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">WhatsApp бот</span>
+                    </div>
+
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-900">Учет картриджей</h3>
+                        <p class="text-xs text-slate-500 mt-1">Оборот, отправка поставщику, печать актов А4 и WhatsApp-оповещения сотрудников при готовности.</p>
+                    </div>
+
+                    <!-- Статистика -->
+                    <div class="grid grid-cols-2 gap-2 text-xs pt-2 border-t border-slate-100">
+                        <div class="bg-slate-50 p-2.5 rounded-xl">
+                            <div class="text-[10px] text-slate-400 uppercase font-semibold">Всего в базе</div>
+                            <div class="text-base font-black text-slate-800" x-text="cartridgeStats.total"></div>
+                        </div>
+                        <div class="bg-amber-50 p-2.5 rounded-xl">
+                            <div class="text-[10px] text-amber-800 uppercase font-semibold">Ожидают заправки</div>
+                            <div class="text-base font-black text-amber-700" x-text="cartridgeStats.pending"></div>
+                        </div>
+                        <div class="bg-purple-50 p-2.5 rounded-xl">
+                            <div class="text-[10px] text-purple-800 uppercase font-semibold">На заправке (СЦ)</div>
+                            <div class="text-base font-black text-purple-700" x-text="cartridgeStats.at_vendor"></div>
+                        </div>
+                        <div class="bg-emerald-50 p-2.5 rounded-xl">
+                            <div class="text-[10px] text-emerald-800 uppercase font-semibold">Готовы к выдаче</div>
+                            <div class="text-base font-black text-emerald-700" x-text="cartridgeStats.ready"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-6">
+                    <button @click="openModule('/cartridges')" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs shadow-md shadow-blue-500/20 flex items-center justify-center gap-2 transition">
+                        <span>Перейти к картриджам</span>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- КАРТОЧКА 2: РЕМОНТ ТЕХНИКИ -->
+            <div class="portal-card bg-white rounded-2xl border border-slate-200/80 p-6 flex flex-col justify-between shadow-sm hover:border-brand-300">
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <div class="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shadow-inner">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/></svg>
+                        </div>
+                        <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">AD Инвентаризация</span>
+                    </div>
+
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-900">Ремонт и учет техники</h3>
+                        <p class="text-xs text-slate-500 mt-1">Инвентарный учет, автосбор ПК из Active Directory, отметки о сдаче и установке, отчет рабочей/сломанной техники.</p>
+                    </div>
+
+                    <!-- Статистика -->
+                    <div class="grid grid-cols-2 gap-2 text-xs pt-2 border-t border-slate-100">
+                        <div class="bg-emerald-50 p-2.5 rounded-xl">
+                            <div class="text-[10px] text-emerald-800 uppercase font-semibold">Рабочая техника 🟢</div>
+                            <div class="text-base font-black text-emerald-700" x-text="repairStats.working"></div>
+                        </div>
+                        <div class="bg-rose-50 p-2.5 rounded-xl">
+                            <div class="text-[10px] text-rose-800 uppercase font-semibold">Сломанная техника 🔴</div>
+                            <div class="text-base font-black text-rose-700" x-text="repairStats.broken"></div>
+                        </div>
+                        <div class="bg-amber-50 p-2.5 rounded-xl">
+                            <div class="text-[10px] text-amber-800 uppercase font-semibold">В ремонте / СЦ</div>
+                            <div class="text-base font-black text-amber-700" x-text="repairStats.in_sc"></div>
+                        </div>
+                        <div class="bg-purple-50 p-2.5 rounded-xl">
+                            <div class="text-[10px] text-purple-800 uppercase font-semibold">Готово к установке</div>
+                            <div class="text-base font-black text-purple-700" x-text="repairStats.returned"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-6">
+                    <button @click="openModule('/repair')" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs shadow-md shadow-indigo-500/20 flex items-center justify-center gap-2 transition">
+                        <span>Перейти к ремонту техники</span>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- КАРТОЧКА 3: КАРТА СЕТИ И IT-АКТИВОВ -->
+            <div class="portal-card bg-white rounded-2xl border border-slate-200/80 p-6 flex flex-col justify-between shadow-sm hover:border-brand-300">
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <div class="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shadow-inner">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+                        </div>
+                        <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200">2D Canvas + PostGIS</span>
+                    </div>
+
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-900">Карта сети и IT-активов</h3>
+                        <p class="text-xs text-slate-500 mt-1">Интерактивный 2D-план этажей (Konva.js), полигоны помещений, порты коммутаторов и трассировка кабельных трасс.</p>
+                    </div>
+
+                    <!-- Статистика -->
+                    <div class="grid grid-cols-2 gap-2 text-xs pt-2 border-t border-slate-100">
+                        <div class="bg-slate-50 p-2.5 rounded-xl">
+                            <div class="text-[10px] text-slate-400 uppercase font-semibold">Поэтажных планов</div>
+                            <div class="text-base font-black text-slate-800" x-text="locationStats.floors || 0"></div>
+                        </div>
+                        <div class="bg-slate-50 p-2.5 rounded-xl">
+                            <div class="text-[10px] text-slate-400 uppercase font-semibold">Зон и кабинетов</div>
+                            <div class="text-base font-black text-slate-800" x-text="locationStats.zones || 0"></div>
+                        </div>
+                        <div class="bg-slate-50 p-2.5 rounded-xl">
+                            <div class="text-[10px] text-slate-400 uppercase font-semibold">Размещено на карте</div>
+                            <div class="text-base font-black text-slate-800" x-text="locationStats.assets_placed || 0"></div>
+                        </div>
+                        <div class="bg-slate-50 p-2.5 rounded-xl">
+                            <div class="text-[10px] text-slate-400 uppercase font-semibold">Коммутаторов</div>
+                            <div class="text-base font-black text-slate-800" x-text="locationStats.switches || 0"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-6">
+                    <button @click="openModule('/location')" class="w-full py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl text-xs shadow-md shadow-purple-500/20 flex items-center justify-center gap-2 transition">
+                        <span>Открыть интерактивную карту</span>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Подвал (Footer) -->
+    <footer class="bg-white border-t border-slate-200 py-6 text-center text-xs text-slate-400">
+        <div class="max-w-7xl mx-auto px-4">
+            IT Asset Management & Service Desk Unified Platform &copy; 2026. Единая база данных в папке <code>/BD/</code>.
+        </div>
+    </footer>
+
+    <!-- ============================================== -->
+    <!-- МОДАЛЬНОЕ ОКНО АВТОРИЗАЦИИ (LOGIN)             -->
+    <!-- ============================================== -->
+    <div x-show="showLoginModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-md" style="display: none;">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 space-y-5">
+            <div class="text-center space-y-1">
+                <div class="w-12 h-12 rounded-xl bg-brand-600 text-white flex items-center justify-center mx-auto shadow-lg shadow-brand-500/25 mb-3">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                </div>
+                <h3 class="text-lg font-bold text-slate-900">Авторизация в системе</h3>
+                <p class="text-xs text-slate-500">Войдите под локальной учетной записью или через домен Active Directory</p>
+            </div>
+
+            <!-- Сообщение об ошибке -->
+            <div x-show="loginError" class="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl" x-text="loginError"></div>
+
+            <form @submit.prevent="submitLogin()" class="space-y-4 text-xs">
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Имя пользователя (Логин)</label>
+                    <input type="text" x-model="loginForm.username" required placeholder="admin или domain\username" class="w-full border border-slate-200 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-brand-500">
+                </div>
+
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Пароль</label>
+                    <input type="password" x-model="loginForm.password" required placeholder="••••••••" class="w-full border border-slate-200 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-brand-500">
+                </div>
+
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Тип входа</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button type="button" @click="loginForm.auth_type = 'local'" :class="loginForm.auth_type === 'local' ? 'bg-brand-50 border-brand-500 text-brand-700 font-bold' : 'bg-slate-50 border-slate-200 text-slate-600'" class="p-2 rounded-lg border text-center transition">
+                            Локальный вход
+                        </button>
+                        <button type="button" @click="loginForm.auth_type = 'ad'" :class="loginForm.auth_type === 'ad' ? 'bg-brand-50 border-brand-500 text-brand-700 font-bold' : 'bg-slate-50 border-slate-200 text-slate-600'" class="p-2 rounded-lg border text-center transition">
+                            Active Directory
+                        </button>
+                    </div>
+                </div>
+
+                <div class="pt-2">
+                    <button type="submit" :disabled="loginLoading" class="w-full py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-xl shadow-md transition disabled:opacity-50">
+                        <span x-text="loginLoading ? 'Проверка данных...' : 'Войти в IT Hub'"></span>
+                    </button>
+                </div>
+            </form>
+
+            <div class="text-center text-[11px] text-slate-400">
+                Стандартный вход: <strong>admin</strong> / <strong>admin123</strong>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- МОДАЛЬНОЕ ОКНО СИСТЕМНЫХ НАСТРОЕК              -->
+    <!-- ============================================== -->
+    <div x-show="showSettingsModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" style="display: none;">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-xl w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto" @click.outside="showSettingsModal = false">
+            <div class="border-b border-slate-100 pb-3">
+                <h3 class="text-base font-bold text-slate-900">Системные настройки IT Hub</h3>
+                <p class="text-xs text-slate-500">Параметры интеграции с Active Directory, шлюза WhatsApp и реквизиты</p>
+            </div>
+
+            <div class="space-y-4 text-xs">
+                <!-- AD / LDAP -->
+                <div class="bg-slate-50 p-4 rounded-xl space-y-3 border border-slate-200">
+                    <div class="flex items-center justify-between">
+                        <span class="font-bold text-slate-900">Интеграция с Active Directory (LDAP)</span>
+                        <button type="button" @click="syncADUsers()" :disabled="isSyncingAD" class="px-2.5 py-1 text-[11px] font-bold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-lg border border-indigo-200 transition">
+                            <span x-text="isSyncingAD ? 'Синхронизация...' : 'Синхронизировать пользователей'"></span>
+                        </button>
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">LDAP Host (ldap://...)</label>
+                        <input type="text" x-model="settingsData.ad_host" class="w-full border border-slate-200 rounded-lg px-3 py-2 bg-white">
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Base DN</label>
+                            <input type="text" x-model="settingsData.ad_base_dn" class="w-full border border-slate-200 rounded-lg px-3 py-2 bg-white">
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Bind User</label>
+                            <input type="text" x-model="settingsData.ad_bind_user" class="w-full border border-slate-200 rounded-lg px-3 py-2 bg-white">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- WhatsApp (только для картриджей) -->
+                <div class="bg-slate-50 p-4 rounded-xl space-y-3 border border-slate-200">
+                    <div class="flex items-center justify-between">
+                        <span class="font-bold text-slate-900">WhatsApp Evolution API (Только для Картриджей)</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Evolution API URL</label>
+                            <input type="text" x-model="settingsData.wa_api_url" class="w-full border border-slate-200 rounded-lg px-3 py-2 bg-white">
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Instance Name</label>
+                            <input type="text" x-model="settingsData.wa_instance_name" class="w-full border border-slate-200 rounded-lg px-3 py-2 bg-white">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                <button type="button" @click="showSettingsModal = false" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg">Отмена</button>
+                <button type="button" @click="saveSettings()" class="px-4 py-2 text-xs font-bold text-white bg-brand-600 hover:bg-brand-700 rounded-lg shadow-sm">Сохранить настройки</button>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

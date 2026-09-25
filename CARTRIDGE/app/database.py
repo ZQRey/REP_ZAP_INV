@@ -37,6 +37,9 @@ def init_db():
             if cols_cart and "branch_id" not in cols_cart:
                 conn.exec_driver_sql("ALTER TABLE cartridges ADD COLUMN branch_id INTEGER REFERENCES branches(id) ON DELETE SET NULL;")
                 conn.commit()
+            if cols_cart and "condition" not in cols_cart:
+                conn.exec_driver_sql("ALTER TABLE cartridges ADD COLUMN condition VARCHAR(20) DEFAULT 'working';")
+                conn.commit()
 
             # batches.branch_id
             cols_batch = [

@@ -1,0 +1,38 @@
+/* Стили модуля Интерактивная карта и ITAM (LOCATION) */
+:root {
+    --canvas-bg: #0f172a;
+    --grid-line: rgba(51, 65, 85, 0.4);
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: #0f172a;
+    color: #f8fafc;
+    overflow: hidden;
+}
+
+#canvas-container {
+    width: 100%;
+    height: 100%;
+    background-color: #0b1120;
+    cursor: default;
+    background-image: 
+        linear-gradient(to right, rgba(51, 65, 85, 0.15) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(51, 65, 85, 0.15) 1px, transparent 1px);
+    background-size: 30px 30px;
+}
+
+/* Порты коммутатора */
+.switch-port {
+    transition: all 0.15s ease;
+}
+.switch-port:hover {
+    transform: scale(1.08);
+}
+.port-up {
+    background-color: #22c55e;
+    box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
+}
+.port-down {
+    background-color: #475569;
+}

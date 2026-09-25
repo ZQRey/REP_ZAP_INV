@@ -1,0 +1,49 @@
+services:
+  web-app:
+    build: .
+    container_name: cartridge_tracker_web
+    restart: unless-stopped
+    ports:
+      - "8080:8000"
+    volumes:
+      - ./data:/data
+    environment:
+      - DATABASE_URL=sqlite:////data/cartridges.db
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      - whatsapp-gateway
+
+  whatsapp-gateway:
+    image: evoapicloud/evolution-api
+    container_name: cartridge_tracker_whatsapp
+    restart: unless-stopped
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./evolution_instances:/evolution/instances
+    environment:
+      - SERVER_PORT=8080
+      - SERVER_TYPE=http
+      - SERVER_URL=http://localhost:8081
+      - AUTHENTICATION_API_KEY=cartridge_secret_key_2026
+      - AUTHENTICATION_TYPE=apikey
+      - LOG_LEVEL=ERROR,WARN,INFO
+      - DEL_INSTANCE=false
+      - DATABASE_ENABLED=true
+      - DATABASE_PROVIDER=postgresql
+      - DATABASE_CONNECTION_URI=postgresql://evolution:evolution_pass@evolution-db:5432/evolution?schema=public
+      - DATABASE_CLIENT_NAME=evolution_exchange
+      - CACHE_REDIS_ENABLED=false
+    depends_on:
+      - evolution-db
+
+  evolution-db:
+    image: postgres:15-alpine
+    container_name: cartridge_tracker_evolution_db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=evolution
+      - POSTGRES_USER=evolution
+      - POSTGRES_PASSWORD=evolution_pass
+    volumes:
+      - ./data/evolution_pg:/var/lib/postgresql/data

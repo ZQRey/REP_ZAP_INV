@@ -113,6 +113,7 @@ class Cartridge(Base):
         ForeignKey("ad_users.samaccountname", ondelete="SET NULL"),
         nullable=True
     )
+    condition = Column(String(20), default="working")  # "working" (исправен) | "broken" (неисправен)
     notes = Column(Text, nullable=True)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

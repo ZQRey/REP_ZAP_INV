@@ -315,6 +315,7 @@ class ReportService:
                 refill_count = refills_by_cart.get(c.id, 0)
                 last_log = last_logs.get(c.id)
 
+                c_cond = getattr(c, "condition", "working") or "working"
                 cartridges_data.append({
                     "id": c.id,
                     "marker_label": c.marker_label,
@@ -323,6 +324,8 @@ class ReportService:
                     "cabinet": c.cabinet,
                     "status": c.status.value if hasattr(c.status, "value") else str(c.status),
                     "status_label": STATUS_NAMES_RU.get(c.status, str(c.status)),
+                    "condition": c_cond,
+                    "condition_label": "В рабочем состоянии" if c_cond == "working" else "В нерабочем состоянии",
                     "branch_name": c.branch.name if c.branch else "Не указан",
                     "user_name": user_display,
                     "user_phone": user_phone,
@@ -338,7 +341,9 @@ class ReportService:
                 "pending_vendor": sum(1 for c in cartridges_data if c["status"] == CartridgeStatus.PENDING_VENDOR.value),
                 "at_vendor": sum(1 for c in cartridges_data if c["status"] == CartridgeStatus.AT_VENDOR.value),
                 "ready_for_pickup": sum(1 for c in cartridges_data if c["status"] == CartridgeStatus.READY_FOR_PICKUP.value),
-                "total_refills": sum(c["refill_count"] for c in cartridges_data)
+                "total_refills": sum(c["refill_count"] for c in cartridges_data),
+                "working_count": sum(1 for c in cartridges_data if c["condition"] == "working"),
+                "broken_count": sum(1 for c in cartridges_data if c["condition"] == "broken")
             }
 
             return {

@@ -278,6 +278,7 @@ def accept_cartridge(
             cabinet=payload.cabinet.strip(),
             branch_id=payload.branch_id,
             status=CartridgeStatus.PENDING_VENDOR,
+            condition=payload.condition or "broken",
             current_user_id=payload.current_user_id,
             notes=payload.notes,
             updated_at=now
@@ -288,6 +289,7 @@ def accept_cartridge(
     else:
         # Существующий картридж
         cart.status = CartridgeStatus.PENDING_VENDOR
+        cart.condition = payload.condition or "broken"
         cart.current_user_id = payload.current_user_id
         if payload.model:
             cart.model = payload.model.strip()
@@ -381,6 +383,7 @@ def bulk_issue_cartridges(
             user_name = cart.current_user.display_name
 
         cart.status = CartridgeStatus.IN_USE
+        cart.condition = "working"
         cart.updated_at = now
 
         log = HistoryLog(
@@ -419,6 +422,7 @@ def return_cartridges_from_vendor(
 
     for cart in cartridges:
         cart.status = CartridgeStatus.READY_FOR_PICKUP
+        cart.condition = "working"
         cart.updated_at = now
         log = HistoryLog(
             cartridge_id=cart.id,

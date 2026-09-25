@@ -3,8 +3,8 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Database URL from env or local fallback
-DEFAULT_SQLITE_PATH = BASE_DIR / "data" / "cartridges.db"
+# Database URL from env or unified BD folder
+DEFAULT_SQLITE_PATH = BASE_DIR.parent / "BD" / "app_unified.db"
 DEFAULT_SQLITE_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{DEFAULT_SQLITE_PATH.as_posix()}")

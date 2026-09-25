@@ -1,21 +1,66 @@
 services:
-  web-app:
-    build: .
-    container_name: cartridge_tracker_web
+  # Единый веб-сервер и портал (Portal, Cartridge, Repair, Location API)
+  unified-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: it_unified_portal
     restart: unless-stopped
     ports:
       - "8080:8000"
     volumes:
-      - ./data:/data
+      - ./BD:/app/BD
+      - ./CARTRIDGE:/app/CARTRIDGE
+      - ./REPAIR:/app/REPAIR
+      - ./LOCATION:/app/LOCATION
+      - ./PORTAL:/app/PORTAL
     environment:
-      - DATABASE_URL=sqlite:////data/cartridges.db
+      - DATABASE_URL=postgresql://app_user:app_password@postgres-db:5432/it_management
+      - REDIS_URL=redis://redis:6379/0
+      - EVOLUTION_API_URL=http://whatsapp-gateway:8080
+      - EVOLUTION_API_KEY=cartridge_secret_key_2026
       - PYTHONUNBUFFERED=1
     depends_on:
-      - whatsapp-gateway
+      postgres-db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      whatsapp-gateway:
+        condition: service_started
 
+  # Единая СУБД: PostgreSQL 15 с расширением PostGIS для интерактивной карты
+  postgres-db:
+    image: postgis/postgis:15-3.3-alpine
+    container_name: it_unified_postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=it_management
+      - POSTGRES_USER=app_user
+      - POSTGRES_PASSWORD=app_password
+    volumes:
+      - ./BD/postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app_user -d it_management"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Redis для очередей задач (AD/SNMP воркеры) и WebSocket Pub/Sub карты
+  redis:
+    image: redis:7-alpine
+    container_name: it_unified_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./BD/redis_data:/data
+
+  # Шлюз WhatsApp (Evolution API v2) — ТОЛЬКО ДЛЯ КАРТРИДЖЕЙ
   whatsapp-gateway:
-    image: evoapicloud/evolution-api
-    container_name: cartridge_tracker_whatsapp
+    image: evoapicloud/evolution-api:v2.1.1
+    container_name: it_cartridge_whatsapp
     restart: unless-stopped
     ports:
       - "8081:8080"
@@ -31,19 +76,16 @@ services:
       - DEL_INSTANCE=false
       - DATABASE_ENABLED=true
       - DATABASE_PROVIDER=postgresql
-      - DATABASE_CONNECTION_URI=postgresql://evolution:evolution_pass@evolution-db:5432/evolution?schema=public
-      - DATABASE_CLIENT_NAME=evolution_exchange
-      - CACHE_REDIS_ENABLED=false
+      - DATABASE_CONNECTION_URI=postgresql://app_user:app_password@postgres-db:5432/it_management?schema=evolution
+      - DATABASE_CLIENT_NAME=evolution_cartridge
+      - CACHE_REDIS_ENABLED=true
+      - CACHE_REDIS_URI=redis://redis:6379/1
     depends_on:
-      - evolution-db
+      postgres-db:
+        condition: service_healthy
+      redis:
+        condition: service_started
 
-  evolution-db:
-    image: postgres:15-alpine
-    container_name: cartridge_tracker_evolution_db
-    restart: unless-stopped
-    environment:
-      - POSTGRES_DB=evolution
-      - POSTGRES_USER=evolution
-      - POSTGRES_PASSWORD=evolution_pass
-    volumes:
-      - ./data/evolution_pg:/var/lib/postgresql/data
+volumes:
+  postgres_data:
+  redis_data:
