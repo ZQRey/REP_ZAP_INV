@@ -1137,6 +1137,12 @@ document.addEventListener('alpine:init', () => {
             return this.equipmentList.filter(e => e.status === 'returned_it');
         },
 
+        // Форматирование сумм в казахстанских тенге (₸)
+        formatTenge(amount) {
+            const val = parseFloat(amount) || 0;
+            return new Intl.NumberFormat('ru-RU').format(val) + ' ₸';
+        },
+
         get filteredModels() {
             return this.modelsList.filter(m => {
                 if (this.modelCategoryFilter && m.category !== this.modelCategoryFilter) return false;

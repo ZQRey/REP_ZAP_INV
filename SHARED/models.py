@@ -344,7 +344,7 @@ class RepairBatchItem(Base):
     reported_issue = Column(Text, nullable=True)            # Заявленная неисправность ("Не включается", "Артефакты")
     diagnostic_result = Column(Text, nullable=True)         # Результат диагностики СЦ ("Сгорел блок питания")
     work_performed = Column(Text, nullable=True)            # Выполненные работы ("Замена конденсаторов БП")
-    cost = Column(Numeric(10, 2), default=0.0)              # Стоимость ремонта в рублях
+    cost = Column(Numeric(10, 2), default=0.0)              # Стоимость ремонта в тенге (₸)
     status = Column(String(50), default="in_repair")        # "in_repair", "repaired", "unrepairable"
     returned_at = Column(DateTime, nullable=True)           # Дата возврата из СЦ в IT-отдел
     installed_at = Column(DateTime, nullable=True)          # Дата установки на рабочее место
@@ -363,7 +363,7 @@ class RepairPartUsed(Base):
     part_name = Column(String(200), nullable=False)         # Напр. "Блок питания Chieftec 600W"
     serial_number = Column(String(100), nullable=True)
     quantity = Column(Integer, default=1)
-    cost = Column(Numeric(10, 2), default=0.0)
+    cost = Column(Numeric(10, 2), default=0.0)              # Стоимость в тенге (₸)
 
     repair_item = relationship("RepairBatchItem", back_populates="parts_used")
 
@@ -378,7 +378,7 @@ class SparePartsWarehouse(Base):
     item_name = Column(String(200), nullable=False)
     quantity = Column(Integer, default=0)
     min_threshold = Column(Integer, default=2)              # Порог предупреждения о малом остатке
-    unit_price = Column(Numeric(10, 2), default=0.0)
+    unit_price = Column(Numeric(10, 2), default=0.0)        # Цена за единицу в тенге (₸)
 
     branch = relationship("Branch", back_populates="spare_parts")
 

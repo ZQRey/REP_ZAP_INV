@@ -787,16 +787,32 @@ def return_equipment_from_sc(
 
     assets = db.query(Asset).filter(Asset.id.in_(target_asset_ids)).all()
     count = 0
+    cost_val = float(payload.cost or 0.0)
+    cost_formatted = f"{cost_val:,.0f}".replace(",", " ") + " ₸" if cost_val > 0 else "0 ₸"
+
     for a in assets:
         a.status = AssetStatus.RETURNED_IT
         a.condition = payload.condition or AssetCondition.WORKING
         a.updated_at = now
+
+        # Обновляем связанную позицию в партии ремонта СЦ (если есть)
+        open_items = db.query(RepairBatchItem).filter(
+            RepairBatchItem.asset_id == a.id,
+            RepairBatchItem.status == "in_repair"
+        ).all()
+        for oi in open_items:
+            oi.diagnostic_result = payload.diagnostic_result
+            oi.work_performed = payload.work_performed
+            oi.cost = cost_val
+            oi.status = "repaired" if (payload.condition or AssetCondition.WORKING) == AssetCondition.WORKING else "unrepairable"
+            oi.returned_at = now
+
         EquipmentService.log_history(
             db=db,
             asset_id=a.id,
             action="Принято из СЦ в IT-отдел",
             user_name=current_user.full_name,
-            details=f"Возвращено из ремонта. Результат: {payload.diagnostic_result}. Работы: {payload.work_performed}. Стоимость: {payload.cost} руб."
+            details=f"Возвращено из ремонта. Результат: {payload.diagnostic_result}. Работы: {payload.work_performed}. Стоимость: {cost_formatted}."
         )
         count += 1
 

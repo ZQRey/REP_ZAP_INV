@@ -181,7 +181,7 @@ class RepairBatchItemResponse(BaseModel):
     reported_issue: Optional[str] = None
     diagnostic_result: Optional[str] = None
     work_performed: Optional[str] = None
-    cost: float = 0.0
+    cost: float = Field(0.0, description="Стоимость ремонта в тенге (₸)")
     status: str = "in_repair"
     asset: Optional[EquipmentResponse] = None
     returned_at: Optional[datetime] = None
@@ -213,7 +213,7 @@ class ReturnFromSCRequest(BaseModel):
     asset_ids: Optional[List[int]] = None
     diagnostic_result: Optional[str] = "Ремонт выполнен успешно"
     work_performed: Optional[str] = "Восстановление работоспособности"
-    cost: Optional[float] = 0.0
+    cost: Optional[float] = Field(0.0, description="Стоимость ремонта в тенге (₸)")
     condition: AssetCondition = AssetCondition.WORKING
     notes: Optional[str] = None
 
