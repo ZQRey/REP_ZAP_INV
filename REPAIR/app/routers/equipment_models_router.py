@@ -46,6 +46,7 @@ def list_equipment_models(
     # Подсчитываем количество устройств (units_count) для каждой модели
     result = []
     import re
+    from SHARED.models import AssetType
     for m in models:
         m_name_clean = m.name.strip()
         conds = [
@@ -53,7 +54,15 @@ def list_equipment_models(
             Asset.name.ilike(f"%{m_name_clean}%"),
             func.lower(m_name_clean).contains(func.lower(Asset.name))
         ]
-        # Если модель содержит подстроку ОС в скобках (напр. "ПК Рабочая станция (Windows 10 Pro)")
+        # Для укрупненных категорий считаем также по прямому типу актива
+        if m_name_clean == "Рабочая станция / ПК":
+            conds.append(Asset.asset_type == AssetType.WORKSTATION)
+        elif m_name_clean == "Серверное оборудование":
+            conds.append(Asset.asset_type == AssetType.SERVER)
+        elif m_name_clean == "Ноутбук / Мобильный ПК":
+            conds.append(Asset.asset_type == AssetType.LAPTOP)
+
+        # Если модель содержит подстроку ОС в скобках
         os_match = re.search(r'\(([^)]+)\)', m_name_clean)
         if os_match:
             os_term = os_match.group(1).strip()

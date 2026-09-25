@@ -270,16 +270,15 @@ class ModelParserService:
         }
 
     @classmethod
-    def clean_os_name(cls, raw: Optional[str]) -> str:
-        """Очищает строку ОС от сырых номеров сборок AD (напр. 'Windows 10 Pro 10.0 (19045)' -> 'Windows 10 Pro')."""
-        if not raw:
-            return "Windows 10 Pro"
-        s = raw.strip()
-        # Удаляем версии вида 10.0 (19045), 10.0.19045, (19045)
+    def clean_os_title(cls, raw: Optional[str]) -> str:
+        """Очищает строку ОС до понятного наименования редакции (напр. 'Windows 10 Pro')."""
+        if not raw or "unknown" in str(raw).lower():
+            return "Windows (редакция не указана)"
+        s = str(raw).strip()
         s = re.sub(r'\s*\d+\.\d+(?:\.\d+)?(?:\s*\(\d+\))?', '', s)
         s = re.sub(r'\s*\(\d+\)', '', s)
         s = re.sub(r'\s*Build\s*\d+', '', s, flags=re.I)
-        s = re.sub(r'\s+2[0-9]H[1-2]', '', s) # e.g. 21H2, 22H2, 23H2
+        s = re.sub(r'\s+2[0-9]H[1-2]', '', s)
         s = re.sub(r'\s+', ' ', s).strip()
         return s or "Windows"
 
@@ -292,15 +291,15 @@ class ModelParserService:
         current_asset_type: Optional[AssetType] = None
     ) -> Dict[str, Any]:
         """
-        Интеллектуально определяет точное наименование модели, категорию и производителя компьютера.
-        Устраняет безликие 'Офисный ПК' и группирует технику по реальным конфигурациям и назначению.
+        Укрупненная группировка компьютеров организации в понятные пулы:
+        - «Рабочая станция / ПК» (все клиентские офисные ПК и моноблоки)
+        - «Серверное оборудование» (все контроллеры домена и сервисные серверы)
+        - «Ноутбук / Мобильный ПК» (ноутбуки сотрудников)
         """
-        raw_os = os_name or ""
-        clean_os = cls.clean_os_name(raw_os)
+        raw_os = (os_name or "").strip()
         h = (hostname or "").upper()
         n = (notes or "").strip()
 
-        # 1. Определение категории
         is_server = (
             current_asset_type == AssetType.SERVER or
             "SERVER" in raw_os.upper() or
@@ -312,62 +311,147 @@ class ModelParserService:
             any(nb in n.lower() for nb in ["ноутбук", "laptop", "notebook"])
         )
 
-        category = "server" if is_server else ("laptop" if is_laptop else "workstation")
-
-        # 2. Поиск физического вендора и модели в описании/заметках (напр. HP ProDesk 400 G6)
-        cand_name = None
-        cand_vendor = None
-
+        # Проверяем, есть ли явная аппаратная модель в описании (напр. "HP ProDesk 400 G6")
+        specific_name = None
+        specific_vendor = None
         if n:
             desc_clean = n.replace("AD Description:", "").replace("AD:", "").replace("Собрано из Active Directory:", "").strip()
-            # Проверяем, есть ли в описании известный вендор и модель
             for pattern, canonical in KNOWN_VENDORS:
                 if re.search(r'\b' + re.escape(pattern) + r'\b', desc_clean.upper()):
-                    cand_vendor = canonical
-                    # Если описание не просто "HP", а содержит модель
                     if len(desc_clean) > 3 and not desc_clean.upper().startswith("ИНВ"):
-                        cand_name = desc_clean
-                    break
+                        specific_name = desc_clean
+                        specific_vendor = canonical
+                        break
 
-        # 3. Поиск вендора по префиксу имени хоста
-        if not cand_vendor:
-            for pattern, canonical in KNOWN_VENDORS:
-                if re.search(r'\b' + re.escape(pattern) + r'\b', h):
-                    cand_vendor = canonical
-                    break
+        if specific_name:
+            cat = "server" if is_server else ("laptop" if is_laptop else "workstation")
+            return {
+                "name": specific_name,
+                "vendor": specific_vendor,
+                "category": cat
+            }
 
-        # 4. Формирование понятного и информативного наименования модели
-        if not cand_name:
-            if is_server:
-                cand_name = f"Сервер ({clean_os})"
-                cand_vendor = cand_vendor or "Microsoft"
-            elif is_laptop:
-                cand_name = f"Ноутбук ({clean_os})"
-                cand_vendor = cand_vendor or "OEM"
-            else:
-                cand_name = f"ПК Рабочая станция ({clean_os})"
-                cand_vendor = cand_vendor or "OEM / Сборка"
+        if is_server:
+            return {
+                "name": "Серверное оборудование",
+                "vendor": "Microsoft / OEM Server",
+                "category": "server"
+            }
+        elif is_laptop:
+            return {
+                "name": "Ноутбук / Мобильный ПК",
+                "vendor": "OEM / Портативный ПК",
+                "category": "laptop"
+            }
+        else:
+            return {
+                "name": "Рабочая станция / ПК",
+                "vendor": "OEM / Корпоративная сборка",
+                "category": "workstation"
+            }
 
-        return {
-            "name": cand_name.strip(),
-            "vendor": cand_vendor,
-            "category": category,
-            "clean_os": clean_os
-        }
+    @classmethod
+    def build_group_ad_analytics(cls, asset_group: List[Asset], category: str) -> Tuple[str, str]:
+        """
+        Формирует максимально полную аналитическую сводку по пулу компьютеров из Active Directory:
+        - Состав редакций ОС и распределение
+        - Версии сборок (Builds)
+        - Сетевая активность в домене (lastLogon)
+        - Размещение по кабинетам и подразделениям
+        - Количество закрепленных сотрудников
+        """
+        from datetime import datetime, timezone
+        total = len(asset_group)
+
+        # 1. Подсчет редакций ОС
+        editions = Counter()
+        for a in asset_group:
+            clean_title = cls.clean_os_title(a.os_name)
+            editions[clean_title] += 1
+        ed_parts = [f"{k} ({v} шт.)" for k, v in editions.most_common(5)]
+        ed_line = "💻 Редакции ОС: " + (", ".join(ed_parts) if ed_parts else "Windows")
+
+        # 2. Подсчет номеров сборок
+        builds = Counter()
+        for a in asset_group:
+            raw = a.os_name or ""
+            m = re.search(r'\((\d{4,6})\)', raw) or re.search(r'10\.0\.(\d{4,6})', raw)
+            if m:
+                builds[m.group(1)] += 1
+        b_parts = [f"Build {k} ({v} устр.)" for k, v in builds.most_common(4)]
+        b_line = ("📦 Сборки: " + ", ".join(b_parts)) if b_parts else ""
+
+        # 3. Активность в домене (lastLogon)
+        now = datetime.now(timezone.utc)
+        active_30d = 0
+        with_logon = 0
+        for a in asset_group:
+            if a.last_logon:
+                with_logon += 1
+                try:
+                    dt = a.last_logon
+                    if dt.tzinfo is None:
+                        dt = dt.replace(tzinfo=timezone.utc)
+                    if (now - dt).days <= 30:
+                        active_30d += 1
+                except Exception:
+                    pass
+
+        if with_logon > 0:
+            pct = round((active_30d / total) * 100, 1)
+            net_line = f"🌐 Сеть: {active_30d} из {total} входили в домен за 30 дн. ({pct}%)"
+        else:
+            net_line = "🌐 Сеть: Доменный пул Active Directory | Клиенты домена"
+
+        # 4. Кабинеты и размещение
+        cab_counts = Counter([a.cabinet for a in asset_group if a.cabinet and a.cabinet != 'Кабинет 101'])
+        if not cab_counts:
+            cab_counts = Counter([a.cabinet for a in asset_group if a.cabinet])
+        top_cabs = [f"{k} ({v})" for k, v in cab_counts.most_common(4)]
+        cab_line = ("📍 Размещение: " + ", ".join(top_cabs)) if top_cabs else f"📍 Размещение: {total} рабочих мест организации"
+
+        # 5. Закрепление за пользователями
+        users_count = sum(1 for a in asset_group if a.current_user_id or (a.notes and "AD" in a.notes))
+        user_line = f"👤 Персонал: закреплено за {users_count} сотрудниками | В эксплуатации: 100%"
+
+        lines = [ed_line]
+        if b_line:
+            lines.append(b_line)
+        lines.append(net_line)
+        lines.append(cab_line)
+        if users_count > 0:
+            lines.append(user_line)
+
+        specs_template = "\n".join(lines)
+        notes = (
+            f"Автоматически объединено из Active Directory. Пул устройств: {total} шт. "
+            f"Охватывает все подразделения и рабочие места."
+        )
+
+        return specs_template, notes
 
     @classmethod
     def sync_models_from_ad_computers(cls, db: Session) -> Dict[str, Any]:
         """
-        Формирует и пополняет справочник моделей на основе полученных данных с компьютеров AD.
-        Удаляет устаревшие неинформативные 'Офисный ПК (Windows...)' и формирует чистые модели.
+        Формирует укрупненный справочник моделей с максимальной информацией из Active Directory:
+        - Удаляет фрагментированные карточки
+        - Объединяет компьютеры в укрупненные пулы (Рабочая станция / ПК, Серверное оборудование)
+        - Генерирует детальную сводку (редакции ОС, сборки, сетевая активность, кабинеты, пользователи)
         """
-        # 1. Удаляем старые шаблоны 'Офисный ПК (Windows...' из базы
+        # Удаляем старые фрагментированные карточки
         try:
-            db.query(EquipmentModel).filter(EquipmentModel.name.ilike("Офисный ПК (%")).delete(synchronize_session=False)
+            db.query(EquipmentModel).filter(
+                or_(
+                    EquipmentModel.name.ilike("Офисный ПК (%"),
+                    EquipmentModel.name.ilike("ПК Рабочая станция (%"),
+                    EquipmentModel.name.ilike("Сервер (%"),
+                    EquipmentModel.name.ilike("Ноутбук (%")
+                )
+            ).delete(synchronize_session=False)
             db.commit()
         except Exception as del_err:
             db.rollback()
-            logger.warning(f"Error purging old generic models: {del_err}")
+            logger.warning(f"Error purging old models: {del_err}")
 
         ad_assets = db.query(Asset).filter(
             or_(
@@ -389,35 +473,32 @@ class ModelParserService:
                 current_asset_type=a.asset_type
             )
             model_name = m_info["name"]
-            
-            # Актуализируем наименование у самого актива в реестре техники
+
+            # Присваиваем укрупненное наименование в реестре техники
             if a.name != model_name:
                 a.name = model_name
-            
-            # Корректируем asset_type если это сервер
+
+            # Актуализируем asset_type
             if m_info["category"] == "server" and a.asset_type != AssetType.SERVER:
                 a.asset_type = AssetType.SERVER
             elif m_info["category"] == "laptop" and a.asset_type != AssetType.LAPTOP:
                 a.asset_type = AssetType.LAPTOP
+            elif m_info["category"] == "workstation" and a.asset_type != AssetType.WORKSTATION:
+                a.asset_type = AssetType.WORKSTATION
 
             if model_name not in model_candidates:
                 model_candidates[model_name] = []
                 model_meta[model_name] = m_info
             model_candidates[model_name].append(a)
 
-        # Сохраняем агрегированные модели в справочник
+        # Сохраняем объединенные модели с полной аналитикой из AD
         for m_name, asset_group in model_candidates.items():
             meta = model_meta[m_name]
             vendor = meta["vendor"]
             cat = meta["category"]
 
-            stats = cls.calculate_average_specs(
-                db=db,
-                category=cat,
-                vendor=vendor,
-                model_name=m_name
-            )
-            specs_str = stats.get("specs_template")
+            # Генерируем максимальную сводку по данным AD
+            specs_str, notes_str = cls.build_group_ad_analytics(asset_group, cat)
 
             existing = db.query(EquipmentModel).filter(EquipmentModel.name.ilike(m_name)).first()
             if existing:
@@ -425,7 +506,7 @@ class ModelParserService:
                 if vendor:
                     existing.vendor = vendor
                 existing.specs_template = specs_str
-                existing.notes = f"Автоматически сформировано из Active Directory (охватывает {len(asset_group)} устр.)"
+                existing.notes = notes_str
                 updated_count += 1
             else:
                 new_m = EquipmentModel(
@@ -433,7 +514,7 @@ class ModelParserService:
                     category=cat,
                     vendor=vendor,
                     specs_template=specs_str,
-                    notes=f"Автоматически сформировано из Active Directory (охватывает {len(asset_group)} устр.)"
+                    notes=notes_str
                 )
                 db.add(new_m)
                 created_count += 1
@@ -443,7 +524,7 @@ class ModelParserService:
 
         return {
             "status": "success",
-            "message": f"Сформировано {created_count} моделей, обновлено {updated_count}. Всего в справочнике: {total_models} моделей.",
+            "message": f"Сформировано {created_count} укрупненных моделей, обновлено {updated_count}. Всего в справочнике: {total_models} моделей.",
             "created": created_count,
             "updated": updated_count,
             "total_models": total_models

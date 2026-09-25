@@ -612,8 +612,8 @@
                                 <span x-show="m.vendor" x-text="'Производитель: ' + m.vendor"></span>
                                 <span class="font-medium text-indigo-600 bg-indigo-50/60 px-2 py-0.5 rounded" x-text="'В парке: ' + (m.units_count || 0) + ' устр.'"></span>
                             </div>
-                            <div class="text-xs text-slate-600 bg-slate-50 p-2.5 rounded-lg border border-slate-100 font-mono text-[11px]" x-text="m.specs_template || 'Характеристики не указаны'"></div>
-                            <div class="text-[11px] text-slate-400" x-show="m.notes" x-text="m.notes"></div>
+                            <div class="text-xs text-slate-700 bg-slate-50/80 p-3 rounded-lg border border-slate-200/80 text-[11px] whitespace-pre-line leading-relaxed font-sans" x-text="m.specs_template || 'Характеристики не указаны'"></div>
+                            <div class="text-[11px] text-slate-500 whitespace-pre-line leading-normal" x-show="m.notes" x-text="m.notes"></div>
                         </div>
                         <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
                             <button type="button" @click="openEditModel(m)" class="px-2.5 py-1 text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg">Изменить</button>

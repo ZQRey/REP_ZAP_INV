@@ -201,7 +201,8 @@ class LDAPService:
                 "lastLogonTimestamp",
                 "description",
                 "objectGUID",
-                "location"
+                "location",
+                "distinguishedName"
             ]
 
             conn.search(
@@ -210,6 +211,8 @@ class LDAPService:
                 search_scope=SUBTREE,
                 attributes=attrs
             )
+
+            from datetime import timedelta
 
             for entry in conn.entries:
                 sam = str(entry.sAMAccountName.value).strip().rstrip("$") if entry.sAMAccountName else None
@@ -224,13 +227,34 @@ class LDAPService:
                 guid = str(entry.objectGUID.value) if hasattr(entry, "objectGUID") and entry.objectGUID else None
                 loc = str(entry.location.value).strip() if hasattr(entry, "location") and entry.location else None
 
+                # Разбор OU (подразделения) из distinguishedName
+                ou_name = None
+                if hasattr(entry, "distinguishedName") and entry.distinguishedName:
+                    dn_val = str(entry.distinguishedName.value)
+                    ou_m = re.search(r'OU=([^,]+)', dn_val)
+                    if ou_m:
+                        ou_name = ou_m.group(1).strip()
+
+                # Преобразование Active Directory lastLogonTimestamp в datetime
+                last_logon_dt = None
+                if hasattr(entry, "lastLogonTimestamp") and entry.lastLogonTimestamp:
+                    raw_val = entry.lastLogonTimestamp.value
+                    if isinstance(raw_val, datetime):
+                        last_logon_dt = raw_val
+                    elif isinstance(raw_val, (int, str)) and str(raw_val).isdigit():
+                        ts_val = int(raw_val)
+                        if ts_val > 0:
+                            try:
+                                last_logon_dt = datetime(1601, 1, 1) + timedelta(microseconds=ts_val // 10)
+                            except Exception:
+                                pass
+
                 # Определяем тип: Сервер или Рабочая станция
                 asset_type = AssetType.SERVER if "server" in os_title.lower() else AssetType.WORKSTATION
 
                 # Инвентарный номер: ищем в описании (напр. "ИНВ-00123") или формируем по шаблону "AD-{hostname}"
                 inv_number = None
                 if desc and any(prefix in desc.upper() for prefix in ["ИНВ", "INV", "№", "N"]):
-                    # Если в описании указан инвентарник
                     inv_number = desc.strip()
                 else:
                     inv_number = f"AD-{sam.upper()}"
@@ -255,11 +279,24 @@ class LDAPService:
                 )
                 model_name = m_info["name"]
 
+                spec_data = {
+                    "OS": full_os,
+                    "OS_Title": os_title,
+                    "OS_Version": os_ver,
+                    "OU": ou_name,
+                    "LastLogon": last_logon_dt.strftime("%Y-%m-%d %H:%M") if last_logon_dt else None,
+                    "Source": "Active Directory"
+                }
+
+                resolved_cab = loc or (f"Отдел: {ou_name}" if ou_name else "Кабинет 101")
+
                 if asset:
                     asset.hostname = hostname
                     asset.os_name = full_os
                     asset.ad_guid = guid
                     asset.name = model_name
+                    if last_logon_dt:
+                        asset.last_logon = last_logon_dt
                     if not asset.branch_id and default_branch_id:
                         asset.branch_id = default_branch_id
                     if not asset.status:
@@ -272,8 +309,9 @@ class LDAPService:
                         asset.asset_type = AssetType.LAPTOP
                     if desc:
                         asset.notes = f"AD Description: {desc}"
-                    if loc and not asset.cabinet:
-                        asset.cabinet = loc
+                    if not asset.cabinet or asset.cabinet == "Кабинет 101":
+                        asset.cabinet = resolved_cab
+                    asset.specs = spec_data
                     updated_count += 1
                 else:
                     new_asset = Asset(
@@ -286,9 +324,10 @@ class LDAPService:
                         ad_guid=guid,
                         hostname=hostname,
                         os_name=full_os,
+                        last_logon=last_logon_dt,
                         branch_id=default_branch_id,
-                        cabinet=loc or "Кабинет 101",
-                        specs={"OS": full_os, "Source": "Active Directory"},
+                        cabinet=resolved_cab,
+                        specs=spec_data,
                         notes=f"Собрано из AD: {desc}" if desc else "Собрано из Active Directory"
                     )
                     db.add(new_asset)
@@ -340,18 +379,20 @@ class LDAPService:
             if first_b:
                 branch_id = first_b.id
 
+        now = datetime.utcnow()
+        from datetime import timedelta
         demo_pcs = [
-            ("AD-PC-BUH01", "buh-pc01", "Windows 11 Pro 23H2", "Бухгалтерия Главный бухгалтер", "Кабинет 201", "guid-buh-01"),
-            ("AD-PC-BUH02", "buh-pc02", "Windows 10 Pro 22H2", "Бухгалтерия Расчетчик", "Кабинет 201", "guid-buh-02"),
-            ("AD-PC-IT01", "it-admin", "Windows 11 Pro 23H2", "IT Отдел Рабочая станция", "Кабинет 108", "guid-it-01"),
-            ("AD-PC-IT02", "it-support", "Windows 11 Pro 23H2", "IT Отдел Техник", "Кабинет 108", "guid-it-02"),
-            ("AD-PC-DIR01", "dir-laptop", "Windows 11 Pro 23H2", "Дирекция Ноутбук", "Кабинет 301", "guid-dir-01"),
-            ("AD-SRV-DC01", "srv-dc01", "Windows Server 2022", "Контроллер домена AD", "Серверная", "guid-srv-01"),
+            ("AD-PC-BUH01", "buh-pc01", "Windows 11 Pro 23H2", "Бухгалтерия Главный бухгалтер", "Кабинет 201", "guid-buh-01", now - timedelta(days=1)),
+            ("AD-PC-BUH02", "buh-pc02", "Windows 10 Pro 22H2", "Бухгалтерия Расчетчик", "Кабинет 201", "guid-buh-02", now - timedelta(days=3)),
+            ("AD-PC-IT01", "it-admin", "Windows 11 Pro 23H2", "IT Отдел Рабочая станция", "Кабинет 108", "guid-it-01", now - timedelta(hours=5)),
+            ("AD-PC-IT02", "it-support", "Windows 11 Pro 23H2", "IT Отдел Техник", "Кабинет 108", "guid-it-02", now - timedelta(days=2)),
+            ("AD-PC-DIR01", "dir-laptop", "Windows 11 Pro 23H2", "Дирекция Ноутбук", "Кабинет 301", "guid-dir-01", now - timedelta(days=4)),
+            ("AD-SRV-DC01", "srv-dc01", "Windows Server 2022", "Контроллер домена AD", "Серверная", "guid-srv-01", now - timedelta(minutes=10)),
         ]
 
         from REPAIR.app.services.model_parser_service import ModelParserService
         added = 0
-        for inv, host, os_name, desc, cab, guid in demo_pcs:
+        for inv, host, os_name, desc, cab, guid, l_logon in demo_pcs:
             m_info = ModelParserService.determine_computer_model(
                 hostname=host,
                 os_name=os_name,
@@ -366,9 +407,10 @@ class LDAPService:
                 ad_guid=guid,
                 hostname=host,
                 os_name=os_name,
+                last_logon=l_logon,
                 branch_id=branch_id,
                 cabinet=cab,
-                specs={"OS": os_name, "Source": "Active Directory Demo"},
+                specs={"OS": os_name, "Source": "Active Directory Demo", "LastLogon": l_logon.strftime("%Y-%m-%d %H:%M")},
                 notes=f"AD: {desc}"
             )
             db.add(asset)
