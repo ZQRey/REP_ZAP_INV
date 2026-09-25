@@ -175,6 +175,7 @@ class NetworkSwitchResponse(BaseModel):
 
 class NetworkSwitchCreate(BaseModel):
     name: str
+    inventory_number: Optional[str] = None
     ip_address: str
     floor_id: int
     branch_id: Optional[int] = None
@@ -209,6 +210,24 @@ class SwitchSimulateRequest(BaseModel):
     port_number: int
     mac_address: str
     target_cabinet: Optional[str] = None
+
+
+class SwitchConnectionTestRequest(BaseModel):
+    ip_address: str
+    management_type: str = "snmp"
+    mgmt_port: Optional[int] = None
+    username: Optional[str] = None
+    password: Optional[str] = None
+    snmp_community: Optional[str] = "public"
+    extra_params: Optional[Dict[str, Any]] = None
+
+
+class SwitchConnectionTestResponse(BaseModel):
+    success: bool
+    reachable: bool
+    status: str = "ok"
+    latency_ms: Optional[float] = None
+    message: str
 
 
 # --- Трассировка кабелей (A* Pathfinding) ---

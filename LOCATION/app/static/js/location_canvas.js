@@ -114,6 +114,209 @@ document.addEventListener('alpine:init', () => {
             site: 'Default'
         },
 
+        // Добавление нового коммутатора с профилями производителей
+        showAddSwitchModal: false,
+        isTestingConnection: false,
+        connectionTestResult: null,
+        copiedCliSnippet: false,
+        selectedSwitchVendor: 'cisco',
+        newSwitchForm: {
+            name: 'SW-CORE-01',
+            inventory_number: '',
+            ip_address: '192.168.1.1',
+            model: 'Cisco Catalyst 2960X / 9200',
+            management_type: 'ssh_cli',
+            mgmt_port: 22,
+            username: 'admin',
+            password: '',
+            snmp_community: 'public',
+            total_ports: 24,
+            cabinet: 'Серверная',
+            site: 'Default',
+            coords_x: 0.25,
+            coords_y: 0.25
+        },
+        switchVendorProfiles: {
+            cisco: {
+                title: 'Cisco Catalyst / CBS',
+                icon: 'cisco',
+                badge: 'SSH CLI / SNMP',
+                model: 'Cisco Catalyst 2960X / 9200',
+                management_type: 'ssh_cli',
+                mgmt_port: 22,
+                username: 'admin',
+                total_ports: 24,
+                snmp_community: 'public',
+                description: 'Опрос таблицы MAC-адресов по протоколу SSH (show mac address-table) или по SNMP v2c.',
+                cli_guide: `enable
+configure terminal
+hostname SW-CORE
+ip domain-name company.local
+crypto key generate rsa modulus 2048
+ip ssh version 2
+username admin privilege 15 secret YourPassword
+line vty 0 15
+ transport input ssh
+ login local
+ exit
+snmp-server community public RO
+write memory`,
+                notes: 'Для SSH убедитесь, что учетная запись имеет privilege 15 или права на команду show mac address-table.'
+            },
+            mikrotik: {
+                title: 'MikroTik RouterOS / SwOS',
+                icon: 'mikrotik',
+                badge: 'SSH / Bridge Host',
+                model: 'MikroTik Cloud Router Switch CRS328 / CRS326',
+                management_type: 'mikrotik',
+                mgmt_port: 22,
+                username: 'admin',
+                total_ports: 24,
+                snmp_community: 'public',
+                description: 'Чтение таблицы хостов сетевого моста через SSH CLI (/interface bridge host print) или SNMP v2c.',
+                cli_guide: `/user add name=it_monitor group=read password=YourPassword
+/ip service enable ssh
+/ip service set ssh port=22
+/snmp set enabled=yes
+/snmp community set [ find default=yes ] addresses=0.0.0.0/0 name=public read-access=yes`,
+                notes: 'Для работы через SSH достаточно создать пользователя в группе "read". Система автоматически сопоставляет ether-интерфейсы с портами.'
+            },
+            tplink_omada: {
+                title: 'TP-Link Omada SDN',
+                icon: 'omada',
+                badge: 'Controller API (HTTPS)',
+                model: 'TP-Link Omada TL-SG3428X / SG3210',
+                management_type: 'omada',
+                mgmt_port: 8043,
+                username: 'admin',
+                total_ports: 24,
+                site: 'Default',
+                snmp_community: 'public',
+                description: 'Прямая интеграция с контроллером Omada SDN (аппаратный OC200/OC300 или программный контроллер) через REST API.',
+                cli_guide: `1. Откройте веб-интерфейс контроллера Omada: https://<IP_КОНТРОЛЛЕРА>:8043
+2. Перейдите в Settings -> Global Settings / Administrators.
+3. Добавьте учетную запись пользователя с ролью "Viewer" или "Administrator".
+4. Укажите название сайта (по умолчанию "Default").
+5. Убедитесь, что порт 8043 (HTTPS) доступен для сервера учета.`,
+                notes: 'Контроллер централизованно отслеживает переподключение техники и роуминг между коммутаторами и точками доступа Wi-Fi.'
+            },
+            tplink_jetstream: {
+                title: 'TP-Link JetStream (Standalone)',
+                icon: 'tplink',
+                badge: 'SSH CLI / SNMP',
+                model: 'TP-Link JetStream T2600G-28TS / TL-SG3428',
+                management_type: 'tplink',
+                mgmt_port: 22,
+                username: 'admin',
+                total_ports: 24,
+                snmp_community: 'public',
+                description: 'Опрос управляемых коммутаторов TP-Link в автономном режиме через SSH CLI или SNMP v2c.',
+                cli_guide: `enable
+configure
+service ssh
+snmp-server community public ro
+copy running-config startup-config`,
+                notes: 'Через веб-интерфейс: Security -> Access Security -> SSH Config (Enable SSH) и Management -> SNMP -> SNMP Config (Enable SNMP Agent).'
+            },
+            hp_aruba: {
+                title: 'HP / Aruba ProCurve',
+                icon: 'hp',
+                badge: 'SSH CLI / SNMP',
+                model: 'HP ProCurve 2530 / Aruba 2930F / 2540',
+                management_type: 'hp',
+                mgmt_port: 22,
+                username: 'manager',
+                total_ports: 24,
+                snmp_community: 'public',
+                description: 'Чтение таблицы FDB через команду "show mac-address" по SSH либо по протоколу SNMP v2c.',
+                cli_guide: `configure
+crypto key generate ssh rsa
+ip ssh
+password manager user-name manager
+snmp-server community "public" unrestricted
+write memory`,
+                notes: 'В HP ProCurve порт указывается в формате "1", "2" или "A1", "B2". Система автоматически распознает цифровой номер порта.'
+            },
+            huawei: {
+                title: 'Huawei CloudEngine / Quidway',
+                icon: 'huawei',
+                badge: 'Stelnet (SSH) / SNMP',
+                model: 'Huawei S5720 / S5735 / CloudEngine',
+                management_type: 'ssh_cli',
+                mgmt_port: 22,
+                username: 'admin',
+                total_ports: 24,
+                snmp_community: 'public',
+                description: 'Опрос таблицы MAC-адресов через Stelnet (SSH CLI) с командой "display mac-address" или SNMP v2c.',
+                cli_guide: `system-view
+rsa local-key-pair create
+stelnet server enable
+ssh user admin authentication-type password
+ssh user admin service-type stelnet
+snmp-agent
+snmp-agent sys-info version v2c
+snmp-agent community read public
+save`,
+                notes: 'Убедитесь, что для пользователя admin включена служба stelnet и задан пароль.'
+            },
+            dlink: {
+                title: 'D-Link Smart / Managed',
+                icon: 'dlink',
+                badge: 'SNMP v2c / Bridge MIB',
+                model: 'D-Link DGS-1210 / DGS-1510 / DES-3200',
+                management_type: 'snmp',
+                mgmt_port: 161,
+                username: 'admin',
+                total_ports: 24,
+                snmp_community: 'public',
+                description: 'Стандартный опрос FDB-таблицы по SNMP v2c Bridge-MIB (OID 1.3.6.1.2.1.17.4.3.1.2) либо через SSH/Telnet.',
+                cli_guide: `enable snmp
+create snmp community public view restricted read_only
+enable ssh
+save`,
+                notes: 'В веб-интерфейсе D-Link: Management -> SNMP Settings -> включить SNMP v2c и создать Community "public" с правами Read-Only.'
+            },
+            eltex: {
+                title: 'Eltex MES',
+                icon: 'eltex',
+                badge: 'SSH CLI / SNMP',
+                model: 'Eltex MES2428 / MES2324 / MES3324',
+                management_type: 'ssh_cli',
+                mgmt_port: 22,
+                username: 'admin',
+                total_ports: 24,
+                snmp_community: 'public',
+                description: 'Чтение таблицы коммутации по протоколу SSH (show mac address-table) или SNMP v2c.',
+                cli_guide: `configure
+crypto key generate rsa
+ip ssh server
+username admin privilege 15 password YourPassword
+snmp-server server
+snmp-server community public ro
+end
+write`,
+                notes: 'Отечественные коммутаторы Eltex MES поддерживают стандартный синтаксис Cisco-like CLI.'
+            },
+            generic: {
+                title: 'Универсальный SNMP L2/L3',
+                icon: 'generic',
+                badge: 'IEEE 802.1D Bridge-MIB',
+                model: 'Generic Managed L2/L3 Switch (Zyxel, Keenetic, Netgear, Ruijie)',
+                management_type: 'snmp',
+                mgmt_port: 161,
+                username: '',
+                total_ports: 24,
+                snmp_community: 'public',
+                description: 'Подходит для любых управляемых коммутаторов с поддержкой отраслевого стандарта SNMP v2c Bridge-MIB dot1dTpFdbTable.',
+                cli_guide: `1. Войдите в веб-интерфейс коммутатора.
+2. Найдите раздел "SNMP Configuration" / "Управление по SNMP".
+3. Включите SNMP Agent (версия v2c).
+4. Задайте имя сообщества (Community Name): "public" (только чтение - RO).
+5. Разрешите входящие UDP пакеты на порт 161 от IP-адреса сервера системы учета.`,
+                notes: 'Стандарт Bridge-MIB поддерживается 99% всех управляемых L2/L3 коммутаторов в мире.'
+            }
+        },
+
         // Симуляция роуминга
         showSimulateModal: false,
         simForm: {
@@ -1105,6 +1308,184 @@ document.addEventListener('alpine:init', () => {
                 this.showToast('Ошибка связи с сервером при опросе', 'error');
             } finally {
                 this.isPollingSwitch = false;
+            }
+        },
+
+        // ==========================================
+        // СОЗДАНИЕ И ИНТЕГРАЦИЯ НОВОГО КОММУТАТОРА
+        // ==========================================
+        openAddSwitchModal() {
+            this.connectionTestResult = null;
+            this.copiedCliSnippet = false;
+            this.selectSwitchVendor('cisco');
+            this.newSwitchForm.name = 'SW-CORE-01';
+            this.newSwitchForm.inventory_number = '';
+            this.newSwitchForm.ip_address = '192.168.1.1';
+            this.newSwitchForm.cabinet = 'Серверная';
+            this.newSwitchForm.coords_x = 0.25;
+            this.newSwitchForm.coords_y = 0.25;
+            this.showAddSwitchModal = true;
+        },
+
+        selectSwitchVendor(vKey) {
+            this.selectedSwitchVendor = vKey;
+            this.connectionTestResult = null;
+            const profile = this.switchVendorProfiles[vKey];
+            if (profile) {
+                this.newSwitchForm.model = profile.model;
+                this.newSwitchForm.management_type = profile.management_type;
+                this.newSwitchForm.mgmt_port = profile.mgmt_port;
+                this.newSwitchForm.username = profile.username;
+                this.newSwitchForm.snmp_community = profile.snmp_community || 'public';
+                this.newSwitchForm.total_ports = profile.total_ports || 24;
+                if (profile.site) this.newSwitchForm.site = profile.site;
+            }
+        },
+
+        copyCliSnippet(text) {
+            if (!text) return;
+            navigator.clipboard.writeText(text).then(() => {
+                this.copiedCliSnippet = true;
+                this.showToast('Инструкция настройки скопирована в буфер обмена', 'success');
+                setTimeout(() => { this.copiedCliSnippet = false; }, 2500);
+            }).catch(() => {
+                this.showToast('Не удалось скопировать текст в буфер', 'error');
+            });
+        },
+
+        async testSwitchConnection(formType = 'new') {
+            const form = formType === 'new' ? this.newSwitchForm : this.switchForm;
+            if (!form.ip_address) {
+                this.showToast('Укажите IP-адрес для проверки связи', 'warning');
+                return;
+            }
+
+            this.isTestingConnection = true;
+            this.connectionTestResult = null;
+            try {
+                const payload = {
+                    ip_address: form.ip_address,
+                    management_type: form.management_type,
+                    mgmt_port: parseInt(form.mgmt_port) || null,
+                    username: form.username || null,
+                    password: form.password || null,
+                    snmp_community: form.snmp_community || 'public',
+                    extra_params: {
+                        site: form.site || 'Default'
+                    }
+                };
+
+                const res = await fetch('/api/v1/location/switches/test-connection', {
+                    method: 'POST',
+                    headers: this.getAuthHeaders(),
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                this.connectionTestResult = data;
+                if (data.status === 'ok') {
+                    this.showToast(data.message, 'success');
+                } else if (data.status === 'warning') {
+                    this.showToast(data.message, 'warning');
+                } else {
+                    this.showToast(data.message || 'Ошибка проверки связи', 'error');
+                }
+            } catch (e) {
+                this.connectionTestResult = {
+                    success: false,
+                    reachable: false,
+                    status: 'error',
+                    message: 'Сетевая ошибка при выполнении проверки связи'
+                };
+                this.showToast('Ошибка сети при тесте подключения', 'error');
+            } finally {
+                this.isTestingConnection = false;
+            }
+        },
+
+        async saveNewSwitch() {
+            if (!this.newSwitchForm.name || !this.newSwitchForm.ip_address) {
+                this.showToast('Заполните наименование и IP-адрес коммутатора', 'warning');
+                return;
+            }
+            if (!this.selectedFloorId) {
+                this.showToast('Выберите этаж для размещения коммутатора', 'warning');
+                return;
+            }
+
+            try {
+                const payload = {
+                    name: this.newSwitchForm.name.trim(),
+                    inventory_number: this.newSwitchForm.inventory_number ? this.newSwitchForm.inventory_number.trim() : null,
+                    ip_address: this.newSwitchForm.ip_address.trim(),
+                    floor_id: this.selectedFloorId,
+                    branch_id: this.selectedBranchId,
+                    model: this.newSwitchForm.model ? this.newSwitchForm.model.trim() : 'L2 Managed Switch',
+                    management_type: this.newSwitchForm.management_type,
+                    mgmt_port: parseInt(this.newSwitchForm.mgmt_port) || 161,
+                    username: this.newSwitchForm.username ? this.newSwitchForm.username.trim() : null,
+                    password: this.newSwitchForm.password ? this.newSwitchForm.password.trim() : null,
+                    snmp_community: this.newSwitchForm.snmp_community ? this.newSwitchForm.snmp_community.trim() : 'public',
+                    total_ports: parseInt(this.newSwitchForm.total_ports) || 24,
+                    cabinet: this.newSwitchForm.cabinet ? this.newSwitchForm.cabinet.trim() : 'Серверная',
+                    coords_x: this.newSwitchForm.coords_x || 0.25,
+                    coords_y: this.newSwitchForm.coords_y || 0.25,
+                    extra_params: {
+                        site: this.newSwitchForm.site || 'Default',
+                        vendor: this.selectedSwitchVendor,
+                        allow_demo_fallback: false
+                    }
+                };
+
+                const res = await fetch('/api/v1/location/switches', {
+                    method: 'POST',
+                    headers: this.getAuthHeaders(),
+                    body: JSON.stringify(payload)
+                });
+
+                if (res.ok) {
+                    const created = await res.json();
+                    this.showToast(`Коммутатор "${created.name}" успешно добавлен! Портов: ${created.total_ports}`, 'success');
+                    this.showAddSwitchModal = false;
+                    await this.loadFloorSwitches();
+                    await this.loadFloorAssets();
+                    this.renderFloor();
+                    const newlyAdded = this.switchesList.find(s => s.id === created.id);
+                    if (newlyAdded) {
+                        this.openSwitchModal(newlyAdded);
+                    }
+                } else {
+                    const err = await res.json();
+                    this.showToast(err.detail || 'Ошибка добавления коммутатора', 'error');
+                }
+            } catch (e) {
+                this.showToast('Сетевая ошибка при добавлении коммутатора', 'error');
+            }
+        },
+
+        async deleteSwitch(sw) {
+            if (!sw) return;
+            const confirmMsg = `Вы действительно хотите удалить коммутатор "${sw.name}" (${sw.ip_address})?\n\nВсе порты и привязки к розеткам будут очищены. Это действие необратимо.`;
+            if (!confirm(confirmMsg)) return;
+
+            try {
+                const res = await fetch(`/api/v1/location/switches/${sw.id}`, {
+                    method: 'DELETE',
+                    headers: this.getAuthHeaders()
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    this.showToast(data.message || 'Коммутатор успешно удален', 'success');
+                    this.showSwitchModal = false;
+                    this.showSwitchSettingsModal = false;
+                    this.activeSwitch = null;
+                    await this.loadFloorSwitches();
+                    await this.loadFloorAssets();
+                    this.renderFloor();
+                } else {
+                    this.showToast(data.detail || data.message || 'Ошибка удаления коммутатора', 'error');
+                }
+            } catch (e) {
+                this.showToast('Ошибка сети при удалении коммутатора', 'error');
             }
         },
 

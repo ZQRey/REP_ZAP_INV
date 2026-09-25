@@ -13,7 +13,8 @@ from SHARED.models import (
     AssetCondition,
     AppUser,
     Floor,
-    Zone
+    Zone,
+    EquipmentHistoryLog
 )
 from SHARED.auth_service import get_current_user, require_role
 from LOCATION.app.schemas import (
@@ -22,7 +23,9 @@ from LOCATION.app.schemas import (
     NetworkSwitchUpdate,
     SwitchPortResponse,
     SwitchPortUpdate,
-    SwitchSimulateRequest
+    SwitchSimulateRequest,
+    SwitchConnectionTestRequest,
+    SwitchConnectionTestResponse
 )
 from LOCATION.app.services.switch_integration_service import SwitchIntegrationService, normalize_mac
 
@@ -87,56 +90,6 @@ def get_floor_switches(
         joinedload(NetworkSwitch.ports).joinedload(SwitchPort.zone)
     ).filter(Asset.floor_id == floor_id).all()
 
-    # Если коммутаторов на этаже нет, создадим демонстрационный управляемый свитч SW-CORE01 в серверной
-    if not switches:
-        floor = db.query(Floor).filter(Floor.id == floor_id).first()
-        if floor:
-            sw_asset = Asset(
-                inventory_number="SW-CORE-01",
-                name="Cisco Catalyst 2960X-24TS",
-                asset_type=AssetType.SWITCH,
-                status=AssetStatus.AT_WORKPLACE,
-                condition=AssetCondition.WORKING,
-                branch_id=floor.branch_id,
-                floor_id=floor_id,
-                cabinet="Серверная 108",
-                coords_x=0.20,
-                coords_y=0.22,
-                ip_address="192.168.1.254"
-            )
-            db.add(sw_asset)
-            db.flush()
-
-            sw = NetworkSwitch(
-                asset_id=sw_asset.id,
-                ip_address="192.168.1.254",
-                management_type="snmp",
-                mgmt_port=161,
-                snmp_community="public",
-                model="Cisco Catalyst 2960X",
-                total_ports=24,
-                extra_params={"allow_demo_fallback": True}
-            )
-            db.add(sw)
-            db.flush()
-
-            # Создаем 24 порта с привязками к типовым кабинетам
-            for p in range(1, 25):
-                cab = f"Кабинет 10{p}" if p <= 8 else None
-                sport = SwitchPort(
-                    switch_id=sw.id,
-                    port_number=p,
-                    port_speed="1Gbps",
-                    vlan_id=10,
-                    status="up" if p in (1, 2, 5, 12, 24) else "down",
-                    cabinet=cab,
-                    socket_label=f"Розетка 10{p}-1" if cab else None
-                )
-                db.add(sport)
-
-            db.commit()
-            switches = [sw]
-
     return [_format_switch_response(sw) for sw in switches]
 
 
@@ -151,8 +104,17 @@ def create_switch(
     if not floor:
         raise HTTPException(status_code=404, detail="Этаж не найден")
 
-    # Создаем Asset
-    inv_num = f"SW-{payload.ip_address.replace('.', '-')}"
+    # Проверяем уникальность инвентарного номера
+    req_inv = payload.inventory_number.strip() if payload.inventory_number and payload.inventory_number.strip() else None
+    if req_inv:
+        existing = db.query(Asset).filter(Asset.inventory_number == req_inv).first()
+        inv_num = f"{req_inv}-{int(datetime.utcnow().timestamp()) % 10000}" if existing else req_inv
+    else:
+        clean_ip = payload.ip_address.strip().replace('.', '-').replace(':', '-')
+        base_inv = f"SW-{clean_ip}"
+        existing = db.query(Asset).filter(Asset.inventory_number == base_inv).first()
+        inv_num = f"{base_inv}-{int(datetime.utcnow().timestamp()) % 10000}" if existing else base_inv
+
     asset = Asset(
         inventory_number=inv_num,
         name=payload.name.strip(),
@@ -177,7 +139,7 @@ def create_switch(
         mgmt_port=payload.mgmt_port,
         username=payload.username.strip() if payload.username else None,
         password=payload.password.strip() if payload.password else None,
-        snmp_community=payload.snmp_community.strip(),
+        snmp_community=payload.snmp_community.strip() if payload.snmp_community else "public",
         model=payload.model.strip() if payload.model else "L2 Managed Switch",
         total_ports=total_ports,
         extra_params=payload.extra_params or {"allow_demo_fallback": True}
@@ -252,6 +214,26 @@ def update_switch(
     db.commit()
     db.refresh(sw)
     return _format_switch_response(sw)
+
+
+@router.post("/switches/test-connection", response_model=SwitchConnectionTestResponse)
+def test_switch_connection(
+    payload: SwitchConnectionTestRequest,
+    current_user: AppUser = Depends(require_role(["superadmin", "admin", "technician", "operator"]))
+):
+    """
+    Проверка доступности коммутатора и корректности параметров авторизации (SSH / Omada / SNMP).
+    """
+    result = SwitchIntegrationService.test_connection(
+        ip_address=payload.ip_address,
+        management_type=payload.management_type,
+        mgmt_port=payload.mgmt_port,
+        username=payload.username,
+        password=payload.password,
+        snmp_community=payload.snmp_community,
+        extra_params=payload.extra_params
+    )
+    return SwitchConnectionTestResponse(**result)
 
 
 @router.delete("/switches/{switch_id}")

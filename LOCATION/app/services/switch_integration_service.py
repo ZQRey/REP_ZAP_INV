@@ -534,3 +534,173 @@ class SwitchIntegrationService:
             "relocated_assets": res["relocated_assets"],
             "matched_count": res["matched_count"]
         }
+
+    @classmethod
+    def test_connection(
+        cls,
+        ip_address: str,
+        management_type: str,
+        mgmt_port: Optional[int] = None,
+        username: Optional[str] = None,
+        password: Optional[str] = None,
+        snmp_community: Optional[str] = "public",
+        extra_params: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """
+        Проверка доступности коммутатора и корректности параметров интеграции.
+        """
+        import time
+        t0 = time.time()
+        host = ip_address.strip() if ip_address else ""
+        if not host:
+            return {"success": False, "reachable": False, "status": "error", "message": "IP-адрес не указан"}
+
+        mgmt_type = (management_type or "snmp").lower()
+        if not mgmt_port:
+            mgmt_port = 8043 if mgmt_type == "omada" else (161 if mgmt_type == "snmp" else 22)
+
+        # 1. SNMP проверка
+        if mgmt_type == "snmp":
+            try:
+                s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                s.settimeout(2.0)
+                comm = (snmp_community or "public").encode('latin1')
+                # Минимальный SNMP v2c GetRequest для sysDescr (1.3.6.1.2.1.1.1.0)
+                packet = (
+                    b'\x30\x29\x02\x01\x01\x04' + bytes([len(comm)]) + comm +
+                    b'\xa0\x1f\x02\x04\x01\x02\x03\x04\x02\x01\x00\x02\x01\x00\x30\x11\x30\x0f\x06\x0b\x2b\x06\x01\x02\x01\x01\x01\x00\x05\x00'
+                )
+                t_req = time.time()
+                s.sendto(packet, (host, mgmt_port))
+                try:
+                    data, _ = s.recvfrom(2048)
+                    latency_ms = round((time.time() - t_req) * 1000, 1)
+                    s.close()
+                    return {
+                        "success": True,
+                        "reachable": True,
+                        "status": "ok",
+                        "latency_ms": latency_ms,
+                        "message": f"SNMP v2c успешно ответил ({latency_ms} мс). Community '{snmp_community}' подтвержден."
+                    }
+                except socket.timeout:
+                    s.close()
+                    latency_ms = round((time.time() - t0) * 1000, 1)
+                    return {
+                        "success": True,
+                        "reachable": True,
+                        "status": "warning",
+                        "latency_ms": latency_ms,
+                        "message": f"Хост {host} отвечает, но порт SNMP {mgmt_port} не вернул ответ на Community '{snmp_community}' (проверьте параметры доступа на свитче)."
+                    }
+            except Exception as e:
+                return {
+                    "success": False,
+                    "reachable": False,
+                    "status": "error",
+                    "latency_ms": round((time.time() - t0) * 1000, 1),
+                    "message": f"Ошибка соединения с {host}:{mgmt_port} - {str(e)}"
+                }
+
+        # 2. Omada SDN Controller API проверка
+        elif mgmt_type == "omada":
+            scheme = "https" if mgmt_port in (443, 8043) else "http"
+            base_url = f"{scheme}://{host}:{mgmt_port}"
+            try:
+                with httpx.Client(verify=False, timeout=3.5) as client:
+                    t_req = time.time()
+                    resp = client.get(base_url, follow_redirects=True)
+                    latency_ms = round((time.time() - t_req) * 1000, 1)
+                    if username and password:
+                        login_url = f"{base_url}/api/v2/users/login"
+                        login_res = client.post(login_url, json={"username": username, "password": password})
+                        if login_res.status_code == 200:
+                            return {
+                                "success": True,
+                                "reachable": True,
+                                "status": "ok",
+                                "latency_ms": latency_ms,
+                                "message": f"Контроллер Omada SDN доступен ({latency_ms} мс). Авторизация успешна!"
+                            }
+                        else:
+                            return {
+                                "success": True,
+                                "reachable": True,
+                                "status": "warning",
+                                "latency_ms": latency_ms,
+                                "message": f"Контроллер Omada доступен на порту {mgmt_port}, но авторизация отклонена (код {login_res.status_code})."
+                            }
+                    return {
+                        "success": True,
+                        "reachable": True,
+                        "status": "ok",
+                        "latency_ms": latency_ms,
+                        "message": f"Порт контроллера Omada {mgmt_port} доступен ({latency_ms} мс)."
+                    }
+            except Exception as e:
+                return {
+                    "success": False,
+                    "reachable": False,
+                    "status": "error",
+                    "latency_ms": round((time.time() - t0) * 1000, 1),
+                    "message": f"Не удалось подключиться к Omada {base_url}: {str(e)}"
+                }
+
+        # 3. SSH / TCP проверка (MikroTik, HP/Aruba, Cisco, TP-Link, Huawei, Eltex)
+        else:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(2.5)
+            t_req = time.time()
+            try:
+                sock.connect((host, mgmt_port))
+                latency_ms = round((time.time() - t_req) * 1000, 1)
+                sock.close()
+            except Exception as e:
+                sock.close()
+                return {
+                    "success": False,
+                    "reachable": False,
+                    "status": "error",
+                    "latency_ms": round((time.time() - t0) * 1000, 1),
+                    "message": f"Порт {mgmt_port} на {host} недоступен: {str(e)}"
+                }
+
+            if username and password:
+                try:
+                    import paramiko
+                    ssh = paramiko.SSHClient()
+                    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                    ssh.connect(host, port=mgmt_port, username=username, password=password, timeout=4.0, look_for_keys=False, allow_agent=False)
+                    ssh.close()
+                    return {
+                        "success": True,
+                        "reachable": True,
+                        "status": "ok",
+                        "latency_ms": latency_ms,
+                        "message": f"Связь и авторизация по SSH успешны ({latency_ms} мс). Коммутатор готов к опросу."
+                    }
+                except Exception as ssh_err:
+                    err_text = str(ssh_err)
+                    if "Authentication failed" in err_text:
+                        return {
+                            "success": True,
+                            "reachable": True,
+                            "status": "warning",
+                            "latency_ms": latency_ms,
+                            "message": f"Порт SSH {mgmt_port} открыт, но логин или пароль не подошли."
+                        }
+                    return {
+                        "success": True,
+                        "reachable": True,
+                        "status": "warning",
+                        "latency_ms": latency_ms,
+                        "message": f"Порт {mgmt_port} открыт ({latency_ms} мс), ответ SSH: {err_text}"
+                    }
+
+            return {
+                "success": True,
+                "reachable": True,
+                "status": "ok",
+                "latency_ms": latency_ms,
+                "message": f"Порт {mgmt_port} успешно открыт и отвечает ({latency_ms} мс)."
+            }
