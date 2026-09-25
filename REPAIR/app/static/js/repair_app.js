@@ -21,11 +21,21 @@ document.addEventListener('alpine:init', () => {
         filterCondition: '',
         filterStatus: '',
 
-        // Загрузки
+        // Загрузки и фильтрация в приемке
         isLoading: false,
         isAdSyncing: false,
         isSearchingInv: false,
         acceptSuggestions: [],
+        showAcceptEqDropdown: false,
+        acceptEqNotFound: false,
+        acceptIsNewAsset: false,
+        eqSearchTimeout: null,
+
+        // Живой фильтр сотрудников AD в приемке
+        acceptUserSearch: '',
+        acceptUserResults: [],
+        showAcceptUserDropdown: false,
+        userSearchTimeout: null,
 
         // Модальные окна
         showAddModal: false,
@@ -281,7 +291,64 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
-        // Выбор предложенного совпадения из AD при поиске
+        // Живой ввод инвентарного номера / имени ПК
+        onAcceptInvInput() {
+            clearTimeout(this.eqSearchTimeout);
+            const q = (this.acceptForm.inventory_number || '').trim();
+            if (q.length < 2) {
+                this.acceptSuggestions = [];
+                this.showAcceptEqDropdown = false;
+                this.acceptEqNotFound = false;
+                return;
+            }
+            this.eqSearchTimeout = setTimeout(() => {
+                this.filterEquipmentForAccept(q);
+            }, 300);
+        },
+
+        // Поиск оборудования для фильтра в приемке
+        async filterEquipmentForAccept(query) {
+            const q = (query || this.acceptForm.inventory_number || '').trim();
+            if (!q || q.length < 2) return;
+            this.isSearchingInv = true;
+            try {
+                const res = await fetch(`/api/v1/repair/equipment/find-by-inv?query_str=${encodeURIComponent(q)}`, {
+                    headers: this.getAuthHeaders()
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.found) {
+                        this.acceptSuggestions = (data.suggestions && data.suggestions.length > 0)
+                            ? data.suggestions
+                            : (data.equipment ? [data.equipment] : []);
+                        this.acceptEqNotFound = false;
+                    } else {
+                        this.acceptSuggestions = [];
+                        this.acceptEqNotFound = true;
+                    }
+                    this.showAcceptEqDropdown = true;
+                }
+            } catch (e) {
+                console.error("Ошибка поиска оборудования:", e);
+            } finally {
+                this.isSearchingInv = false;
+            }
+        },
+
+        // Переход в режим добавления нового устройства
+        startNewAssetAccept() {
+            this.showAcceptEqDropdown = false;
+            this.acceptIsNewAsset = true;
+            this.acceptSuggestions = [];
+            this.acceptEqNotFound = false;
+            this.$nextTick(() => {
+                const el = document.getElementById('accept-model-name');
+                if (el) el.focus();
+            });
+            this.showToast(`Устройство «${this.acceptForm.inventory_number}» будет добавлено в базу при приемке`, 'info');
+        },
+
+        // Выбор предложенного совпадения из AD/реестра при поиске
         selectAcceptSuggestion(eq) {
             this.acceptForm.inventory_number = eq.inventory_number;
             this.acceptForm.name = eq.name;
@@ -291,20 +358,29 @@ document.addEventListener('alpine:init', () => {
             if (eq.branch_id) this.acceptForm.branch_id = eq.branch_id;
             if (eq.current_user_id) {
                 this.acceptForm.current_user_id = eq.current_user_id;
+                const uObj = this.adUsers.find(u => u.samaccountname === eq.current_user_id);
+                const uDisp = eq.current_user_name || (uObj ? uObj.display_name : eq.current_user_id);
+                this.acceptUserSearch = uDisp + (eq.cabinet ? ` [каб. ${eq.cabinet}]` : '');
                 if (!this.adUsers.some(u => u.samaccountname === eq.current_user_id)) {
                     this.adUsers.unshift({
                         samaccountname: eq.current_user_id,
-                        display_name: eq.current_user_name ? `${eq.current_user_name} (${eq.current_user_id})` : eq.current_user_id,
+                        display_name: uDisp,
                         cabinet: eq.cabinet || ''
                     });
                 }
+            } else {
+                this.acceptForm.current_user_id = '';
+                this.acceptUserSearch = '';
             }
             this.acceptSuggestions = [];
+            this.showAcceptEqDropdown = false;
+            this.acceptEqNotFound = false;
+            this.acceptIsNewAsset = false;
             const label = eq.hostname ? `${eq.hostname} (${eq.inventory_number})` : eq.inventory_number;
             this.showToast(`Выбрано оборудование: ${label}`, 'success');
         },
 
-        // Поиск по инвентарному номеру или имени ПК в форме приемки
+        // Поиск по кнопке "Найти" или Enter
         async searchInvForAccept() {
             const inv = this.acceptForm.inventory_number ? this.acceptForm.inventory_number.trim() : '';
             if (!inv) return;
@@ -316,30 +392,16 @@ document.addEventListener('alpine:init', () => {
                 if (res.ok) {
                     const data = await res.json();
                     if (data.found && data.equipment) {
-                        const eq = data.equipment;
-                        this.acceptForm.inventory_number = eq.inventory_number;
-                        this.acceptForm.name = eq.name;
-                        this.acceptForm.serial_number = eq.serial_number || '';
-                        this.acceptForm.asset_type = eq.asset_type;
-                        this.acceptForm.cabinet = eq.cabinet || '';
-                        if (eq.branch_id) this.acceptForm.branch_id = eq.branch_id;
-                        if (eq.current_user_id) {
-                            this.acceptForm.current_user_id = eq.current_user_id;
-                            if (!this.adUsers.some(u => u.samaccountname === eq.current_user_id)) {
-                                this.adUsers.unshift({
-                                    samaccountname: eq.current_user_id,
-                                    display_name: eq.current_user_name ? `${eq.current_user_name} (${eq.current_user_id})` : eq.current_user_id,
-                                    cabinet: eq.cabinet || ''
-                                });
-                            }
+                        this.selectAcceptSuggestion(data.equipment);
+                        if (data.suggestions && data.suggestions.length > 1) {
+                            this.acceptSuggestions = data.suggestions;
+                            this.showAcceptEqDropdown = true;
                         }
-
-                        this.acceptSuggestions = (data.suggestions && data.suggestions.length > 1) ? data.suggestions : [];
-                        const label = eq.hostname ? `${eq.hostname} (${eq.inventory_number})` : eq.inventory_number;
-                        this.showToast(`Найдено в AD / реестре: ${label}`, 'success');
                     } else {
                         this.acceptSuggestions = [];
-                        this.showToast(data.message || `Оборудование по запросу "${inv}" не найдено в базе. Проверьте имя ПК или заполните поля вручную.`, 'warning');
+                        this.acceptEqNotFound = true;
+                        this.showAcceptEqDropdown = true;
+                        this.showToast(`Оборудование "${inv}" не найдено в базе. Нажмите "Добавить", чтобы внести его в реестр.`, 'warning');
                     }
                 } else {
                     this.showToast('Ошибка при поиске оборудования', 'error');
@@ -350,6 +412,84 @@ document.addEventListener('alpine:init', () => {
             } finally {
                 this.isSearchingInv = false;
             }
+        },
+
+        // Живой фильтр сотрудников AD по ФИО / логину / кабинету
+        filterAdUsersForAccept() {
+            const q = (this.acceptUserSearch || '').trim().toLowerCase();
+            if (!q) {
+                this.acceptUserResults = this.adUsers.slice(0, 20);
+                return;
+            }
+            const tokens = q.split(/\s+/).filter(Boolean);
+            const matches = this.adUsers.filter(u => {
+                const name = (u.display_name || '').toLowerCase();
+                const sam = (u.samaccountname || '').toLowerCase();
+                const cab = (u.cabinet || '').toLowerCase();
+                const dep = (u.department || '').toLowerCase();
+                const fullText = `${name} ${sam} ${cab} ${dep}`;
+                return tokens.every(tok => fullText.includes(tok));
+            });
+
+            matches.sort((a, b) => {
+                const aName = (a.display_name || '').toLowerCase();
+                const bName = (b.display_name || '').toLowerCase();
+                const aStarts = aName.startsWith(q) || (a.samaccountname || '').toLowerCase().startsWith(q);
+                const bStarts = bName.startsWith(q) || (b.samaccountname || '').toLowerCase().startsWith(q);
+                if (aStarts && !bStarts) return -1;
+                if (!aStarts && bStarts) return 1;
+                return aName.localeCompare(bName);
+            });
+
+            this.acceptUserResults = matches.slice(0, 25);
+
+            // Если в кэше мало результатов и длина >= 2, фоновый серверный поиск
+            if (this.acceptUserResults.length === 0 && q.length >= 2) {
+                clearTimeout(this.userSearchTimeout);
+                this.userSearchTimeout = setTimeout(async () => {
+                    try {
+                        const res = await fetch(`/api/users?q=${encodeURIComponent(q)}&limit=25`, {
+                            headers: this.getAuthHeaders()
+                        });
+                        if (res.ok) {
+                            const data = await res.json();
+                            if (data && data.length > 0) {
+                                data.forEach(u => {
+                                    if (!this.adUsers.some(x => x.samaccountname === u.samaccountname)) {
+                                        this.adUsers.push(u);
+                                    }
+                                });
+                                this.acceptUserResults = data;
+                            }
+                        }
+                    } catch (e) {
+                        console.error("Ошибка серверного поиска сотрудников:", e);
+                    }
+                }, 250);
+            }
+        },
+
+        // Выбор сотрудника AD в форме приемки
+        selectAcceptUser(u) {
+            if (!u) {
+                this.acceptForm.current_user_id = '';
+                this.acceptUserSearch = '';
+                this.showAcceptUserDropdown = false;
+                return;
+            }
+            this.acceptForm.current_user_id = u.samaccountname;
+            this.acceptUserSearch = u.display_name + (u.cabinet ? ` [каб. ${u.cabinet}]` : '');
+            if (u.cabinet && !this.acceptForm.cabinet) {
+                this.acceptForm.cabinet = u.cabinet;
+            }
+            this.showAcceptUserDropdown = false;
+        },
+
+        // Очистка выбора сотрудника AD
+        clearAcceptUser() {
+            this.acceptForm.current_user_id = '';
+            this.acceptUserSearch = '';
+            this.showAcceptUserDropdown = false;
         },
 
         // Отправка формы приемки (Этап 1)
@@ -372,12 +512,21 @@ document.addEventListener('alpine:init', () => {
                     const err = await res.json();
                     throw new Error(err.detail || 'Ошибка сохранения');
                 }
-                this.showToast('Техника успешно принята в IT-отдел (ожидает СЦ)', 'success');
-                // Сброс формы
+                const saved = await res.json();
+                this.showToast(`Техника "${saved.name}" (${saved.inventory_number}) принята в IT-отдел`, 'success');
+                // Сброс формы приемки
                 this.acceptForm.inventory_number = '';
                 this.acceptForm.serial_number = '';
                 this.acceptForm.name = '';
                 this.acceptForm.notes = '';
+                this.acceptForm.cabinet = '';
+                this.acceptForm.current_user_id = '';
+                this.acceptUserSearch = '';
+                this.acceptIsNewAsset = false;
+                this.acceptSuggestions = [];
+                this.showAcceptEqDropdown = false;
+                this.acceptEqNotFound = false;
+
                 await this.loadEquipment();
                 this.currentTab = 'send_sc';
             } catch (e) {

@@ -286,7 +286,22 @@
                 </div>
 
                 <form @submit.prevent="submitAcceptance()" class="space-y-4 text-xs">
-                    <div>
+                    <!-- Баннер добавления нового оборудования -->
+                    <template x-if="acceptIsNewAsset">
+                        <div class="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between text-emerald-900 transition animate-fade-in">
+                            <div class="flex items-center gap-2">
+                                <span class="flex h-2.5 w-2.5 rounded-full bg-emerald-500"></span>
+                                <span class="font-semibold text-xs">
+                                    Режим добавления нового устройства: «<span x-text="acceptForm.inventory_number"></span>».
+                                </span>
+                                <span class="text-[11px] text-emerald-700">Заполните поля ниже, и оно автоматически сохранится в реестр при приемке.</span>
+                            </div>
+                            <button type="button" @click="acceptIsNewAsset = false" class="text-emerald-500 hover:text-emerald-700 text-xs font-bold px-1">&times;</button>
+                        </div>
+                    </template>
+
+                    <!-- Инвентарный номер с живым фильтром и добавлением -->
+                    <div class="relative" @click.away="showAcceptEqDropdown = false">
                         <div class="flex items-center justify-between mb-1">
                             <label class="block font-semibold text-slate-700">Инвентарный номер / Имя ПК из AD *</label>
                             <span class="text-[11px] text-slate-400">Поиск с префиксом "AD-" или без него</span>
@@ -295,8 +310,9 @@
                             <div class="relative flex-1">
                                 <input type="text" 
                                        x-model="acceptForm.inventory_number" 
+                                       @input="onAcceptInvInput()"
+                                       @focus="if (acceptForm.inventory_number && (acceptSuggestions.length || acceptEqNotFound)) showAcceptEqDropdown = true"
                                        @keydown.enter.prevent="searchInvForAccept()"
-                                       @blur="if (!acceptSuggestions.length && acceptForm.inventory_number) searchInvForAccept()" 
                                        required 
                                        placeholder="Например: buh-pc01, AD-PC-IT01 или ИНВ-00124" 
                                        class="w-full border border-slate-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand-500 text-xs">
@@ -315,35 +331,67 @@
                             </button>
                         </div>
                         <p class="text-[11px] text-slate-400 mt-1">
-                            Поддерживается поиск по имени ПК из Active Directory (с префиксом <code class="bg-slate-100 px-1 py-0.5 rounded text-slate-600">AD-</code> или без), по серийному номеру и инвентарнику.
+                            Поддерживается поиск по имени ПК из Active Directory, серийному и инвентарному номеру.
                         </p>
 
-                        <!-- Список подсказок совпадений при поиске -->
-                        <template x-if="acceptSuggestions && acceptSuggestions.length > 0">
-                            <div class="mt-2.5 p-2.5 bg-indigo-50/70 border border-indigo-100 rounded-lg">
-                                <div class="text-[11px] font-semibold text-indigo-900 mb-1.5 flex items-center justify-between">
-                                    <span>Найдено несколько похожих устройств в AD/реестре:</span>
-                                    <button type="button" @click="acceptSuggestions = []" class="text-indigo-400 hover:text-indigo-600 text-xs">&times;</button>
-                                </div>
-                                <div class="flex flex-wrap gap-1.5">
+                        <!-- Выпадающий список фильтрации оборудования / добавления -->
+                        <div x-show="showAcceptEqDropdown" 
+                             x-transition
+                             class="absolute z-30 left-0 right-0 mt-1 bg-white rounded-xl shadow-xl border border-slate-200 max-h-64 overflow-y-auto">
+                            
+                            <!-- Если найдено совпадение в реестре / AD -->
+                            <template x-if="acceptSuggestions && acceptSuggestions.length > 0">
+                                <div>
+                                    <div class="px-3 py-1.5 bg-slate-50 border-b border-slate-100 text-[11px] font-semibold text-slate-500 flex items-center justify-between">
+                                        <span>Найдено совпадений: <span x-text="acceptSuggestions.length"></span></span>
+                                        <button type="button" @click="showAcceptEqDropdown = false" class="text-slate-400 hover:text-slate-600 font-bold">&times;</button>
+                                    </div>
                                     <template x-for="sug in acceptSuggestions" :key="sug.id">
-                                        <button type="button" 
-                                                @mousedown.prevent="selectAcceptSuggestion(sug)"
-                                                class="px-2 py-1 bg-white hover:bg-indigo-100 border border-indigo-200 text-indigo-800 rounded text-[11px] font-medium flex items-center gap-1 shadow-sm transition">
-                                            <span class="font-bold" x-text="sug.hostname || sug.inventory_number"></span>
-                                            <span class="text-indigo-400" x-show="sug.hostname && sug.inventory_number !== sug.hostname" x-text="'(' + sug.inventory_number + ')'"></span>
-                                            <span class="text-[10px] text-slate-400" x-show="sug.cabinet" x-text="'каб. ' + sug.cabinet"></span>
-                                        </button>
+                                        <div @mousedown.prevent="selectAcceptSuggestion(sug)"
+                                             class="px-3 py-2.5 hover:bg-indigo-50/70 cursor-pointer border-b border-slate-100 last:border-0 transition flex items-center justify-between gap-3">
+                                            <div class="min-w-0 flex-1">
+                                                <div class="flex items-center gap-2">
+                                                    <span class="font-bold text-slate-900" x-text="sug.hostname || sug.inventory_number"></span>
+                                                    <span class="text-indigo-600 font-semibold text-[11px]" x-show="sug.hostname && sug.inventory_number !== sug.hostname" x-text="'[' + sug.inventory_number + ']'"></span>
+                                                </div>
+                                                <div class="text-[11px] text-slate-500 flex items-center gap-2 mt-0.5">
+                                                    <span x-text="sug.name || 'Оборудование'"></span>
+                                                    <span x-show="sug.cabinet" x-text="'• ' + (sug.cabinet.includes('каб') ? sug.cabinet : 'каб. ' + sug.cabinet)"></span>
+                                                    <span x-show="sug.current_user_name" x-text="'• ' + sug.current_user_name"></span>
+                                                </div>
+                                            </div>
+                                            <div class="text-right flex-shrink-0">
+                                                <span class="px-2 py-0.5 bg-indigo-100 text-indigo-800 text-[10px] font-semibold rounded" x-text="sug.asset_type || 'ПК'"></span>
+                                            </div>
+                                        </div>
                                     </template>
                                 </div>
-                            </div>
-                        </template>
+                            </template>
+
+                            <!-- Если устройство НЕ НАЙДЕНО по фильтру: предложение добавить -->
+                            <template x-if="acceptEqNotFound">
+                                <div class="p-3.5 bg-amber-50/70 text-center">
+                                    <div class="text-amber-800 font-semibold mb-1 text-xs">
+                                        Оборудование по запросу «<span x-text="acceptForm.inventory_number"></span>» не найдено в базе
+                                    </div>
+                                    <p class="text-[11px] text-amber-700/80 mb-2.5">
+                                        Вы можете добавить это устройство прямо сейчас и сразу принять в IT-отдел на ремонт.
+                                    </p>
+                                    <button type="button" 
+                                            @click="startNewAssetAccept()"
+                                            class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-sm inline-flex items-center gap-1.5 transition">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                                        <span>+ Добавить новое устройство и принять</span>
+                                    </button>
+                                </div>
+                            </template>
+                        </div>
                     </div>
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label class="block font-semibold text-slate-700 mb-1">Наименование / Модель *</label>
-                            <input type="text" x-model="acceptForm.name" required placeholder="HP ProDesk 400 G6" class="w-full border border-slate-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand-500">
+                            <input id="accept-model-name" type="text" x-model="acceptForm.name" required placeholder="HP ProDesk 400 G6" class="w-full border border-slate-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand-500">
                         </div>
                         <div>
                             <label class="block font-semibold text-slate-700 mb-1">Серийный номер (S/N)</label>
@@ -368,19 +416,62 @@
                             <label class="block font-semibold text-slate-700 mb-1">Кабинет *</label>
                             <input type="text" x-model="acceptForm.cabinet" required placeholder="Кабинет 108" class="w-full border border-slate-200 rounded-lg px-3 py-2">
                         </div>
-                        <div>
+                        
+                        <!-- Фильтр сотрудников AD -->
+                        <div class="relative" @click.away="showAcceptUserDropdown = false">
                             <div class="flex items-center justify-between mb-1">
                                 <label class="block font-semibold text-slate-700">Сотрудник (AD)</label>
-                                <template x-if="!adUsers.length">
-                                    <button type="button" @click="loadADUsers()" class="text-[10px] text-brand-600 hover:underline">Загрузить</button>
-                                </template>
+                                <span class="text-[10px] text-slate-400" x-show="acceptUserSearch">Фильтр по ФИО / логину</span>
                             </div>
-                            <select x-model="acceptForm.current_user_id" class="w-full border border-slate-200 rounded-lg px-3 py-2">
-                                <option value="">Не назначен</option>
-                                <template x-for="u in adUsers" :key="u.samaccountname">
-                                    <option :value="u.samaccountname" x-text="(u.display_name || u.samaccountname) + (u.cabinet ? ' [каб. ' + u.cabinet + ']' : '')"></option>
+                            <div class="relative">
+                                <input type="text" 
+                                       x-model="acceptUserSearch" 
+                                       @focus="showAcceptUserDropdown = true; filterAdUsersForAccept()" 
+                                       @input="showAcceptUserDropdown = true; filterAdUsersForAccept()" 
+                                       @keydown.escape="showAcceptUserDropdown = false" 
+                                       placeholder="Введите фамилию или логин..." 
+                                       class="w-full border border-slate-200 rounded-lg pl-3 pr-7 py-2 focus:ring-2 focus:ring-brand-500 text-xs">
+                                
+                                <button type="button" 
+                                        x-show="acceptForm.current_user_id || acceptUserSearch" 
+                                        @click="clearAcceptUser()" 
+                                        title="Сбросить сотрудника"
+                                        class="absolute right-2 top-2 text-slate-400 hover:text-slate-600 font-bold text-sm leading-none">
+                                    &times;
+                                </button>
+                            </div>
+
+                            <!-- Выпадающий список подходящих сотрудников -->
+                            <div x-show="showAcceptUserDropdown" 
+                                 x-transition
+                                 class="absolute z-30 left-0 right-0 mt-1 bg-white rounded-xl shadow-xl border border-slate-200 max-h-60 overflow-y-auto">
+                                
+                                <div @mousedown.prevent="selectAcceptUser(null)" 
+                                     class="px-3 py-2 hover:bg-slate-50 cursor-pointer border-b border-slate-100 flex items-center justify-between text-slate-500 hover:text-slate-800 transition">
+                                    <span class="italic font-medium">Не назначен</span>
+                                    <span class="text-[10px] text-slate-400">Сбросить</span>
+                                </div>
+
+                                <template x-for="u in acceptUserResults" :key="u.samaccountname">
+                                    <div @mousedown.prevent="selectAcceptUser(u)" 
+                                         class="px-3 py-2 hover:bg-indigo-50/70 cursor-pointer border-b border-slate-100 last:border-0 transition flex items-center justify-between gap-2">
+                                        <div class="min-w-0 flex-1">
+                                            <div class="font-semibold text-slate-900 truncate" x-text="u.display_name"></div>
+                                            <div class="text-[11px] text-slate-500 flex items-center gap-1.5 truncate">
+                                                <span class="font-mono text-indigo-600 font-medium" x-text="'@' + u.samaccountname"></span>
+                                                <span x-show="u.department" x-text="'• ' + u.department"></span>
+                                            </div>
+                                        </div>
+                                        <div class="text-right flex-shrink-0">
+                                            <span x-show="u.cabinet" class="inline-block px-1.5 py-0.5 bg-slate-100 text-slate-700 text-[10px] font-semibold rounded" x-text="'каб. ' + u.cabinet"></span>
+                                        </div>
+                                    </div>
                                 </template>
-                            </select>
+
+                                <div x-show="acceptUserResults.length === 0" class="p-3 text-center text-slate-400 text-xs">
+                                    Сотрудники не найдены
+                                </div>
+                            </div>
                         </div>
                     </div>
 
