@@ -2001,6 +2001,27 @@ function cartridgeApp() {
             });
         },
 
+        // Удаление картриджа из реестра
+        async deleteCartridge(cartridgeId) {
+            if (!confirm('Вы действительно хотите удалить этот картридж из системы? Это действие необратимо — будут удалены все записи истории.')) return;
+            try {
+                const res = await fetch(`/api/cartridges/${cartridgeId}`, {
+                    method: 'DELETE',
+                    headers: this.authHeaders()
+                });
+                if (res.ok) {
+                    this.showToast('Картридж успешно удален из системы', 'success');
+                    await this.loadRegistry();
+                    await this.refreshStats();
+                } else {
+                    const err = await res.json().catch(() => ({}));
+                    this.showToast(err.detail || 'Ошибка удаления картриджа', 'error');
+                }
+            } catch (e) {
+                this.showToast('Ошибка соединения при удалении', 'error');
+            }
+        },
+
         // Хелперы форматирования статусов
         formatStatus(status) {
             switch (status) {
