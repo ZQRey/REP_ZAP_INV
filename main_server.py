@@ -52,7 +52,11 @@ app = FastAPI(
 # CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+        os.getenv("CORS_ORIGIN", "http://localhost:8000"),
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -77,7 +81,7 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
 
     user = None
     # 1. Локальная проверка
-    if payload.auth_type == "local" or True:
+    if payload.auth_type == "local":
         user = AuthService.authenticate_local_user(db, username, password)
 
     # 2. Если не найден локально или указан AD, проверяем домен
@@ -100,7 +104,7 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
                             username=username,
                             full_name=username,
                             auth_type="ad",
-                            role="operator",
+                            role="viewer",  # Минимальные права; повышение — через панель администратора
                             is_active=True
                         )
                         db.add(user)

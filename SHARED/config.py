@@ -1,5 +1,8 @@
 import os
+import logging
 from pathlib import Path
+
+_config_logger = logging.getLogger("SHARED.config")
 
 # Корень проекта (Cartridge_Refilling)
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -15,7 +18,15 @@ DEFAULT_SQLITE_PATH = BD_DIR / "app_unified.db"
 DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{DEFAULT_SQLITE_PATH.as_posix()}")
 
 # Секретный ключ JWT и настройки безопасности
-SECRET_KEY = os.getenv("SECRET_KEY", "unified-it-enterprise-secret-key-2026")
+_DEFAULT_SECRET = "unified-it-enterprise-secret-key-2026"
+SECRET_KEY = os.getenv("SECRET_KEY", _DEFAULT_SECRET)
+if SECRET_KEY == _DEFAULT_SECRET:
+    _config_logger.warning(
+        "[SECURITY] SECRET_KEY не задан через переменную окружения! "
+        "Используется ключ по умолчанию — НЕБЕЗОПАСНО для продакшена. "
+        "Задайте переменную окружения SECRET_KEY (минимум 32 символа)."
+    )
+
 JWT_ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_HOURS = int(os.getenv("ACCESS_TOKEN_EXPIRE_HOURS", "24"))
 DEBUG = os.getenv("DEBUG", "False").lower() in ("true", "1", "yes")
