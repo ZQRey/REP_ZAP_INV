@@ -1,4 +1,24 @@
 services:
+  # Nginx Reverse Proxy (HTTP: 80, HTTPS: 443)
+  nginx-proxy:
+    image: nginx:alpine
+    container_name: it_nginx_proxy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./nginx_logs:/var/log/nginx
+    depends_on:
+      - unified-server
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost/nginx-health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
   # Единый веб-сервер и портал (Portal, Cartridge, Repair, Location API)
   unified-server:
     build:
@@ -7,7 +27,7 @@ services:
     container_name: it_unified_portal
     restart: unless-stopped
     ports:
-      - "8080:8000"
+      - "8080:8000"  # Прямой порт приложения для отладки
     volumes:
       - ./BD:/app/BD
       - ./CARTRIDGE:/app/CARTRIDGE
