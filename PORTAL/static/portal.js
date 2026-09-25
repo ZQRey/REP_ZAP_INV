@@ -28,6 +28,26 @@ document.addEventListener('alpine:init', () => {
         showBindPwd: false,
         ldapTestResult: { success: false, message: '' },
 
+        // Управление пользователями
+        showUsersModal: false,
+        usersList: [],
+        isLoadingUsers: false,
+        showUserEditModal: false,
+        isEditingUser: false,
+        userForm: { id: null, username: '', full_name: '', password: '', auth_type: 'local', role: 'operator', branch_id: '', is_active: true },
+
+        // Управление филиалами и этажами
+        showBranchesModal: false,
+        managingBranchId: null,
+        branchFloors: [],
+        isLoadingFloors: false,
+        showBranchEditModal: false,
+        isEditingBranch: false,
+        branchForm: { id: null, name: '', code: '', address: '', it_office: '', notes: '' },
+        showFloorEditModal: false,
+        isEditingFloor: false,
+        floorForm: { id: null, branch_id: null, floor_number: 1, name: '', scale_pixels_per_meter: 20.0 },
+
         toast: { show: false, message: '', type: 'info' },
 
         showToast(msg, type = 'info') {
@@ -262,6 +282,369 @@ document.addEventListener('alpine:init', () => {
                 this.showToast('Ошибка обращения к Active Directory', 'error');
             } finally {
                 this.isSyncingAD = false;
+            }
+        },
+
+        // ==========================================
+        // УПРАВЛЕНИЕ ПОЛЬЗОВАТЕЛЯМИ
+        // ==========================================
+        async openUsersModal() {
+            this.showUsersModal = true;
+            await this.loadUsers();
+        },
+
+        async loadUsers() {
+            this.isLoadingUsers = true;
+            try {
+                const res = await fetch('/api/app-users', { headers: this.getAuthHeaders() });
+                if (res.ok) {
+                    this.usersList = await res.json();
+                } else {
+                    this.showToast('Не удалось загрузить список пользователей', 'error');
+                }
+            } catch (e) {
+                this.showToast('Ошибка при загрузке пользователей', 'error');
+            } finally {
+                this.isLoadingUsers = false;
+            }
+        },
+
+        openCreateUser() {
+            this.isEditingUser = false;
+            this.userForm = {
+                id: null,
+                username: '',
+                full_name: '',
+                password: '',
+                auth_type: 'local',
+                role: 'operator',
+                branch_id: this.branches.length ? this.branches[0].id : '',
+                is_active: true
+            };
+            this.showUserEditModal = true;
+        },
+
+        openEditUser(u) {
+            this.isEditingUser = true;
+            this.userForm = {
+                id: u.id,
+                username: u.username,
+                full_name: u.full_name,
+                password: '',
+                auth_type: u.auth_type,
+                role: u.role,
+                branch_id: u.branch_id || '',
+                is_active: u.is_active
+            };
+            this.showUserEditModal = true;
+        },
+
+        async saveUser() {
+            try {
+                const payload = {
+                    username: this.userForm.username.trim(),
+                    full_name: this.userForm.full_name.trim(),
+                    role: this.userForm.role,
+                    auth_type: this.userForm.auth_type,
+                    branch_id: this.userForm.branch_id ? parseInt(this.userForm.branch_id) : null,
+                    is_active: this.userForm.is_active
+                };
+
+                let res;
+                if (this.isEditingUser) {
+                    if (this.userForm.password) {
+                        payload.password = this.userForm.password;
+                    }
+                    res = await fetch(`/api/app-users/${this.userForm.id}`, {
+                        method: 'PUT',
+                        headers: this.getAuthHeaders(),
+                        body: JSON.stringify(payload)
+                    });
+                } else {
+                    payload.password = this.userForm.password;
+                    res = await fetch('/api/app-users', {
+                        method: 'POST',
+                        headers: this.getAuthHeaders(),
+                        body: JSON.stringify(payload)
+                    });
+                }
+
+                if (res.ok) {
+                    this.showToast(this.isEditingUser ? 'Пользователь обновлен' : 'Пользователь успешно создан', 'success');
+                    this.showUserEditModal = false;
+                    await this.loadUsers();
+                } else {
+                    const err = await res.json();
+                    this.showToast(err.detail || 'Ошибка сохранения пользователя', 'error');
+                }
+            } catch (e) {
+                this.showToast('Ошибка сохранения: ' + e.message, 'error');
+            }
+        },
+
+        async toggleUserActive(u) {
+            try {
+                const res = await fetch(`/api/app-users/${u.id}/toggle-active`, {
+                    method: 'POST',
+                    headers: this.getAuthHeaders()
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    this.showToast(data.message, 'success');
+                    await this.loadUsers();
+                } else {
+                    this.showToast(data.detail || 'Ошибка изменения статуса', 'error');
+                }
+            } catch (e) {
+                this.showToast('Сетевая ошибка', 'error');
+            }
+        },
+
+        async deleteUser(u) {
+            if (!confirm(`Вы действительно хотите удалить пользователя "${u.username}" (${u.full_name})?`)) {
+                return;
+            }
+            try {
+                const res = await fetch(`/api/app-users/${u.id}`, {
+                    method: 'DELETE',
+                    headers: this.getAuthHeaders()
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    this.showToast(data.message || 'Пользователь удален', 'success');
+                    await this.loadUsers();
+                } else {
+                    this.showToast(data.detail || 'Не удалось удалить пользователя', 'error');
+                }
+            } catch (e) {
+                this.showToast('Ошибка удаления', 'error');
+            }
+        },
+
+        // ==========================================
+        // УПРАВЛЕНИЕ ФИЛИАЛАМИ И ЭТАЖАМИ
+        // ==========================================
+        async openBranchesModal() {
+            this.showBranchesModal = true;
+            await this.loadBranches();
+            if (this.branches.length && !this.managingBranchId) {
+                await this.selectBranch(this.branches[0].id);
+            } else if (this.managingBranchId) {
+                await this.selectBranch(this.managingBranchId);
+            }
+        },
+
+        async selectBranch(branchId) {
+            this.managingBranchId = branchId;
+            this.isLoadingFloors = true;
+            try {
+                const res = await fetch(`/api/v1/location/branches/${branchId}/floors`, {
+                    headers: this.getAuthHeaders()
+                });
+                if (res.ok) {
+                    this.branchFloors = await res.json();
+                } else {
+                    this.branchFloors = [];
+                }
+            } catch (e) {
+                console.error(e);
+                this.branchFloors = [];
+            } finally {
+                this.isLoadingFloors = false;
+            }
+        },
+
+        openCreateBranch() {
+            this.isEditingBranch = false;
+            this.branchForm = { id: null, name: '', code: '', address: '', it_office: '', notes: '' };
+            this.showBranchEditModal = true;
+        },
+
+        openEditBranch(b) {
+            this.isEditingBranch = true;
+            this.branchForm = {
+                id: b.id,
+                name: b.name,
+                code: b.code || '',
+                address: b.address || '',
+                it_office: b.it_office || '',
+                notes: b.notes || ''
+            };
+            this.showBranchEditModal = true;
+        },
+
+        async saveBranch() {
+            try {
+                const payload = {
+                    name: this.branchForm.name.trim(),
+                    code: this.branchForm.code.trim() || null,
+                    address: this.branchForm.address.trim() || null,
+                    it_office: this.branchForm.it_office.trim() || null,
+                    notes: this.branchForm.notes.trim() || null
+                };
+
+                let res;
+                if (this.isEditingBranch) {
+                    res = await fetch(`/api/branches/${this.branchForm.id}`, {
+                        method: 'PUT',
+                        headers: this.getAuthHeaders(),
+                        body: JSON.stringify(payload)
+                    });
+                } else {
+                    res = await fetch('/api/branches', {
+                        method: 'POST',
+                        headers: this.getAuthHeaders(),
+                        body: JSON.stringify(payload)
+                    });
+                }
+
+                if (res.ok) {
+                    this.showToast(this.isEditingBranch ? 'Филиал обновлен' : 'Филиал создан', 'success');
+                    this.showBranchEditModal = false;
+                    await this.loadBranches();
+                } else {
+                    const err = await res.json();
+                    this.showToast(err.detail || 'Ошибка сохранения филиала', 'error');
+                }
+            } catch (e) {
+                this.showToast('Ошибка сохранения филиала', 'error');
+            }
+        },
+
+        async deleteBranch(b) {
+            if (!confirm(`Удалить филиал "${b.name}"?`)) return;
+            try {
+                const res = await fetch(`/api/branches/${b.id}`, {
+                    method: 'DELETE',
+                    headers: this.getAuthHeaders()
+                });
+                if (res.ok) {
+                    this.showToast('Филиал удален', 'success');
+                    await this.loadBranches();
+                    if (this.branches.length) {
+                        await this.selectBranch(this.branches[0].id);
+                    } else {
+                        this.branchFloors = [];
+                    }
+                } else {
+                    const err = await res.json();
+                    this.showToast(err.detail || 'Не удалось удалить филиал', 'error');
+                }
+            } catch (e) {
+                this.showToast('Ошибка удаления', 'error');
+            }
+        },
+
+        openCreateFloor() {
+            if (!this.managingBranchId) {
+                this.showToast('Сначала выберите филиал', 'info');
+                return;
+            }
+            this.isEditingFloor = false;
+            this.floorForm = {
+                id: null,
+                branch_id: this.managingBranchId,
+                floor_number: this.branchFloors.length + 1,
+                name: `${this.branchFloors.length + 1}-й Этаж`,
+                scale_pixels_per_meter: 20.0
+            };
+            this.showFloorEditModal = true;
+        },
+
+        openEditFloor(f) {
+            this.isEditingFloor = true;
+            this.floorForm = {
+                id: f.id,
+                branch_id: f.branch_id,
+                floor_number: f.floor_number,
+                name: f.name,
+                scale_pixels_per_meter: f.scale_pixels_per_meter || 20.0
+            };
+            this.showFloorEditModal = true;
+        },
+
+        async saveFloor() {
+            try {
+                let res;
+                if (this.isEditingFloor) {
+                    res = await fetch(`/api/v1/location/floors/${this.floorForm.id}`, {
+                        method: 'PUT',
+                        headers: this.getAuthHeaders(),
+                        body: JSON.stringify({
+                            name: this.floorForm.name.trim(),
+                            floor_number: parseInt(this.floorForm.floor_number),
+                            scale_pixels_per_meter: parseFloat(this.floorForm.scale_pixels_per_meter)
+                        })
+                    });
+                } else {
+                    res = await fetch('/api/v1/location/floors', {
+                        method: 'POST',
+                        headers: this.getAuthHeaders(),
+                        body: JSON.stringify({
+                            branch_id: this.managingBranchId,
+                            floor_number: parseInt(this.floorForm.floor_number),
+                            name: this.floorForm.name.trim(),
+                            scale_pixels_per_meter: parseFloat(this.floorForm.scale_pixels_per_meter)
+                        })
+                    });
+                }
+
+                if (res.ok) {
+                    this.showToast(this.isEditingFloor ? 'Этаж обновлен' : 'Этаж успешно добавлен', 'success');
+                    this.showFloorEditModal = false;
+                    await this.selectBranch(this.managingBranchId);
+                } else {
+                    const err = await res.json();
+                    this.showToast(err.detail || 'Ошибка сохранения этажа', 'error');
+                }
+            } catch (e) {
+                this.showToast('Ошибка сохранения этажа', 'error');
+            }
+        },
+
+        async deleteFloor(f) {
+            if (!confirm(`Удалить этаж "${f.name}" и все связанные зоны?`)) return;
+            try {
+                const res = await fetch(`/api/v1/location/floors/${f.id}`, {
+                    method: 'DELETE',
+                    headers: this.getAuthHeaders()
+                });
+                if (res.ok) {
+                    this.showToast('Этаж удален', 'success');
+                    await this.selectBranch(this.managingBranchId);
+                } else {
+                    const err = await res.json();
+                    this.showToast(err.detail || 'Не удалось удалить этаж', 'error');
+                }
+            } catch (e) {
+                this.showToast('Ошибка удаления этажа', 'error');
+            }
+        },
+
+        async uploadFloorMapFile(floorId, event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const res = await fetch(`/api/v1/location/floors/${floorId}/upload-map`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${this.token}` },
+                    body: formData
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    this.showToast('План этажа успешно загружен!', 'success');
+                    await this.selectBranch(this.managingBranchId);
+                } else {
+                    this.showToast(data.detail || 'Ошибка загрузки карты', 'error');
+                }
+            } catch (e) {
+                this.showToast('Ошибка при загрузке карты', 'error');
+            } finally {
+                event.target.value = '';
             }
         }
     }));

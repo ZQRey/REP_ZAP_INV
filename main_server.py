@@ -205,10 +205,36 @@ app.include_router(cartridge_reports_router.router)
 app.include_router(cartridge_models_router.router)
 app.include_router(notifications_router.router)
 
+# Авторизация картриджей на корневом уровне для SSO совместимости
+from CARTRIDGE.app.routers.auth_router import router as cartridge_auth_router
+app.include_router(cartridge_auth_router)
+
 
 # ==========================================
-# МОНТИРОВАНИЕ ПОДСИСТЕМ (SUB-APPS)
+# МОНТИРОВАНИЕ ПОДСИСТЕМ (SUB-APPS) И СТАТИКИ
 # ==========================================
+
+CARTRIDGE_STATIC_DIR = BASE_DIR / "CARTRIDGE" / "app" / "static"
+REPAIR_STATIC_DIR = BASE_DIR / "REPAIR" / "app" / "static"
+LOCATION_STATIC_DIR = BASE_DIR / "LOCATION" / "app" / "static"
+
+# Статика модулей
+app.mount("/cartridges/static", StaticFiles(directory=str(CARTRIDGE_STATIC_DIR)), name="cartridges_static")
+app.mount("/repair/static", StaticFiles(directory=str(REPAIR_STATIC_DIR)), name="repair_static")
+app.mount("/location/static", StaticFiles(directory=str(LOCATION_STATIC_DIR)), name="location_static")
+
+# Прямые маршруты для обратной совместимости со старыми абсолютными путями браузера
+@app.get("/static/js/app.js")
+def get_cartridge_app_js():
+    return FileResponse(str(CARTRIDGE_STATIC_DIR / "js" / "app.js"))
+
+@app.get("/static/js/qr-scanner.js")
+def get_cartridge_qr_scanner_js():
+    return FileResponse(str(CARTRIDGE_STATIC_DIR / "js" / "qr-scanner.js"))
+
+@app.get("/static/css/custom.css")
+def get_cartridge_custom_css():
+    return FileResponse(str(CARTRIDGE_STATIC_DIR / "css" / "custom.css"))
 
 # 1. Модуль картриджей: доступен по /cartridges
 app.mount("/cartridges", cartridge_app)

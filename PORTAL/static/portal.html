@@ -71,11 +71,21 @@
                     </select>
                 </div>
 
-                <!-- Кнопка системных настроек (для администраторов) -->
+                <!-- Кнопки управления (для администраторов) -->
                 <template x-if="currentUser && (currentUser.role === 'superadmin' || currentUser.role === 'admin')">
-                    <button @click="openSettings()" class="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition" title="Системные настройки и AD">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                    </button>
+                    <div class="flex items-center gap-1">
+                        <button @click="openUsersModal()" class="px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:text-brand-600 hover:bg-slate-100 rounded-lg flex items-center gap-1.5 transition" title="Управление пользователями и правами">
+                            <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                            <span class="hidden sm:inline">Пользователи</span>
+                        </button>
+                        <button @click="openBranchesModal()" class="px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:text-brand-600 hover:bg-slate-100 rounded-lg flex items-center gap-1.5 transition" title="Управление филиалами и этажами">
+                            <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                            <span class="hidden sm:inline">Филиалы и этажи</span>
+                        </button>
+                        <button @click="openSettings()" class="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition" title="Системные настройки и AD">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                        </button>
+                    </div>
                 </template>
 
                 <!-- Профиль пользователя -->
@@ -395,6 +405,333 @@
                 <button type="button" @click="showSettingsModal = false" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg">Отмена</button>
                 <button type="button" @click="saveSettings()" class="px-4 py-2 text-xs font-bold text-white bg-brand-600 hover:bg-brand-700 rounded-lg shadow-sm">Сохранить настройки</button>
             </div>
+        </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- МОДАЛЬНОЕ ОКНО: УПРАВЛЕНИЕ ПОЛЬЗОВАТЕЛЯМИ      -->
+    <!-- ============================================== -->
+    <div x-show="showUsersModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" style="display: none;">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full p-6 space-y-4 max-h-[90vh] flex flex-col" @click.outside="showUsersModal = false">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div>
+                    <h3 class="text-base font-bold text-slate-900">Управление пользователями</h3>
+                    <p class="text-xs text-slate-500">Учетные записи, права доступа, филиалы и блокировка</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button type="button" @click="openCreateUser()" class="px-3 py-1.5 bg-brand-600 hover:bg-brand-700 text-white rounded-lg text-xs font-bold shadow-sm transition flex items-center gap-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                        <span>Добавить пользователя</span>
+                    </button>
+                    <button type="button" @click="showUsersModal = false" class="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg">&times;</button>
+                </div>
+            </div>
+
+            <!-- Таблица пользователей -->
+            <div class="overflow-y-auto flex-1 border border-slate-200 rounded-xl">
+                <table class="w-full text-left text-xs">
+                    <thead class="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200 sticky top-0">
+                        <tr>
+                            <th class="px-4 py-2.5">Логин</th>
+                            <th class="px-4 py-2.5">ФИО</th>
+                            <th class="px-4 py-2.5">Роль</th>
+                            <th class="px-4 py-2.5">Филиал</th>
+                            <th class="px-4 py-2.5">Вход</th>
+                            <th class="px-4 py-2.5">Статус</th>
+                            <th class="px-4 py-2.5 text-right">Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        <template x-for="u in usersList" :key="u.id">
+                            <tr class="hover:bg-slate-50/80 transition" :class="!u.is_active ? 'opacity-60 bg-slate-50' : ''">
+                                <td class="px-4 py-3 font-bold text-slate-900" x-text="u.username"></td>
+                                <td class="px-4 py-3 text-slate-700" x-text="u.full_name"></td>
+                                <td class="px-4 py-3">
+                                    <span class="px-2 py-0.5 rounded text-[11px] font-bold"
+                                          :class="{
+                                              'bg-purple-100 text-purple-800': u.role === 'superadmin',
+                                              'bg-blue-100 text-blue-800': u.role === 'admin',
+                                              'bg-emerald-100 text-emerald-800': u.role === 'operator',
+                                              'bg-slate-100 text-slate-700': u.role === 'user'
+                                          }"
+                                          x-text="u.role === 'superadmin' ? 'Суперадмин' : (u.role === 'admin' ? 'Администратор' : (u.role === 'operator' ? 'Оператор' : 'Пользователь'))">
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3 text-slate-600" x-text="u.branch ? u.branch.name : 'Все филиалы'"></td>
+                                <td class="px-4 py-3">
+                                    <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase"
+                                          :class="u.auth_type === 'ad' ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'bg-slate-100 text-slate-600'"
+                                          x-text="u.auth_type">
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold"
+                                          :class="u.is_active ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'">
+                                        <span class="w-1.5 h-1.5 rounded-full" :class="u.is_active ? 'bg-emerald-500' : 'bg-rose-500'"></span>
+                                        <span x-text="u.is_active ? 'Активен' : 'Заблокирован'"></span>
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3 text-right">
+                                    <div class="flex items-center justify-end gap-1.5">
+                                        <button @click="openEditUser(u)" class="px-2 py-1 text-slate-600 hover:text-brand-600 hover:bg-slate-100 rounded text-xs font-semibold">
+                                            Изменить
+                                        </button>
+                                        <template x-if="u.username !== 'admin'">
+                                            <button @click="toggleUserActive(u)" 
+                                                    class="px-2 py-1 rounded text-xs font-semibold"
+                                                    :class="u.is_active ? 'text-amber-700 hover:bg-amber-50' : 'text-emerald-700 hover:bg-emerald-50'"
+                                                    x-text="u.is_active ? 'Заблокировать' : 'Разблокировать'">
+                                            </button>
+                                        </template>
+                                        <template x-if="u.username !== 'admin' && (!currentUser || u.id !== currentUser.id)">
+                                            <button @click="deleteUser(u)" class="px-2 py-1 text-rose-600 hover:bg-rose-50 rounded text-xs font-semibold">
+                                                Удалить
+                                            </button>
+                                        </template>
+                                    </div>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="flex justify-end pt-2 border-t border-slate-100">
+                <button type="button" @click="showUsersModal = false" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg">Закрыть</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ПОДМОДАЛКА: СОЗДАНИЕ / РЕДАКТИРОВАНИЕ ПОЛЬЗОВАТЕЛЯ -->
+    <div x-show="showUserEditModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm" style="display: none;">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4" @click.outside="showUserEditModal = false">
+            <h3 class="text-base font-bold text-slate-900 border-b border-slate-100 pb-2" x-text="isEditingUser ? 'Редактирование пользователя' : 'Новый пользователь'"></h3>
+            <form @submit.prevent="saveUser()" class="space-y-3 text-xs">
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Имя пользователя (Логин) *</label>
+                    <input type="text" x-model="userForm.username" :disabled="isEditingUser" required placeholder="ivanov или domain\ivanov" class="w-full border border-slate-200 rounded-lg px-3 py-2 disabled:bg-slate-100">
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">ФИО сотрудника *</label>
+                    <input type="text" x-model="userForm.full_name" required placeholder="Иванов Иван Иванович" class="w-full border border-slate-200 rounded-lg px-3 py-2">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Тип авторизации</label>
+                        <select x-model="userForm.auth_type" :disabled="isEditingUser" class="w-full border border-slate-200 rounded-lg px-3 py-2 disabled:bg-slate-100">
+                            <option value="local">Локальный</option>
+                            <option value="ad">Active Directory</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Роль в системе</label>
+                        <select x-model="userForm.role" class="w-full border border-slate-200 rounded-lg px-3 py-2">
+                            <option value="user">Пользователь</option>
+                            <option value="operator">Оператор</option>
+                            <option value="admin">Администратор</option>
+                            <option value="superadmin">Суперадминистратор</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Привязка к филиалу</label>
+                    <select x-model="userForm.branch_id" class="w-full border border-slate-200 rounded-lg px-3 py-2">
+                        <option value="">Все филиалы (Без ограничений)</option>
+                        <template x-for="b in branches" :key="b.id">
+                            <option :value="b.id" x-text="b.name"></option>
+                        </template>
+                    </select>
+                </div>
+                <div x-show="userForm.auth_type === 'local'">
+                    <label class="block font-semibold text-slate-700 mb-1">
+                        <span x-text="isEditingUser ? 'Новый пароль (оставьте пустым, чтобы не менять)' : 'Пароль учетной записи *'"></span>
+                    </label>
+                    <input type="password" x-model="userForm.password" :required="!isEditingUser && userForm.auth_type === 'local'" placeholder="••••••••" class="w-full border border-slate-200 rounded-lg px-3 py-2">
+                </div>
+                <div class="pt-2">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" x-model="userForm.is_active" class="rounded text-brand-600 focus:ring-brand-500">
+                        <span class="font-semibold text-slate-700">Учетная запись активна (разрешить вход)</span>
+                    </label>
+                </div>
+                <div class="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                    <button type="button" @click="showUserEditModal = false" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg">Отмена</button>
+                    <button type="submit" class="px-4 py-2 font-bold text-white bg-brand-600 hover:bg-brand-700 rounded-lg shadow-sm">Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- МОДАЛЬНОЕ ОКНО: ФИЛИАЛЫ И ЭТАЖИ                -->
+    <!-- ============================================== -->
+    <div x-show="showBranchesModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" style="display: none;">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-5xl w-full p-6 space-y-4 max-h-[90vh] flex flex-col" @click.outside="showBranchesModal = false">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div>
+                    <h3 class="text-base font-bold text-slate-900">Филиалы и поэтажные планы</h3>
+                    <p class="text-xs text-slate-500">Управление структурой филиалов организации, этажами и планами помещений</p>
+                </div>
+                <button type="button" @click="showBranchesModal = false" class="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg">&times;</button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-4 flex-1 overflow-hidden">
+                <!-- Левая колонка: Филиалы (5/12) -->
+                <div class="md:col-span-5 flex flex-col border border-slate-200 rounded-xl overflow-hidden bg-slate-50/50">
+                    <div class="p-3 bg-white border-b border-slate-200 flex items-center justify-between">
+                        <span class="font-bold text-xs text-slate-900">Филиалы</span>
+                        <button type="button" @click="openCreateBranch()" class="px-2.5 py-1 bg-brand-600 hover:bg-brand-700 text-white rounded-lg text-[11px] font-bold shadow-sm transition flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                            <span>Добавить</span>
+                        </button>
+                    </div>
+                    <div class="overflow-y-auto flex-1 divide-y divide-slate-100 p-2 space-y-1">
+                        <template x-for="b in branches" :key="b.id">
+                            <div @click="selectBranch(b.id)" 
+                                 class="p-2.5 rounded-xl cursor-pointer transition flex items-center justify-between border"
+                                 :class="managingBranchId === b.id ? 'bg-white border-brand-500 shadow-sm' : 'bg-white border-slate-200 hover:border-slate-300'">
+                                <div>
+                                    <div class="font-bold text-xs text-slate-900" x-text="b.name"></div>
+                                    <div class="text-[11px] text-slate-400 mt-0.5 flex items-center gap-2">
+                                        <span x-text="b.code || 'Код: —'"></span>
+                                        <span x-show="b.it_office" x-text="'• ' + b.it_office"></span>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-1">
+                                    <button @click.stop="openEditBranch(b)" class="p-1 text-slate-400 hover:text-brand-600 rounded" title="Редактировать">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                    </button>
+                                    <button @click.stop="deleteBranch(b)" class="p-1 text-slate-400 hover:text-rose-600 rounded" title="Удалить">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Правая колонка: Этажи выбранного филиала (7/12) -->
+                <div class="md:col-span-7 flex flex-col border border-slate-200 rounded-xl overflow-hidden bg-white">
+                    <div class="p-3 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
+                        <div>
+                            <span class="font-bold text-xs text-slate-900">Поэтажные планы</span>
+                            <span class="text-[11px] text-slate-400 ml-1" x-text="'(' + branchFloors.length + ' этаж.)'"></span>
+                        </div>
+                        <button type="button" @click="openCreateFloor()" :disabled="!managingBranchId" class="px-2.5 py-1 bg-purple-600 hover:bg-purple-700 disabled:opacity-40 text-white rounded-lg text-[11px] font-bold shadow-sm transition flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                            <span>Добавить этаж</span>
+                        </button>
+                    </div>
+
+                    <div class="overflow-y-auto flex-1 p-3 divide-y divide-slate-100 space-y-2">
+                        <div x-show="isLoadingFloors" class="text-center py-6 text-xs text-slate-400">Загрузка этажей...</div>
+                        <div x-show="!isLoadingFloors && branchFloors.length === 0" class="text-center py-8 text-xs text-slate-400">
+                            В этом филиале еще нет этажей. Нажмите "Добавить этаж".
+                        </div>
+                        <template x-for="f in branchFloors" :key="f.id">
+                            <div class="p-3 bg-slate-50/70 rounded-xl border border-slate-200 space-y-2">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-2">
+                                        <span class="w-6 h-6 rounded-lg bg-purple-100 text-purple-700 font-bold text-xs flex items-center justify-center" x-text="f.floor_number"></span>
+                                        <div>
+                                            <div class="font-bold text-xs text-slate-900" x-text="f.name"></div>
+                                            <div class="text-[10px] text-slate-400" x-text="'Масштаб: ' + (f.scale_pixels_per_meter || 20) + ' px/м • Зон: ' + (f.zones ? f.zones.length : 0)"></div>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-1">
+                                        <button @click="openEditFloor(f)" class="p-1 text-slate-400 hover:text-brand-600 rounded" title="Редактировать">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                        </button>
+                                        <button @click="deleteFloor(f)" class="p-1 text-slate-400 hover:text-rose-600 rounded" title="Удалить">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Загрузка фонового плана этажа -->
+                                <div class="flex items-center justify-between pt-1 border-t border-slate-200/60 text-[11px]">
+                                    <div class="flex items-center gap-1.5">
+                                        <span class="font-medium text-slate-600">План этажа:</span>
+                                        <span class="px-1.5 py-0.5 rounded text-[10px] font-bold"
+                                              :class="f.map_image_url ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-200 text-slate-600'"
+                                              x-text="f.map_image_url ? 'Изображение загружено' : 'Без изображения'">
+                                        </span>
+                                    </div>
+                                    <label class="cursor-pointer px-2.5 py-1 bg-white hover:bg-slate-100 text-brand-700 border border-slate-200 rounded-lg font-bold text-[11px] transition shadow-2xs">
+                                        <span>Загрузить план (PNG/JPG)</span>
+                                        <input type="file" accept="image/*,.svg" @change="uploadFloorMapFile(f.id, $event)" class="hidden">
+                                    </label>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-end pt-2 border-t border-slate-100">
+                <button type="button" @click="showBranchesModal = false" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg">Закрыть</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ПОДМОДАЛКА: СОЗДАНИЕ / РЕДАКТИРОВАНИЕ ФИЛИАЛА -->
+    <div x-show="showBranchEditModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm" style="display: none;">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 space-y-4" @click.outside="showBranchEditModal = false">
+            <h3 class="text-base font-bold text-slate-900 border-b border-slate-100 pb-2" x-text="isEditingBranch ? 'Редактирование филиала' : 'Новый филиал'"></h3>
+            <form @submit.prevent="saveBranch()" class="space-y-3 text-xs">
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Наименование филиала *</label>
+                    <input type="text" x-model="branchForm.name" required placeholder="Главный офис" class="w-full border border-slate-200 rounded-lg px-3 py-2">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Код филиала</label>
+                        <input type="text" x-model="branchForm.code" placeholder="HQ" class="w-full border border-slate-200 rounded-lg px-3 py-2">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Кабинет IT</label>
+                        <input type="text" x-model="branchForm.it_office" placeholder="Каб. 108" class="w-full border border-slate-200 rounded-lg px-3 py-2">
+                    </div>
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Адрес</label>
+                    <input type="text" x-model="branchForm.address" placeholder="г. Москва, ул. Ленина, д. 10" class="w-full border border-slate-200 rounded-lg px-3 py-2">
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Примечание</label>
+                    <textarea x-model="branchForm.notes" rows="2" class="w-full border border-slate-200 rounded-lg px-3 py-2"></textarea>
+                </div>
+                <div class="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                    <button type="button" @click="showBranchEditModal = false" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg">Отмена</button>
+                    <button type="submit" class="px-4 py-2 font-bold text-white bg-brand-600 hover:bg-brand-700 rounded-lg shadow-sm">Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ПОДМОДАЛКА: СОЗДАНИЕ / РЕДАКТИРОВАНИЕ ЭТАЖА -->
+    <div x-show="showFloorEditModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm" style="display: none;">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 space-y-4" @click.outside="showFloorEditModal = false">
+            <h3 class="text-base font-bold text-slate-900 border-b border-slate-100 pb-2" x-text="isEditingFloor ? 'Редактирование этажа' : 'Новый этаж'"></h3>
+            <form @submit.prevent="saveFloor()" class="space-y-3 text-xs">
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Номер этажа *</label>
+                    <input type="number" x-model="floorForm.floor_number" required class="w-full border border-slate-200 rounded-lg px-3 py-2">
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Название этажа *</label>
+                    <input type="text" x-model="floorForm.name" required placeholder="1-й Этаж (Главный корпус)" class="w-full border border-slate-200 rounded-lg px-3 py-2">
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Масштаб (пикселей на метр)</label>
+                    <input type="number" step="0.5" x-model="floorForm.scale_pixels_per_meter" class="w-full border border-slate-200 rounded-lg px-3 py-2">
+                    <p class="text-[10px] text-slate-400 mt-0.5">По умолчанию: 20 px/м</p>
+                </div>
+                <div class="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                    <button type="button" @click="showFloorEditModal = false" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg">Отмена</button>
+                    <button type="submit" class="px-4 py-2 font-bold text-white bg-purple-600 hover:bg-purple-700 text-white rounded-lg shadow-sm">Сохранить</button>
+                </div>
+            </form>
         </div>
     </div>
 

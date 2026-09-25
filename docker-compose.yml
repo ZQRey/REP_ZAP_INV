@@ -36,6 +36,7 @@ services:
       - ./PORTAL:/app/PORTAL
     environment:
       - DATABASE_URL=postgresql+psycopg2://app_user:app_password@postgres-db:5432/it_management
+      - SECRET_KEY=unified-it-enterprise-secret-key-2026
       - REDIS_URL=redis://redis:6379/0
       - EVOLUTION_API_URL=http://whatsapp-gateway:8080
       - EVOLUTION_API_KEY=cartridge_secret_key_2026

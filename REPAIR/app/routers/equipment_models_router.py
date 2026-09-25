@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from SHARED.database import get_db
 from SHARED.models import EquipmentModel, AppUser
 from SHARED.auth_service import get_current_user, require_role
-from REPAIR.app.schemas import EquipmentModelResponse, EquipmentModelCreate
+from REPAIR.app.schemas import EquipmentModelResponse, EquipmentModelCreate, EquipmentModelUpdate
 
 router = APIRouter(prefix="/api/v1/repair/models", tags=["Equipment Models"])
 
@@ -42,6 +42,42 @@ def create_equipment_model(
         notes=payload.notes
     )
     db.add(model_obj)
+    db.commit()
+    db.refresh(model_obj)
+    return model_obj
+
+
+@router.put("/{model_id}", response_model=EquipmentModelResponse)
+def update_equipment_model(
+    model_id: int,
+    payload: EquipmentModelUpdate,
+    db: Session = Depends(get_db),
+    current_user: AppUser = Depends(require_role(["superadmin", "admin", "technician"]))
+):
+    """Редактировать модель в справочнике."""
+    model_obj = db.query(EquipmentModel).filter(EquipmentModel.id == model_id).first()
+    if not model_obj:
+        raise HTTPException(status_code=404, detail="Модель не найдена")
+
+    if payload.name is not None:
+        name = payload.name.strip()
+        existing = db.query(EquipmentModel).filter(
+            EquipmentModel.name.ilike(name),
+            EquipmentModel.id != model_id
+        ).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="Модель с таким наименованием уже существует")
+        model_obj.name = name
+
+    if payload.category is not None:
+        model_obj.category = payload.category
+    if payload.vendor is not None:
+        model_obj.vendor = payload.vendor.strip() if payload.vendor else None
+    if payload.specs_template is not None:
+        model_obj.specs_template = payload.specs_template
+    if payload.notes is not None:
+        model_obj.notes = payload.notes
+
     db.commit()
     db.refresh(model_obj)
     return model_obj

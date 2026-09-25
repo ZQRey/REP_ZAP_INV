@@ -6,7 +6,17 @@
 function cartridgeApp() {
     return {
         // Авторизация и текущий пользователь
-        authToken: localStorage.getItem('cartridge_token') || '',
+        authToken: (() => {
+            try {
+                const urlToken = (new URLSearchParams(window.location.search)).get('token');
+                if (urlToken) {
+                    localStorage.setItem('cartridge_token', urlToken);
+                    localStorage.setItem('token', urlToken);
+                    return urlToken;
+                }
+            } catch (e) {}
+            return localStorage.getItem('cartridge_token') || localStorage.getItem('token') || '';
+        })(),
         currentUser: null,
         isAuthChecking: true,
         authHeaders(extra = {}) {
@@ -179,9 +189,14 @@ function cartridgeApp() {
         async fetchCurrentUser() {
             this.isAuthChecking = true;
             try {
-                const res = await fetch('/api/auth/me', {
+                let res = await fetch('/api/auth/me', {
                     headers: { 'Authorization': `Bearer ${this.authToken}` }
                 });
+                if (!res.ok) {
+                    res = await fetch('/api/v1/auth/me', {
+                        headers: { 'Authorization': `Bearer ${this.authToken}` }
+                    });
+                }
                 if (res.ok) {
                     this.currentUser = await res.json();
                     this.applyRoleTabConstraints();

@@ -17,6 +17,20 @@ document.addEventListener('alpine:init', () => {
         activeSwitch: null,
         showSwitchModal: false,
         showAssetModal: false,
+        showAddAssetModal: false,
+        isUploadingMap: false,
+
+        addAssetForm: {
+            inventory_number: '',
+            name: '',
+            asset_type: 'workstation',
+            serial_number: '',
+            condition: 'working',
+            cabinet: '',
+            coords_x: 0.5,
+            coords_y: 0.5,
+            notes: ''
+        },
 
         // Konva Canvas
         stage: null,
@@ -230,6 +244,25 @@ document.addEventListener('alpine:init', () => {
 
             const cWidth = this.stage.width();
             const cHeight = this.stage.height();
+
+            // 0. Фоновое изображение поэтажного плана (если загружено)
+            if (this.currentFloor.map_image_url) {
+                const mapImg = new Image();
+                mapImg.src = this.currentFloor.map_image_url;
+                mapImg.onload = () => {
+                    const konvaImg = new Konva.Image({
+                        image: mapImg,
+                        x: 0,
+                        y: 0,
+                        width: cWidth,
+                        height: cHeight,
+                        opacity: 0.9
+                    });
+                    this.zonesLayer.add(konvaImg);
+                    konvaImg.moveToBottom();
+                    this.zonesLayer.batchDraw();
+                };
+            }
 
             // 1. Отрисовка зон (Кабинетов и Коридоров)
             const zones = this.currentFloor.zones || [];
@@ -551,6 +584,99 @@ document.addEventListener('alpine:init', () => {
                 this.stage.scale({ x: 1, y: 1 });
                 this.stage.position({ x: 0, y: 0 });
                 this.stage.batchDraw();
+            }
+        },
+
+        triggerUploadFloorMap() {
+            if (!this.selectedFloorId) {
+                this.showToast('Выберите этаж для загрузки плана', 'error');
+                return;
+            }
+            const input = document.getElementById('floorMapUploadInput');
+            if (input) input.click();
+        },
+
+        async uploadFloorMap(event) {
+            const file = event.target.files?.[0];
+            if (!file || !this.selectedFloorId) return;
+
+            this.isUploadingMap = true;
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const res = await fetch(`/api/v1/location/floors/${this.selectedFloorId}/upload-map`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${this.token}` },
+                    body: formData
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    this.showToast('План этажа успешно загружен', 'success');
+                    if (this.currentFloor) {
+                        this.currentFloor.map_image_url = data.map_image_url;
+                    }
+                    this.renderFloor();
+                } else {
+                    const err = await res.json();
+                    this.showToast(err.detail || 'Ошибка загрузки плана', 'error');
+                }
+            } catch (e) {
+                this.showToast('Сетевая ошибка при загрузке плана', 'error');
+            } finally {
+                this.isUploadingMap = false;
+                event.target.value = '';
+            }
+        },
+
+        openAddAssetModal() {
+            if (!this.selectedFloorId) {
+                this.showToast('Сначала выберите этаж', 'error');
+                return;
+            }
+            this.addAssetForm = {
+                inventory_number: '',
+                name: '',
+                asset_type: 'workstation',
+                serial_number: '',
+                condition: 'working',
+                cabinet: '',
+                coords_x: 0.5,
+                coords_y: 0.5,
+                notes: ''
+            };
+            this.showAddAssetModal = true;
+        },
+
+        async submitAddAsset() {
+            if (!this.addAssetForm.inventory_number.trim() || !this.addAssetForm.name.trim()) {
+                this.showToast('Укажите инвентарный номер и наименование', 'error');
+                return;
+            }
+
+            try {
+                const payload = {
+                    ...this.addAssetForm,
+                    floor_id: parseInt(this.selectedFloorId),
+                    branch_id: this.selectedBranchId ? parseInt(this.selectedBranchId) : null
+                };
+                const res = await fetch('/api/v1/location/assets/create-and-place', {
+                    method: 'POST',
+                    headers: this.getAuthHeaders(),
+                    body: JSON.stringify(payload)
+                });
+                if (res.ok) {
+                    this.showToast('Оборудование создано и размещено на карте!', 'success');
+                    this.showAddAssetModal = false;
+                    await this.loadFloorAssets();
+                    await this.loadUnplacedAssets();
+                    this.renderFloor();
+                } else {
+                    const err = await res.json();
+                    this.showToast(err.detail || 'Ошибка создания актива', 'error');
+                }
+            } catch (e) {
+                this.showToast('Сетевая ошибка при создании актива', 'error');
             }
         },
 

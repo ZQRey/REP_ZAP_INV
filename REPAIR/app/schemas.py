@@ -17,6 +17,14 @@ class EquipmentModelCreate(EquipmentModelBase):
     pass
 
 
+class EquipmentModelUpdate(BaseModel):
+    name: Optional[str] = None
+    category: Optional[str] = None
+    vendor: Optional[str] = None
+    specs_template: Optional[str] = None
+    notes: Optional[str] = None
+
+
 class EquipmentModelResponse(EquipmentModelBase):
     id: int
     created_at: Optional[datetime] = None

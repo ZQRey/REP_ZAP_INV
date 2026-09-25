@@ -127,3 +127,26 @@ def delete_user(
     db.delete(user)
     db.commit()
     return {"success": True, "message": f"Пользователь '{user.username}' удален."}
+
+
+@router.post("/{user_id}/toggle-active")
+def toggle_user_active(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: AppUser = Depends(require_superadmin)
+):
+    """Быстрая блокировка / разблокировка учетной записи."""
+    user = db.query(AppUser).filter(AppUser.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден.")
+
+    if user.username == "admin" and user.is_active:
+        raise HTTPException(status_code=400, detail="Нельзя заблокировать главного администратора системы.")
+
+    user.is_active = not user.is_active
+    db.commit()
+    return {
+        "success": True,
+        "is_active": user.is_active,
+        "message": f"Пользователь '{user.username}' {'разблокирован' if user.is_active else 'заблокирован'}."
+    }

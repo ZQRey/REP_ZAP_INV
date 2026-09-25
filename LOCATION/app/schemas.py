@@ -44,12 +44,34 @@ class FloorCreate(FloorBase):
     pass
 
 
+class FloorUpdate(BaseModel):
+    name: Optional[str] = None
+    floor_number: Optional[int] = None
+    scale_pixels_per_meter: Optional[float] = None
+    map_image_url: Optional[str] = None
+
+
 class FloorResponse(FloorBase):
     id: int
     created_at: Optional[datetime] = None
     zones: List[ZoneResponse] = []
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class AssetCreateAndPlace(BaseModel):
+    inventory_number: str
+    name: str
+    asset_type: str = "workstation"
+    serial_number: Optional[str] = None
+    condition: str = "working"
+    floor_id: int
+    branch_id: Optional[int] = None
+    cabinet: Optional[str] = None
+    coords_x: float = 0.5
+    coords_y: float = 0.5
+    zone_id: Optional[int] = None
+    notes: Optional[str] = None
 
 
 # --- Позиционирование активов на карте ---

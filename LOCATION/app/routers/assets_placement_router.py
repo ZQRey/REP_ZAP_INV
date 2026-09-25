@@ -3,9 +3,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, joinedload
 
 from SHARED.database import get_db
-from SHARED.models import Asset, Zone, Floor, AppUser, AssetStatus
+from SHARED.models import Asset, Zone, Floor, AppUser, AssetStatus, AssetType, AssetCondition
 from SHARED.auth_service import get_current_user, require_role
-from LOCATION.app.schemas import PlacedAssetResponse, AssetPositionUpdate
+from LOCATION.app.schemas import PlacedAssetResponse, AssetPositionUpdate, AssetCreateAndPlace
 
 router = APIRouter(prefix="/api/v1/location", tags=["Location Assets Placement"])
 
@@ -116,6 +116,74 @@ def update_asset_position(
         if zone and zone.room_number:
             asset.cabinet = f"Кабинет {zone.room_number}"
 
+    db.commit()
+    db.refresh(asset)
+
+    return PlacedAssetResponse(
+        id=asset.id,
+        inventory_number=asset.inventory_number,
+        name=asset.name,
+        asset_type=asset.asset_type.value if hasattr(asset.asset_type, "value") else str(asset.asset_type),
+        status=asset.status.value if hasattr(asset.status, "value") else str(asset.status),
+        condition=asset.condition.value if hasattr(asset.condition, "value") else str(asset.condition),
+        coords_x=asset.coords_x,
+        coords_y=asset.coords_y,
+        zone_id=asset.zone_id,
+        floor_id=asset.floor_id,
+        cabinet=asset.cabinet,
+        hostname=asset.hostname,
+        ip_address=asset.ip_address,
+        mac_address=asset.mac_address
+    )
+
+
+@router.post("/assets/create-and-place", response_model=PlacedAssetResponse)
+def create_and_place_asset(
+    payload: AssetCreateAndPlace,
+    db: Session = Depends(get_db),
+    current_user: AppUser = Depends(require_role(["superadmin", "admin", "technician", "operator"]))
+):
+    """
+    Создание нового актива напрямую на интерактивной карте
+    (синхронизируется с реестром техники и ремонтом).
+    """
+    inv = payload.inventory_number.strip()
+    existing = db.query(Asset).filter(Asset.inventory_number == inv).first()
+    if existing:
+        raise HTTPException(status_code=400, detail=f"Оборудование с инвентарным номером '{inv}' уже существует")
+
+    floor = db.query(Floor).filter(Floor.id == payload.floor_id).first()
+    if not floor:
+        raise HTTPException(status_code=404, detail="Этаж не найден")
+
+    branch_id = payload.branch_id or floor.branch_id
+
+    try:
+        atype = AssetType(payload.asset_type)
+    except Exception:
+        atype = AssetType.OTHER
+
+    try:
+        acond = AssetCondition(payload.condition)
+    except Exception:
+        acond = AssetCondition.WORKING
+
+    asset = Asset(
+        inventory_number=inv,
+        name=payload.name.strip(),
+        asset_type=atype,
+        serial_number=payload.serial_number.strip() if payload.serial_number else None,
+        condition=acond,
+        status=AssetStatus.AT_WORKPLACE,
+        floor_id=floor.id,
+        branch_id=branch_id,
+        cabinet=payload.cabinet.strip() if payload.cabinet else None,
+        coords_x=max(0.0, min(1.0, payload.coords_x)),
+        coords_y=max(0.0, min(1.0, payload.coords_y)),
+        zone_id=payload.zone_id,
+        notes=payload.notes
+    )
+    db.add(asset)
     db.commit()
     db.refresh(asset)
 

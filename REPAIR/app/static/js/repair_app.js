@@ -61,6 +61,35 @@ document.addEventListener('alpine:init', () => {
             notes: ''
         },
 
+        // Редактирование техники
+        showEditModal: false,
+        editForm: {
+            id: null,
+            inventory_number: '',
+            serial_number: '',
+            name: '',
+            asset_type: 'workstation',
+            condition: 'working',
+            status: 'at_workplace',
+            cabinet: '',
+            branch_id: '',
+            current_user_id: '',
+            notes: ''
+        },
+
+        // Справочник моделей
+        showModelModal: false,
+        modelSearchQuery: '',
+        modelCategoryFilter: '',
+        modelForm: {
+            id: null,
+            name: '',
+            category: 'workstation',
+            vendor: '',
+            specs_template: '',
+            notes: ''
+        },
+
         // Отправка в СЦ (Этап 2)
         selectedForSC: [],
         scVendorName: 'ООО «ТехноРемСервис»',
@@ -466,6 +495,144 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
+        // Редактирование оборудования
+        openEditEquipment(item) {
+            this.editForm = {
+                id: item.id,
+                inventory_number: item.inventory_number || '',
+                serial_number: item.serial_number || '',
+                name: item.name || '',
+                asset_type: item.asset_type || 'workstation',
+                condition: item.condition || 'working',
+                status: item.status || 'at_workplace',
+                cabinet: item.cabinet || '',
+                branch_id: item.branch_id || '',
+                current_user_id: item.current_user_id || '',
+                notes: item.notes || ''
+            };
+            this.showEditModal = true;
+        },
+
+        async saveEquipmentEdit() {
+            if (!this.editForm.id) return;
+            try {
+                const res = await fetch(`/api/v1/repair/equipment/${this.editForm.id}`, {
+                    method: 'PUT',
+                    headers: this.getAuthHeaders(),
+                    body: JSON.stringify(this.editForm)
+                });
+                if (res.ok) {
+                    this.showToast('Оборудование успешно обновлено', 'success');
+                    this.showEditModal = false;
+                    if (this.selectedEquipment && this.selectedEquipment.id === this.editForm.id) {
+                        this.selectedEquipment = await res.json();
+                    }
+                    await this.loadEquipment();
+                } else {
+                    const err = await res.json();
+                    this.showToast(err.detail || 'Ошибка обновления оборудования', 'error');
+                }
+            } catch (e) {
+                this.showToast('Ошибка отправки данных', 'error');
+            }
+        },
+
+        async deleteEquipment(item) {
+            if (!confirm(`Вы действительно хотите удалить единицу техники "${item.name} (${item.inventory_number})"?`)) {
+                return;
+            }
+            try {
+                const res = await fetch(`/api/v1/repair/equipment/${item.id}`, {
+                    method: 'DELETE',
+                    headers: this.getAuthHeaders()
+                });
+                if (res.ok) {
+                    this.showToast('Оборудование удалено', 'success');
+                    if (this.showDetailModal && this.selectedEquipment?.id === item.id) {
+                        this.showDetailModal = false;
+                    }
+                    await this.loadEquipment();
+                } else {
+                    const err = await res.json();
+                    this.showToast(err.detail || 'Ошибка удаления', 'error');
+                }
+            } catch (e) {
+                this.showToast('Ошибка удаления оборудования', 'error');
+            }
+        },
+
+        // Справочник моделей
+        openCreateModel() {
+            this.modelForm = {
+                id: null,
+                name: '',
+                category: 'workstation',
+                vendor: '',
+                specs_template: '',
+                notes: ''
+            };
+            this.showModelModal = true;
+        },
+
+        openEditModel(m) {
+            this.modelForm = {
+                id: m.id,
+                name: m.name,
+                category: m.category,
+                vendor: m.vendor || '',
+                specs_template: m.specs_template || '',
+                notes: m.notes || ''
+            };
+            this.showModelModal = true;
+        },
+
+        async saveModel() {
+            if (!this.modelForm.name.trim()) {
+                this.showToast('Укажите наименование модели', 'error');
+                return;
+            }
+            const isEdit = !!this.modelForm.id;
+            const url = isEdit ? `/api/v1/repair/models/${this.modelForm.id}` : '/api/v1/repair/models';
+            const method = isEdit ? 'PUT' : 'POST';
+
+            try {
+                const res = await fetch(url, {
+                    method: method,
+                    headers: this.getAuthHeaders(),
+                    body: JSON.stringify(this.modelForm)
+                });
+                if (res.ok) {
+                    this.showToast(isEdit ? 'Модель обновлена' : 'Модель добавлена', 'success');
+                    this.showModelModal = false;
+                    await this.loadModels();
+                } else {
+                    const err = await res.json();
+                    this.showToast(err.detail || 'Ошибка сохранения модели', 'error');
+                }
+            } catch (e) {
+                this.showToast('Сетевая ошибка при сохранении', 'error');
+            }
+        },
+
+        async deleteModel(m) {
+            if (!confirm(`Удалить модель "${m.name}" из справочника?`)) return;
+            try {
+                const res = await fetch(`/api/v1/repair/models/${m.id}`, {
+                    method: 'DELETE',
+                    headers: this.getAuthHeaders()
+                });
+                if (res.ok) {
+                    this.showToast('Модель удалена', 'success');
+                    await this.loadModels();
+                } else {
+                    const err = await res.json();
+                    this.showToast(err.detail || 'Ошибка удаления', 'error');
+                }
+            } catch (e) {
+                this.showToast('Ошибка удаления модели', 'error');
+            }
+        },
+
         // Загрузка отчетов
         async loadReport() {
             this.isLoading = true;
@@ -531,6 +698,20 @@ document.addEventListener('alpine:init', () => {
             return this.equipmentList.filter(e => e.status === 'returned_it');
         },
 
+        get filteredModels() {
+            return this.modelsList.filter(m => {
+                if (this.modelCategoryFilter && m.category !== this.modelCategoryFilter) return false;
+                if (this.modelSearchQuery) {
+                    const q = this.modelSearchQuery.toLowerCase();
+                    const nameMatch = m.name?.toLowerCase().includes(q);
+                    const vendorMatch = m.vendor?.toLowerCase().includes(q);
+                    const specsMatch = m.specs_template?.toLowerCase().includes(q);
+                    if (!nameMatch && !vendorMatch && !specsMatch) return false;
+                }
+                return true;
+            });
+        },
+
         // Счетчики для бейджей на вкладках
         get counts() {
             return {
@@ -540,6 +721,7 @@ document.addEventListener('alpine:init', () => {
                 returned_it: this.returnedITItems.length,
                 working: this.equipmentList.filter(e => e.condition === 'working').length,
                 broken: this.equipmentList.filter(e => e.condition === 'broken').length,
+                models: this.modelsList.length
             };
         }
     }));

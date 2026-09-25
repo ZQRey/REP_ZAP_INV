@@ -10,7 +10,7 @@ DEFAULT_SQLITE_PATH.parent.mkdir(parents=True, exist_ok=True)
 DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{DEFAULT_SQLITE_PATH.as_posix()}")
 
 # App configuration
-SECRET_KEY = os.getenv("SECRET_KEY", "cartridge-management-super-secret-key-2026")
+SECRET_KEY = os.getenv("SECRET_KEY", "unified-it-enterprise-secret-key-2026")
 DEBUG = os.getenv("DEBUG", "False").lower() in ("true", "1", "yes")
 
 # Default values for settings table initialization
