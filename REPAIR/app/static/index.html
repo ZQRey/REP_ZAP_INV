@@ -369,11 +369,16 @@
                             <input type="text" x-model="acceptForm.cabinet" required placeholder="Кабинет 108" class="w-full border border-slate-200 rounded-lg px-3 py-2">
                         </div>
                         <div>
-                            <label class="block font-semibold text-slate-700 mb-1">Сотрудник (AD)</label>
+                            <div class="flex items-center justify-between mb-1">
+                                <label class="block font-semibold text-slate-700">Сотрудник (AD)</label>
+                                <template x-if="!adUsers.length">
+                                    <button type="button" @click="loadADUsers()" class="text-[10px] text-brand-600 hover:underline">Загрузить</button>
+                                </template>
+                            </div>
                             <select x-model="acceptForm.current_user_id" class="w-full border border-slate-200 rounded-lg px-3 py-2">
                                 <option value="">Не назначен</option>
                                 <template x-for="u in adUsers" :key="u.samaccountname">
-                                    <option :value="u.samaccountname" x-text="u.display_name + ' (' + u.samaccountname + ')'"></option>
+                                    <option :value="u.samaccountname" x-text="(u.display_name || u.samaccountname) + (u.cabinet ? ' [каб. ' + u.cabinet + ']' : '')"></option>
                                 </template>
                             </select>
                         </div>

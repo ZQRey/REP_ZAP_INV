@@ -221,12 +221,18 @@ document.addEventListener('alpine:init', () => {
 
         async loadADUsers() {
             try {
-                const res = await fetch('/api/users/ad', { headers: this.getAuthHeaders() });
+                let res = await fetch('/api/users?limit=1000', { headers: this.getAuthHeaders() });
+                if (!res.ok) {
+                    res = await fetch('/api/users/ad?limit=1000', { headers: this.getAuthHeaders() });
+                }
+                if (!res.ok) {
+                    res = await fetch('/api/v1/repair/equipment/ad-users?limit=1000', { headers: this.getAuthHeaders() });
+                }
                 if (res.ok) {
                     this.adUsers = await res.json();
                 }
             } catch (e) {
-                console.error(e);
+                console.error("Ошибка загрузки пользователей AD:", e);
             }
         },
 
@@ -283,7 +289,16 @@ document.addEventListener('alpine:init', () => {
             this.acceptForm.asset_type = eq.asset_type;
             this.acceptForm.cabinet = eq.cabinet || '';
             if (eq.branch_id) this.acceptForm.branch_id = eq.branch_id;
-            if (eq.current_user_id) this.acceptForm.current_user_id = eq.current_user_id;
+            if (eq.current_user_id) {
+                this.acceptForm.current_user_id = eq.current_user_id;
+                if (!this.adUsers.some(u => u.samaccountname === eq.current_user_id)) {
+                    this.adUsers.unshift({
+                        samaccountname: eq.current_user_id,
+                        display_name: eq.current_user_name ? `${eq.current_user_name} (${eq.current_user_id})` : eq.current_user_id,
+                        cabinet: eq.cabinet || ''
+                    });
+                }
+            }
             this.acceptSuggestions = [];
             const label = eq.hostname ? `${eq.hostname} (${eq.inventory_number})` : eq.inventory_number;
             this.showToast(`Выбрано оборудование: ${label}`, 'success');
@@ -308,7 +323,16 @@ document.addEventListener('alpine:init', () => {
                         this.acceptForm.asset_type = eq.asset_type;
                         this.acceptForm.cabinet = eq.cabinet || '';
                         if (eq.branch_id) this.acceptForm.branch_id = eq.branch_id;
-                        if (eq.current_user_id) this.acceptForm.current_user_id = eq.current_user_id;
+                        if (eq.current_user_id) {
+                            this.acceptForm.current_user_id = eq.current_user_id;
+                            if (!this.adUsers.some(u => u.samaccountname === eq.current_user_id)) {
+                                this.adUsers.unshift({
+                                    samaccountname: eq.current_user_id,
+                                    display_name: eq.current_user_name ? `${eq.current_user_name} (${eq.current_user_id})` : eq.current_user_id,
+                                    cabinet: eq.cabinet || ''
+                                });
+                            }
+                        }
 
                         this.acceptSuggestions = (data.suggestions && data.suggestions.length > 1) ? data.suggestions : [];
                         const label = eq.hostname ? `${eq.hostname} (${eq.inventory_number})` : eq.inventory_number;

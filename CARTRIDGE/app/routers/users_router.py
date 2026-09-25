@@ -11,9 +11,10 @@ router = APIRouter(prefix="/api/users", tags=["Users"])
 
 
 @router.get("", response_model=List[ADUserResponse])
+@router.get("/ad", response_model=List[ADUserResponse])
 def search_users(
     q: Optional[str] = Query(None, description="Строка поиска по имени, логину, кабинету или отделу"),
-    limit: int = Query(30, le=100),
+    limit: int = Query(500, le=10000),
     db: Session = Depends(get_db),
     current_user: AppUser = Depends(require_operator)
 ):

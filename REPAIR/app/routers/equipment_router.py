@@ -323,6 +323,34 @@ def find_by_inv_or_serial(
             "message": f"Оборудование по запросу '{raw_term}' не найдено в реестре."
         }
 
+    if best_match and not best_match.current_user_id:
+        # Попытка интеллектуально определить ответственного сотрудника AD:
+        detected_user = None
+        if best_match.cabinet:
+            cab_clean = re.sub(r'^(?:Кабинет|Каб\.?|Отдел:?)\s*', '', best_match.cabinet, flags=re.I).strip()
+            if cab_clean:
+                cab_users = db.query(ADUser).filter(ADUser.cabinet.ilike(f"%{cab_clean}%")).all()
+                if len(cab_users) == 1:
+                    detected_user = cab_users[0]
+        if not detected_user and best_match.notes:
+            for u in db.query(ADUser).all():
+                if (u.display_name and len(u.display_name) > 3 and u.display_name.lower() in best_match.notes.lower()) or \
+                   (u.samaccountname and len(u.samaccountname) > 2 and u.samaccountname.lower() in best_match.notes.lower()):
+                    detected_user = u
+                    break
+        if not detected_user and best_match.hostname:
+            for u in db.query(ADUser).all():
+                if u.samaccountname and len(u.samaccountname) > 2 and u.samaccountname.lower() in best_match.hostname.lower():
+                    detected_user = u
+                    break
+        if detected_user:
+            best_match.current_user_id = detected_user.samaccountname
+            best_match.responsible_ad_user = detected_user
+            try:
+                db.commit()
+            except Exception:
+                db.rollback()
+
     # Формируем список вариантов/подсказок
     suggestions = []
     seen_ids = set()
@@ -332,6 +360,7 @@ def find_by_inv_or_serial(
             seen_ids.add(a.id)
             inv_val = a.inventory_number or (f"AD-{a.hostname.upper()}" if a.hostname else f"INV-{a.id}")
             name_val = a.name or (f"Компьютер {a.hostname.upper()}" if a.hostname else "Оборудование")
+            u_name = a.responsible_ad_user.display_name if a.responsible_ad_user else None
             suggestions.append({
                 "id": a.id,
                 "inventory_number": inv_val,
@@ -341,7 +370,8 @@ def find_by_inv_or_serial(
                 "serial_number": a.serial_number,
                 "asset_type": a.asset_type.value if hasattr(a.asset_type, "value") else str(a.asset_type),
                 "branch_id": a.branch_id,
-                "current_user_id": a.current_user_id
+                "current_user_id": a.current_user_id,
+                "current_user_name": u_name
             })
 
     return {
@@ -350,6 +380,40 @@ def find_by_inv_or_serial(
         "matches_count": len(suggestions),
         "suggestions": suggestions[:6]
     }
+
+
+@router.get("/ad-users")
+@router.get("/users/ad")
+def get_repair_ad_users(
+    q: Optional[str] = Query(None),
+    limit: int = Query(1000, le=10000),
+    db: Session = Depends(get_db),
+    current_user: AppUser = Depends(get_current_user)
+):
+    """Список синхронизированных пользователей Active Directory."""
+    query = db.query(ADUser)
+    if q and q.strip():
+        term = f"%{q.strip()}%"
+        query = query.filter(
+            or_(
+                ADUser.display_name.ilike(term),
+                ADUser.samaccountname.ilike(term),
+                ADUser.cabinet.ilike(term),
+                ADUser.department.ilike(term)
+            )
+        )
+    users = query.order_by(ADUser.display_name.asc()).limit(limit).all()
+    return [
+        {
+            "id": getattr(u, "id", u.samaccountname),
+            "samaccountname": u.samaccountname,
+            "display_name": u.display_name,
+            "cabinet": u.cabinet,
+            "department": u.department,
+            "phone": u.phone
+        }
+        for u in users
+    ]
 
 
 @router.get("/{asset_id}", response_model=EquipmentDetailResponse)
