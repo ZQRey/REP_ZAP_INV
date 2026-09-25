@@ -53,11 +53,42 @@ def init_db():
     # Автоматическая миграция / проверка колонок для SQLite
     if DATABASE_URL.startswith("sqlite"):
         try:
+            from sqlalchemy import text
             with engine.connect() as conn:
-                # Проверка наличия колонок в существующих таблицах при обновлениях
-                pass
+                # network_switches columns
+                res = conn.execute(text("PRAGMA table_info(network_switches)")).fetchall()
+                existing_cols = {row[1] for row in res}
+                new_switch_cols = [
+                    ("management_type", "VARCHAR(50) DEFAULT 'snmp'"),
+                    ("mgmt_port", "INTEGER DEFAULT 161"),
+                    ("username", "VARCHAR(100)"),
+                    ("password", "VARCHAR(255)"),
+                    ("extra_params", "JSON"),
+                    ("last_poll_status", "VARCHAR(20) DEFAULT 'never'"),
+                    ("last_poll_message", "VARCHAR(500)"),
+                    ("last_polled_at", "DATETIME")
+                ]
+                for col_name, col_def in new_switch_cols:
+                    if col_name not in existing_cols:
+                        conn.execute(text(f"ALTER TABLE network_switches ADD COLUMN {col_name} {col_def}"))
+
+                # switch_ports columns
+                res_p = conn.execute(text("PRAGMA table_info(switch_ports)")).fetchall()
+                existing_p_cols = {row[1] for row in res_p}
+                new_port_cols = [
+                    ("cabinet", "VARCHAR(100)"),
+                    ("socket_label", "VARCHAR(100)"),
+                    ("zone_id", "INTEGER"),
+                    ("last_mac", "VARCHAR(50)"),
+                    ("last_ip", "VARCHAR(50)"),
+                    ("last_seen_at", "DATETIME")
+                ]
+                for col_name, col_def in new_port_cols:
+                    if col_name not in existing_p_cols:
+                        conn.execute(text(f"ALTER TABLE switch_ports ADD COLUMN {col_name} {col_def}"))
+                conn.commit()
         except Exception as ex:
-            logger.warning(f"SQLite schema check warning: {ex}")
+            logger.warning(f"SQLite schema migration warning: {ex}")
 
     db = SessionLocal()
     try:

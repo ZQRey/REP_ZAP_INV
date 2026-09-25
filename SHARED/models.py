@@ -451,22 +451,30 @@ class CablePath(Base):
 
 
 class NetworkSwitch(Base):
-    """Сетевой коммутатор (расширение над Asset со спецификацией SNMP)."""
+    """Сетевой коммутатор (расширение над Asset со спецификацией L2/L3 мониторинга)."""
     __tablename__ = "network_switches"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     asset_id = Column(Integer, ForeignKey("assets.id", ondelete="CASCADE"), nullable=False, unique=True)
     ip_address = Column(String(50), nullable=False)
+    management_type = Column(String(50), default="snmp")    # "omada", "mikrotik", "hp", "tplink", "snmp", "ssh_cli"
+    mgmt_port = Column(Integer, default=161)
+    username = Column(String(100), nullable=True)
+    password = Column(String(255), nullable=True)
     snmp_community = Column(String(100), default="public")
     model = Column(String(150), nullable=True)
     total_ports = Column(Integer, default=24)               # 24 или 48 портов
+    extra_params = Column(JSON, nullable=True)              # {"site": "Default", "enable_pwd": "..."}
+    last_poll_status = Column(String(20), default="never")  # "ok", "error", "never"
+    last_poll_message = Column(String(500), nullable=True)
+    last_polled_at = Column(DateTime, nullable=True)
 
     asset = relationship("Asset", back_populates="switch_device")
     ports = relationship("SwitchPort", back_populates="switch", cascade="all, delete-orphan")
 
 
 class SwitchPort(Base):
-    """Порт сетевого коммутатора."""
+    """Порт сетевого коммутатора с привязкой к кабинету и трекингом MAC."""
     __tablename__ = "switch_ports"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -475,7 +483,14 @@ class SwitchPort(Base):
     port_speed = Column(String(50), default="1Gbps")
     vlan_id = Column(Integer, default=1)
     status = Column(String(20), default="down")             # "up", "down", "disabled"
+    cabinet = Column(String(100), nullable=True)            # Привязка порта к кабинету (напр. "Кабинет 302")
+    socket_label = Column(String(100), nullable=True)       # Маркировка розетки (напр. "Розетка 302-1")
+    zone_id = Column(Integer, ForeignKey("zones.id", ondelete="SET NULL"), nullable=True)
+    last_mac = Column(String(50), nullable=True)            # Последний зафиксированный MAC (напр. "AA:BB:CC:DD:EE:FF")
+    last_ip = Column(String(50), nullable=True)
+    last_seen_at = Column(DateTime, nullable=True)
     connected_asset_id = Column(Integer, ForeignKey("assets.id", ondelete="SET NULL"), nullable=True)
 
     switch = relationship("NetworkSwitch", back_populates="ports")
+    zone = relationship("Zone")
     connected_asset = relationship("Asset", foreign_keys=[connected_asset_id])

@@ -20,6 +20,44 @@ document.addEventListener('alpine:init', () => {
         showAddAssetModal: false,
         isUploadingMap: false,
 
+        // Настройка порта коммутатора
+        showPortModal: false,
+        selectedPort: null,
+        portForm: {
+            cabinet: '',
+            socket_label: '',
+            zone_id: '',
+            vlan_id: 1,
+            status: 'up',
+            connected_asset_id: ''
+        },
+
+        // Настройка интеграции коммутатора (Omada, MikroTik, HP, TP-Link, SNMP)
+        showSwitchSettingsModal: false,
+        isPollingSwitch: false,
+        switchForm: {
+            id: null,
+            name: '',
+            ip_address: '',
+            model: '',
+            management_type: 'snmp',
+            mgmt_port: 161,
+            username: '',
+            password: '',
+            snmp_community: 'public',
+            total_ports: 24,
+            cabinet: '',
+            site: 'Default'
+        },
+
+        // Симуляция роуминга
+        showSimulateModal: false,
+        simForm: {
+            port_number: 1,
+            mac_address: '',
+            target_cabinet: ''
+        },
+
         addAssetForm: {
             inventory_number: '',
             name: '',
@@ -677,6 +715,193 @@ document.addEventListener('alpine:init', () => {
                 }
             } catch (e) {
                 this.showToast('Сетевая ошибка при создании актива', 'error');
+            }
+        },
+
+        // ==========================================
+        // УПРАВЛЕНИЕ И ИНТЕГРАЦИЯ КОММУТАТОРА
+        // ==========================================
+        openSwitchSettingsModal(sw) {
+            this.switchForm = {
+                id: sw.id,
+                name: sw.name,
+                ip_address: sw.ip_address,
+                model: sw.model || '24-Port Managed Switch',
+                management_type: sw.management_type || 'snmp',
+                mgmt_port: sw.mgmt_port || 161,
+                username: sw.username || '',
+                password: '',
+                snmp_community: sw.snmp_community || 'public',
+                total_ports: sw.total_ports || 24,
+                cabinet: sw.cabinet || '',
+                site: (sw.extra_params && sw.extra_params.site) || 'Default'
+            };
+            this.showSwitchSettingsModal = true;
+        },
+
+        async saveSwitchSettings() {
+            if (!this.switchForm.id) return;
+            try {
+                const payload = {
+                    name: this.switchForm.name,
+                    ip_address: this.switchForm.ip_address,
+                    model: this.switchForm.model,
+                    management_type: this.switchForm.management_type,
+                    mgmt_port: parseInt(this.switchForm.mgmt_port),
+                    username: this.switchForm.username,
+                    snmp_community: this.switchForm.snmp_community,
+                    total_ports: parseInt(this.switchForm.total_ports),
+                    cabinet: this.switchForm.cabinet,
+                    extra_params: {
+                        site: this.switchForm.site,
+                        allow_demo_fallback: true
+                    }
+                };
+                if (this.switchForm.password) {
+                    payload.password = this.switchForm.password;
+                }
+
+                const res = await fetch(`/api/v1/location/switches/${this.switchForm.id}`, {
+                    method: 'PUT',
+                    headers: this.getAuthHeaders(),
+                    body: JSON.stringify(payload)
+                });
+                if (res.ok) {
+                    this.showToast('Параметры коммутатора сохранены', 'success');
+                    this.showSwitchSettingsModal = false;
+                    await this.loadFloorSwitches();
+                    const updated = this.switchesList.find(s => s.id === this.switchForm.id);
+                    if (updated) this.activeSwitch = updated;
+                    this.renderFloor();
+                } else {
+                    const err = await res.json();
+                    this.showToast(err.detail || 'Ошибка сохранения настроек', 'error');
+                }
+            } catch (e) {
+                this.showToast('Сетевая ошибка при сохранении настроек', 'error');
+            }
+        },
+
+        async pollSwitch(sw) {
+            if (!sw) return;
+            this.isPollingSwitch = true;
+            try {
+                const res = await fetch(`/api/v1/location/switches/${sw.id}/poll`, {
+                    method: 'POST',
+                    headers: this.getAuthHeaders()
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    let msg = `Опрос завершен. Обнаружено MAC: ${data.learned_count}`;
+                    if (data.relocated_assets && data.relocated_assets.length > 0) {
+                        msg += `. ПЕРЕМЕЩЕНО устройств: ${data.relocated_assets.length}!`;
+                        data.relocated_assets.forEach(rel => {
+                            this.showToast(`Перемещение: ${rel.name} (${rel.inventory_number}) -> ${rel.new_cabinet}`, 'info');
+                        });
+                    }
+                    this.showToast(msg, data.relocated_assets?.length > 0 ? 'success' : 'info');
+                    await this.loadFloorSwitches();
+                    await this.loadFloorAssets();
+                    const updated = this.switchesList.find(s => s.id === sw.id);
+                    if (updated) this.activeSwitch = updated;
+                    this.renderFloor();
+                } else {
+                    this.showToast(data.detail || data.message || 'Ошибка опроса коммутатора', 'error');
+                }
+            } catch (e) {
+                this.showToast('Ошибка связи с сервером при опросе', 'error');
+            } finally {
+                this.isPollingSwitch = false;
+            }
+        },
+
+        // ==========================================
+        // НАСТРОЙКА ПОРТА И ПРИВЯЗКА К КАБИНЕТУ
+        // ==========================================
+        openPortSettingsModal(p) {
+            this.selectedPort = p;
+            this.portForm = {
+                cabinet: p.cabinet || '',
+                socket_label: p.socket_label || '',
+                zone_id: p.zone_id || '',
+                vlan_id: p.vlan_id || 1,
+                status: p.status || 'down',
+                connected_asset_id: p.connected_asset_id || ''
+            };
+            this.showPortModal = true;
+        },
+
+        async savePortSettings() {
+            if (!this.activeSwitch || !this.selectedPort) return;
+            try {
+                const payload = {
+                    cabinet: this.portForm.cabinet,
+                    socket_label: this.portForm.socket_label,
+                    zone_id: this.portForm.zone_id ? parseInt(this.portForm.zone_id) : null,
+                    vlan_id: parseInt(this.portForm.vlan_id) || 1,
+                    status: this.portForm.status,
+                    connected_asset_id: this.portForm.connected_asset_id ? parseInt(this.portForm.connected_asset_id) : null
+                };
+
+                const res = await fetch(`/api/v1/location/switches/${this.activeSwitch.id}/ports/${this.selectedPort.port_number}`, {
+                    method: 'PUT',
+                    headers: this.getAuthHeaders(),
+                    body: JSON.stringify(payload)
+                });
+                if (res.ok) {
+                    this.showToast(`Порт ${this.selectedPort.port_number} успешно настроен`, 'success');
+                    this.showPortModal = false;
+                    await this.loadFloorSwitches();
+                    const updated = this.switchesList.find(s => s.id === this.activeSwitch.id);
+                    if (updated) this.activeSwitch = updated;
+                    this.renderFloor();
+                } else {
+                    const err = await res.json();
+                    this.showToast(err.detail || 'Ошибка сохранения настроек порта', 'error');
+                }
+            } catch (e) {
+                this.showToast('Сетевая ошибка при настройке порта', 'error');
+            }
+        },
+
+        openSimulateModal(p) {
+            this.selectedPort = p;
+            this.simForm = {
+                port_number: p.port_number,
+                mac_address: p.last_mac || '00:1A:2B:3C:4D:5E',
+                target_cabinet: p.cabinet || 'Кабинет 302'
+            };
+            this.showSimulateModal = true;
+        },
+
+        async submitSimulateEvent() {
+            if (!this.activeSwitch) return;
+            try {
+                const res = await fetch(`/api/v1/location/switches/${this.activeSwitch.id}/simulate-event`, {
+                    method: 'POST',
+                    headers: this.getAuthHeaders(),
+                    body: JSON.stringify(this.simForm)
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    this.showToast(data.message, 'success');
+                    if (data.relocated_assets && data.relocated_assets.length > 0) {
+                        data.relocated_assets.forEach(rel => {
+                            this.showToast(`Оборудование ${rel.name} переехало в ${rel.new_cabinet}!`, 'success');
+                        });
+                    }
+                    this.showSimulateModal = false;
+                    if (this.showPortModal) this.showPortModal = false;
+                    await this.loadFloorSwitches();
+                    await this.loadFloorAssets();
+                    const updated = this.switchesList.find(s => s.id === this.activeSwitch.id);
+                    if (updated) this.activeSwitch = updated;
+                    this.renderFloor();
+                } else {
+                    this.showToast(data.detail || 'Ошибка симуляции', 'error');
+                }
+            } catch (e) {
+                this.showToast('Сетевая ошибка симуляции', 'error');
             }
         },
 

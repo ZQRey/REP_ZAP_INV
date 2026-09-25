@@ -182,39 +182,70 @@
     <!-- МОДАЛКА: ПАНЕЛЬ ПОРТОВ КОММУТАТОРА (FACEPLATE) -->
     <!-- ============================================== -->
     <div x-show="showSwitchModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md" style="display: none;">
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl max-w-4xl w-full p-6 space-y-4" @click.outside="showSwitchModal = false">
-            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl max-w-5xl w-full p-6 space-y-4 max-h-[92vh] overflow-y-auto" @click.outside="showSwitchModal = false">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-800 pb-3 gap-3">
                 <div class="flex items-center gap-3">
-                    <div class="w-9 h-9 rounded-lg bg-blue-600/20 text-blue-400 flex items-center justify-center font-bold">
+                    <div class="w-10 h-10 rounded-xl bg-blue-600/20 text-blue-400 flex items-center justify-center font-black text-sm border border-blue-500/30">
                         SW
                     </div>
                     <div>
-                        <h3 class="text-base font-bold text-white" x-text="activeSwitch ? activeSwitch.name : ''"></h3>
-                        <p class="text-xs text-slate-400" x-text="activeSwitch ? 'IP: ' + activeSwitch.ip_address + ' | Модель: ' + (activeSwitch.model || '24-Port Managed') : ''"></p>
+                        <div class="flex items-center gap-2">
+                            <h3 class="text-base font-bold text-white" x-text="activeSwitch ? activeSwitch.name : ''"></h3>
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-purple-950 text-purple-300 border border-purple-800"
+                                  x-text="activeSwitch ? (activeSwitch.management_type || 'snmp') : ''">
+                            </span>
+                        </div>
+                        <p class="text-xs text-slate-400" x-text="activeSwitch ? 'IP: ' + activeSwitch.ip_address + ' | Модель: ' + (activeSwitch.model || '24-Port Managed') + ' | ' + (activeSwitch.cabinet || 'Серверная') : ''"></p>
                     </div>
                 </div>
-                <button @click="showSwitchModal = false" class="text-slate-400 hover:text-white">✕</button>
+
+                <!-- Кнопки управления и опроса коммутатора -->
+                <div class="flex items-center gap-2">
+                    <button type="button" @click="pollSwitch(activeSwitch)" :disabled="isPollingSwitch" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-xs font-semibold shadow-md shadow-blue-600/20 flex items-center gap-1.5 transition">
+                        <svg class="w-3.5 h-3.5" :class="isPollingSwitch ? 'animate-spin' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                        <span x-text="isPollingSwitch ? 'Опрос...' : 'Опросить коммутатор (Sync MAC)'"></span>
+                    </button>
+
+                    <button type="button" @click="openSwitchSettingsModal(activeSwitch)" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-medium flex items-center gap-1.5 transition">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                        <span>Настройки L2/L3</span>
+                    </button>
+
+                    <button @click="showSwitchModal = false" class="text-slate-400 hover:text-white p-1">✕</button>
+                </div>
             </div>
 
-            <!-- Лицевая панель коммутатора 24 порта (RJ-45 Faceplate) -->
+            <!-- Статус опроса -->
+            <div class="flex items-center justify-between text-[11px] px-3 py-1.5 bg-slate-950/70 border border-slate-800 rounded-lg">
+                <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full" :class="activeSwitch && activeSwitch.last_poll_status === 'ok' ? 'bg-emerald-400' : (activeSwitch && activeSwitch.last_poll_status === 'error' ? 'bg-rose-400' : 'bg-slate-500')"></span>
+                    <span class="text-slate-300" x-text="activeSwitch && activeSwitch.last_poll_message ? activeSwitch.last_poll_message : 'Опрос еще не выполнялся'"></span>
+                </div>
+                <div class="text-slate-500" x-text="activeSwitch && activeSwitch.last_polled_at ? 'Обновлено: ' + new Date(activeSwitch.last_polled_at).toLocaleTimeString() : ''"></div>
+            </div>
+
+            <!-- Лицевая панель коммутатора (RJ-45 Faceplate) -->
             <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
                 <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex justify-between">
-                    <span>Лицевая панель портов 10/100/1000Base-T</span>
-                    <span class="text-emerald-400">● SNMP Online</span>
+                    <span>Лицевая панель портов (Кликните по порту для привязки к кабинету)</span>
+                    <span class="text-purple-400">● Клик по порту — настройка кабинета и розетки</span>
                 </div>
 
-                <div class="grid grid-cols-12 gap-2 pt-2">
+                <div class="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-12 gap-2 pt-2">
                     <template x-if="activeSwitch && activeSwitch.ports">
                         <template x-for="p in activeSwitch.ports" :key="p.id">
-                            <div class="switch-port p-2 rounded-lg border border-slate-800 bg-slate-900 flex flex-col items-center gap-1 cursor-pointer hover:border-blue-500/50"
-                                 :title="'Порт ' + p.port_number + ': ' + (p.connected_asset_name || 'Свободен')">
+                            <div @click="openPortSettingsModal(p)"
+                                 class="switch-port p-2 rounded-xl border border-slate-800 bg-slate-900/90 flex flex-col items-center gap-1 cursor-pointer hover:border-purple-500 hover:bg-slate-800/80 transition"
+                                 :title="'Порт ' + p.port_number + ': ' + (p.cabinet ? p.cabinet : 'Кабинет не указан') + ' | ' + (p.connected_asset_name || 'Свободен')">
                                 <!-- Индикатор Link/Act -->
                                 <div class="w-2 h-2 rounded-full" :class="p.status === 'up' ? 'port-up' : 'port-down'"></div>
                                 <!-- Разъем RJ-45 визуализация -->
                                 <div class="w-7 h-5 rounded bg-slate-950 border border-slate-700 flex items-center justify-center text-[9px] font-bold text-slate-300">
                                     <span x-text="p.port_number"></span>
                                 </div>
-                                <div class="text-[9px] text-slate-400 truncate max-w-[48px]" x-text="p.connected_asset_inv || 'FREE'"></div>
+                                <div class="text-[9px] text-slate-400 truncate max-w-[58px]" x-text="p.connected_asset_inv || (p.last_mac ? p.last_mac.substring(12) : 'FREE')"></div>
+                                <!-- Кабинет порта -->
+                                <div class="text-[8px] text-purple-300 font-semibold truncate max-w-[58px]" :class="p.cabinet ? 'bg-purple-950/80 px-1 rounded border border-purple-800/50' : 'text-slate-600'" x-text="p.cabinet || '—'"></div>
                             </div>
                         </template>
                     </template>
@@ -224,6 +255,220 @@
             <div class="flex justify-end pt-2">
                 <button type="button" @click="showSwitchModal = false" class="px-4 py-2 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-white rounded-lg">Закрыть</button>
             </div>
+        </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- МОДАЛКА: НАСТРОЙКА ПОРТА И ПРИВЯЗКА К КАБИНЕТУ -->
+    <!-- ============================================== -->
+    <div x-show="showPortModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md" style="display: none;">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4" @click.outside="showPortModal = false">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div>
+                    <h3 class="text-base font-bold text-white" x-text="selectedPort ? 'Порт ' + selectedPort.port_number + ' (Коммутатор ' + activeSwitch.name + ')' : ''"></h3>
+                    <p class="text-xs text-slate-400">Привязка порта коммутатора к физическому кабинету и розетке</p>
+                </div>
+                <button @click="showPortModal = false" class="text-slate-400 hover:text-white">✕</button>
+            </div>
+
+            <form @submit.prevent="savePortSettings()" class="space-y-3 text-xs">
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Привязка к кабинету *</label>
+                    <input type="text" x-model="portForm.cabinet" placeholder="Например: Кабинет 302 или Бухгалтерия" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white focus:ring-1 focus:ring-purple-500">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">Маркировка розетки</label>
+                        <input type="text" x-model="portForm.socket_label" placeholder="Розетка 302-1 / A-14" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white focus:ring-1 focus:ring-purple-500">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">Привязка к зоне этажа</label>
+                        <select x-model="portForm.zone_id" @change="if ($event.target.value) { const z = currentFloor?.zones?.find(zn => zn.id == $event.target.value); if (z) portForm.cabinet = z.name; }" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white">
+                            <option value="">Без привязки к зоне</option>
+                            <template x-if="currentFloor && currentFloor.zones">
+                                <template x-for="z in currentFloor.zones" :key="z.id">
+                                    <option :value="z.id" x-text="z.name"></option>
+                                </template>
+                            </template>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">VLAN ID</label>
+                        <input type="number" x-model="portForm.vlan_id" min="1" max="4094" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">Состояние порта</label>
+                        <select x-model="portForm.status" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white">
+                            <option value="up">🟢 Подключен (Link UP)</option>
+                            <option value="down">⚪ Свободен (Link DOWN)</option>
+                            <option value="disabled">🔴 Отключен (Admin Disabled)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Информация о текущем MAC -->
+                <div class="p-3 bg-slate-950/60 rounded-xl border border-slate-800 space-y-1">
+                    <div class="flex justify-between text-[11px]">
+                        <span class="text-slate-400">Последний MAC:</span>
+                        <span class="font-mono text-purple-300 font-bold" x-text="selectedPort?.last_mac || 'Не зафиксирован'"></span>
+                    </div>
+                    <div class="flex justify-between text-[11px]">
+                        <span class="text-slate-400">Подключенное устройство:</span>
+                        <span class="text-white font-medium" x-text="selectedPort?.connected_asset_name || '—'"></span>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between pt-3 border-t border-slate-800">
+                    <button type="button" @click="openSimulateModal(selectedPort)" class="px-3 py-1.5 text-xs text-purple-400 hover:text-purple-300 hover:bg-purple-950/50 rounded-lg border border-purple-900/60 transition">
+                        Тест роуминга (MAC)
+                    </button>
+                    <div class="flex gap-2">
+                        <button type="button" @click="showPortModal = false" class="px-3 py-1.5 text-xs text-slate-400 hover:text-white">Отмена</button>
+                        <button type="submit" class="px-4 py-2 text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 rounded-lg shadow-md shadow-purple-600/30">Сохранить</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- МОДАЛКА: НАСТРОЙКИ ИНТЕГРАЦИИ КОММУТАТОРА      -->
+    <!-- ============================================== -->
+    <div x-show="showSwitchSettingsModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md" style="display: none;">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4 max-h-[92vh] overflow-y-auto" @click.outside="showSwitchSettingsModal = false">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div>
+                    <h3 class="text-base font-bold text-white">Параметры интеграции L2/L3 коммутатора</h3>
+                    <p class="text-xs text-slate-400">Подключение к Omada Controller, MikroTik, HP, TP-Link, SNMP</p>
+                </div>
+                <button @click="showSwitchSettingsModal = false" class="text-slate-400 hover:text-white">✕</button>
+            </div>
+
+            <form @submit.prevent="saveSwitchSettings()" class="space-y-3 text-xs">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">Наименование свитча *</label>
+                        <input type="text" x-model="switchForm.name" required class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">IP-адрес / Hostname *</label>
+                        <input type="text" x-model="switchForm.ip_address" required class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">Тип интеграции *</label>
+                        <select x-model="switchForm.management_type" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white font-medium">
+                            <option value="omada">TP-Link Omada SDN (Controller API)</option>
+                            <option value="mikrotik">MikroTik RouterOS (SSH CLI)</option>
+                            <option value="hp">HP / Aruba ProCurve (SSH / SNMP)</option>
+                            <option value="tplink">TP-Link JetStream (SSH / SNMP)</option>
+                            <option value="snmp">Generic L2/L3 (SNMP v2c Bridge-MIB)</option>
+                            <option value="ssh_cli">Cisco / Huawei / Eltex (SSH CLI)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">Порт управления</label>
+                        <input type="number" x-model="switchForm.mgmt_port" placeholder="161 / 22 / 8043" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">Имя пользователя (Login)</label>
+                        <input type="text" x-model="switchForm.username" placeholder="admin / manager" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">Пароль доступа</label>
+                        <input type="password" x-model="switchForm.password" placeholder="Оставьте пустым, если не менялся" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">SNMP Community</label>
+                        <input type="text" x-model="switchForm.snmp_community" placeholder="public" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">Число портов</label>
+                        <select x-model="switchForm.total_ports" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white">
+                            <option value="8">8 портов</option>
+                            <option value="16">16 портов</option>
+                            <option value="24">24 порта</option>
+                            <option value="48">48 портов</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3" x-show="switchForm.management_type === 'omada'">
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">Omada Site Name</label>
+                        <input type="text" x-model="switchForm.site" placeholder="Default" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">Кабинет размещения свитча</label>
+                        <input type="text" x-model="switchForm.cabinet" placeholder="Серверная 108" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white">
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-2 pt-3 border-t border-slate-800">
+                    <button type="button" @click="showSwitchSettingsModal = false" class="px-4 py-2 text-xs text-slate-400 hover:text-white">Отмена</button>
+                    <button type="submit" class="px-4 py-2 text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 rounded-lg shadow-md shadow-purple-600/30">Сохранить параметры</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- МОДАЛКА: ТЕСТИРОВАНИЕ / СИМУЛЯЦИЯ РОУМИНГА     -->
+    <!-- ============================================== -->
+    <div x-show="showSimulateModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md" style="display: none;">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4" @click.outside="showSimulateModal = false">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div>
+                    <h3 class="text-base font-bold text-white">Тестирование переезда техники</h3>
+                    <p class="text-xs text-slate-400">Симулирует подключение MAC к порту для проверки роуминга</p>
+                </div>
+                <button @click="showSimulateModal = false" class="text-slate-400 hover:text-white">✕</button>
+            </div>
+
+            <form @submit.prevent="submitSimulateEvent()" class="space-y-3 text-xs">
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Выберите устройство для переезда</label>
+                    <select @change="if ($event.target.value) { const a = placedAssets.find(x => x.id == $event.target.value); if (a && a.mac_address) simForm.mac_address = a.mac_address; }" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white">
+                        <option value="">— Выбрать из существующих ПК —</option>
+                        <template x-for="a in placedAssets" :key="a.id">
+                            <option :value="a.id" x-text="a.name + ' (' + a.inventory_number + ')' + (a.mac_address ? ' - ' + a.mac_address : '')"></option>
+                        </template>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">MAC-адрес устройства *</label>
+                    <input type="text" x-model="simForm.mac_address" required placeholder="00:1A:2B:3C:4D:5E" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">Порт свитча</label>
+                        <input type="number" x-model="simForm.port_number" required min="1" max="48" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">Новый кабинет назначения</label>
+                        <input type="text" x-model="simForm.target_cabinet" placeholder="Кабинет 302" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white">
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-2 pt-3 border-t border-slate-800">
+                    <button type="button" @click="showSimulateModal = false" class="px-4 py-2 text-xs text-slate-400 hover:text-white">Отмена</button>
+                    <button type="submit" class="px-4 py-2 text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 rounded-lg shadow-md shadow-purple-600/30">Запустить симуляцию</button>
+                </div>
+            </form>
         </div>
     </div>
 
