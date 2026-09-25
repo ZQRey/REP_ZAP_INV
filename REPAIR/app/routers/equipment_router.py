@@ -44,28 +44,50 @@ def _build_switch_config(asset: Asset) -> Optional[SwitchConfigSchema]:
     if not asset.switch_device:
         return None
     sw = asset.switch_device
+    port = getattr(sw, "mgmt_port", None) or getattr(sw, "management_port", None) or 161
+    is_online = getattr(sw, "last_poll_status", "") == "ok"
+    site_name = "Default"
+    if getattr(sw, "extra_params", None) and isinstance(sw.extra_params, dict):
+        site_name = sw.extra_params.get("site", "Default")
+
     return SwitchConfigSchema(
-        ip_address=sw.ip_address,
-        management_type=sw.management_type,
-        management_port=sw.management_port,
+        ip_address=sw.ip_address or "",
+        management_type=sw.management_type or "snmp",
+        mgmt_port=port,
+        management_port=port,
         username=sw.username,
         password=sw.password,
-        snmp_community=sw.snmp_community,
+        snmp_community=sw.snmp_community or "public",
+        model=sw.model,
         total_ports=sw.total_ports or 24,
-        is_online=sw.is_online if sw.is_online is not None else False,
+        site=site_name,
+        is_online=is_online,
         last_sync_at=sw.last_polled_at
     )
 
 
 def _to_equipment_response(a: Asset) -> EquipmentResponse:
+    sw_cfg = None
+    try:
+        sw_cfg = _build_switch_config(a)
+    except Exception as e:
+        logger.warning(f"Error building switch config for asset {a.id}: {e}")
+
+    # Fallback to sensible defaults if DB fields are empty
+    a_type = a.asset_type or AssetType.WORKSTATION
+    a_status = a.status or AssetStatus.AT_WORKPLACE
+    a_cond = a.condition or AssetCondition.WORKING
+    a_name = a.name or (f"Компьютер {a.hostname.upper()}" if a.hostname else "Оборудование")
+    a_inv = a.inventory_number or (f"AD-{a.hostname.upper()}" if a.hostname else f"INV-{a.id}")
+
     return EquipmentResponse(
         id=a.id,
-        inventory_number=a.inventory_number,
+        inventory_number=a_inv,
         serial_number=a.serial_number,
-        name=a.name,
-        asset_type=a.asset_type,
-        status=a.status,
-        condition=a.condition,
+        name=a_name,
+        asset_type=a_type,
+        status=a_status,
+        condition=a_cond,
         cabinet=a.cabinet,
         branch_id=a.branch_id,
         branch_name=a.branch.name if a.branch else "Все филиалы",
@@ -77,7 +99,7 @@ def _to_equipment_response(a: Asset) -> EquipmentResponse:
         specs=a.specs,
         notes=a.notes,
         updated_at=a.updated_at,
-        switch_config=_build_switch_config(a)
+        switch_config=sw_cfg
     )
 
 
@@ -96,21 +118,22 @@ def _save_switch_device(db: Session, asset: Asset, switch_cfg: Optional[SwitchCo
     ip = (cfg.ip_address or "").strip() or "192.168.1.1"
     mgmt_type = (cfg.management_type or "snmp").strip()
     total_ports = cfg.total_ports or 24
+    default_port = 22 if mgmt_type in ("mikrotik", "ssh_cli") else (8043 if mgmt_type == "omada" else 161)
+    port = cfg.management_port or getattr(cfg, "mgmt_port", None) or default_port
 
     if not sw:
-        default_port = 22 if mgmt_type in ("mikrotik", "ssh_cli") else (8043 if mgmt_type == "omada" else 161)
         sw = NetworkSwitch(
             asset_id=asset.id,
-            branch_id=asset.branch_id,
             ip_address=ip,
             management_type=mgmt_type,
-            management_port=cfg.management_port or default_port,
+            mgmt_port=port,
             username=cfg.username,
             password=cfg.password,
             snmp_community=cfg.snmp_community or "public",
+            model=cfg.model,
             total_ports=total_ports,
-            is_online=cfg.is_online if cfg.is_online is not None else False,
-            extra_params={"allow_demo_fallback": True}
+            last_poll_status="ok" if cfg.is_online else "never",
+            extra_params={"site": cfg.site or "Default", "allow_demo_fallback": True}
         )
         db.add(sw)
         db.flush()
@@ -123,19 +146,20 @@ def _save_switch_device(db: Session, asset: Asset, switch_cfg: Optional[SwitchCo
                 status="down"
             ))
     else:
-        sw.branch_id = asset.branch_id
         if cfg.ip_address:
             sw.ip_address = ip
         if cfg.management_type:
             sw.management_type = mgmt_type
-        if cfg.management_port is not None:
-            sw.management_port = cfg.management_port
+        if port is not None:
+            sw.mgmt_port = port
         if cfg.username is not None:
             sw.username = cfg.username
         if cfg.password is not None:
             sw.password = cfg.password
         if cfg.snmp_community is not None:
             sw.snmp_community = cfg.snmp_community
+        if cfg.model is not None:
+            sw.model = cfg.model
         if total_ports and total_ports != sw.total_ports:
             curr_count = db.query(SwitchPort).filter(SwitchPort.switch_id == sw.id).count()
             if total_ports > curr_count:
@@ -160,40 +184,55 @@ def list_equipment(
     current_user: AppUser = Depends(get_current_user)
 ):
     """Список оборудования с фильтрацией по филиалам, статусу, типу и состоянию."""
+    # Авто-исправление активов без филиала (если есть филиал по умолчанию)
+    try:
+        orphan_count = db.query(Asset).filter(Asset.branch_id.is_(None)).count()
+        if orphan_count > 0:
+            target_b = branch_id if isinstance(branch_id, int) else (current_user.branch_id if isinstance(current_user.branch_id, int) else None)
+            if not target_b:
+                first_branch = db.query(Branch).first()
+                if first_branch:
+                    target_b = first_branch.id
+            if target_b:
+                db.query(Asset).filter(Asset.branch_id.is_(None)).update({Asset.branch_id: target_b}, synchronize_session=False)
+                db.commit()
+    except Exception as heal_err:
+        logger.warning(f"Branch auto-heal warning: {heal_err}")
+
     query = db.query(Asset).options(
         joinedload(Asset.branch),
         joinedload(Asset.responsible_ad_user),
         joinedload(Asset.switch_device)
     )
 
-    # Ограничение по филиалу
+    # Ограничение по филиалу: если указан филиал, не отсекаем неназначенные активы
     if current_user.role != "superadmin" and current_user.branch_id:
-        query = query.filter(Asset.branch_id == current_user.branch_id)
-    elif branch_id:
-        query = query.filter(Asset.branch_id == branch_id)
+        query = query.filter(or_(Asset.branch_id == current_user.branch_id, Asset.branch_id.is_(None)))
+    elif branch_id and isinstance(branch_id, int):
+        query = query.filter(or_(Asset.branch_id == branch_id, Asset.branch_id.is_(None)))
 
-    if status_filter:
+    if status_filter and isinstance(status_filter, str):
         try:
             st = AssetStatus(status_filter)
             query = query.filter(Asset.status == st)
         except Exception:
             pass
 
-    if condition_filter:
+    if condition_filter and isinstance(condition_filter, str):
         try:
             cond = AssetCondition(condition_filter)
             query = query.filter(Asset.condition == cond)
         except Exception:
             pass
 
-    if type_filter:
+    if type_filter and isinstance(type_filter, str):
         try:
             t = AssetType(type_filter)
             query = query.filter(Asset.asset_type == t)
         except Exception:
             pass
 
-    if search and search.strip():
+    if search and isinstance(search, str) and search.strip():
         term = f"%{search.strip()}%"
         query = query.filter(
             or_(
@@ -206,7 +245,13 @@ def list_equipment(
         )
 
     assets = query.order_by(desc(Asset.updated_at)).all()
-    return [_to_equipment_response(a) for a in assets]
+    res = []
+    for a in assets:
+        try:
+            res.append(_to_equipment_response(a))
+        except Exception as row_err:
+            logger.error(f"Error mapping asset id={a.id} to response: {row_err}")
+    return res
 
 
 @router.get("/find-by-inv")
@@ -455,7 +500,7 @@ def test_switch_connection(
 
     mgmt_type = (payload.management_type or "snmp").lower()
     default_port = 161 if mgmt_type == "snmp" else (8043 if mgmt_type == "omada" else 22)
-    port = payload.management_port or default_port
+    port = payload.management_port or getattr(payload, "mgmt_port", None) or default_port
 
     is_online = False
     sock_err = None
@@ -481,6 +526,7 @@ def test_switch_connection(
     if not is_online and sock_err:
         return SwitchTestResponse(
             success=False,
+            reachable=False,
             is_online=False,
             message=f"Коммутатор {ip}:{port} ({mgmt_type.upper()}) не отвечает: {sock_err}",
             ports_count=payload.total_ports or 24,
@@ -489,6 +535,7 @@ def test_switch_connection(
 
     return SwitchTestResponse(
         success=True,
+        reachable=True,
         is_online=True,
         message=f"Подключение к коммутатору {ip}:{port} ({mgmt_type.upper()}) успешно установлено! Порты и таблица MAC готовы к синхронизации.",
         ports_count=payload.total_ports or 24,

@@ -270,85 +270,170 @@ class ModelParserService:
         }
 
     @classmethod
+    def clean_os_name(cls, raw: Optional[str]) -> str:
+        """Очищает строку ОС от сырых номеров сборок AD (напр. 'Windows 10 Pro 10.0 (19045)' -> 'Windows 10 Pro')."""
+        if not raw:
+            return "Windows 10 Pro"
+        s = raw.strip()
+        # Удаляем версии вида 10.0 (19045), 10.0.19045, (19045)
+        s = re.sub(r'\s*\d+\.\d+(?:\.\d+)?(?:\s*\(\d+\))?', '', s)
+        s = re.sub(r'\s*\(\d+\)', '', s)
+        s = re.sub(r'\s*Build\s*\d+', '', s, flags=re.I)
+        s = re.sub(r'\s+2[0-9]H[1-2]', '', s) # e.g. 21H2, 22H2, 23H2
+        s = re.sub(r'\s+', ' ', s).strip()
+        return s or "Windows"
+
+    @classmethod
+    def determine_computer_model(
+        cls,
+        hostname: Optional[str],
+        os_name: Optional[str],
+        notes: Optional[str] = None,
+        current_asset_type: Optional[AssetType] = None
+    ) -> Dict[str, Any]:
+        """
+        Интеллектуально определяет точное наименование модели, категорию и производителя компьютера.
+        Устраняет безликие 'Офисный ПК' и группирует технику по реальным конфигурациям и назначению.
+        """
+        raw_os = os_name or ""
+        clean_os = cls.clean_os_name(raw_os)
+        h = (hostname or "").upper()
+        n = (notes or "").strip()
+
+        # 1. Определение категории
+        is_server = (
+            current_asset_type == AssetType.SERVER or
+            "SERVER" in raw_os.upper() or
+            any(srv_prefix in h for srv_prefix in ["SRV", "DC0", "DC-", "EXCH", "SQL", "PROXMOX", "ESXI"])
+        )
+        is_laptop = (
+            current_asset_type == AssetType.LAPTOP or
+            any(nb in h for nb in ["LAPTOP", "NB-", "NB_", "NOTE", "BOOK"]) or
+            any(nb in n.lower() for nb in ["ноутбук", "laptop", "notebook"])
+        )
+
+        category = "server" if is_server else ("laptop" if is_laptop else "workstation")
+
+        # 2. Поиск физического вендора и модели в описании/заметках (напр. HP ProDesk 400 G6)
+        cand_name = None
+        cand_vendor = None
+
+        if n:
+            desc_clean = n.replace("AD Description:", "").replace("AD:", "").replace("Собрано из Active Directory:", "").strip()
+            # Проверяем, есть ли в описании известный вендор и модель
+            for pattern, canonical in KNOWN_VENDORS:
+                if re.search(r'\b' + re.escape(pattern) + r'\b', desc_clean.upper()):
+                    cand_vendor = canonical
+                    # Если описание не просто "HP", а содержит модель
+                    if len(desc_clean) > 3 and not desc_clean.upper().startswith("ИНВ"):
+                        cand_name = desc_clean
+                    break
+
+        # 3. Поиск вендора по префиксу имени хоста
+        if not cand_vendor:
+            for pattern, canonical in KNOWN_VENDORS:
+                if re.search(r'\b' + re.escape(pattern) + r'\b', h):
+                    cand_vendor = canonical
+                    break
+
+        # 4. Формирование понятного и информативного наименования модели
+        if not cand_name:
+            if is_server:
+                cand_name = f"Сервер ({clean_os})"
+                cand_vendor = cand_vendor or "Microsoft"
+            elif is_laptop:
+                cand_name = f"Ноутбук ({clean_os})"
+                cand_vendor = cand_vendor or "OEM"
+            else:
+                cand_name = f"ПК Рабочая станция ({clean_os})"
+                cand_vendor = cand_vendor or "OEM / Сборка"
+
+        return {
+            "name": cand_name.strip(),
+            "vendor": cand_vendor,
+            "category": category,
+            "clean_os": clean_os
+        }
+
+    @classmethod
     def sync_models_from_ad_computers(cls, db: Session) -> Dict[str, Any]:
         """
         Формирует и пополняет справочник моделей на основе полученных данных с компьютеров AD.
-        Извлекает уникальные названия моделей, вычисляет средние характеристики и сохраняет.
+        Удаляет устаревшие неинформативные 'Офисный ПК (Windows...)' и формирует чистые модели.
         """
-        ad_assets = db.query(Asset).filter(Asset.ad_guid != None).all()
-        if not ad_assets:
-            # Если нет прямого ad_guid, возьмем все компьютеры в реестре
-            ad_assets = db.query(Asset).filter(
+        # 1. Удаляем старые шаблоны 'Офисный ПК (Windows...' из базы
+        try:
+            db.query(EquipmentModel).filter(EquipmentModel.name.ilike("Офисный ПК (%")).delete(synchronize_session=False)
+            db.commit()
+        except Exception as del_err:
+            db.rollback()
+            logger.warning(f"Error purging old generic models: {del_err}")
+
+        ad_assets = db.query(Asset).filter(
+            or_(
+                Asset.ad_guid != None,
                 Asset.asset_type.in_([AssetType.WORKSTATION, AssetType.LAPTOP, AssetType.SERVER])
-            ).all()
+            )
+        ).all()
 
         created_count = 0
         updated_count = 0
-
-        # Извлекаем модели из названий и заметок
         model_candidates: Dict[str, List[Asset]] = {}
+        model_meta: Dict[str, Dict[str, Any]] = {}
 
         for a in ad_assets:
-            # Проверяем заметки (часто там описание "HP ProDesk 400 G6")
-            cand_name = None
-            if a.notes and "AD Description:" in a.notes:
-                desc = a.notes.replace("AD Description:", "").replace("AD:", "").strip()
-                if desc and len(desc) > 3 and not desc.startswith("ИНВ"):
-                    cand_name = desc
+            m_info = cls.determine_computer_model(
+                hostname=a.hostname,
+                os_name=a.os_name,
+                notes=a.notes,
+                current_asset_type=a.asset_type
+            )
+            model_name = m_info["name"]
+            
+            # Актуализируем наименование у самого актива в реестре техники
+            if a.name != model_name:
+                a.name = model_name
+            
+            # Корректируем asset_type если это сервер
+            if m_info["category"] == "server" and a.asset_type != AssetType.SERVER:
+                a.asset_type = AssetType.SERVER
+            elif m_info["category"] == "laptop" and a.asset_type != AssetType.LAPTOP:
+                a.asset_type = AssetType.LAPTOP
 
-            if not cand_name:
-                # Очищаем имя актива от префиксов "Компьютер "
-                name_clean = re.sub(r'^(?:Компьютер|Ноутбук|ПК|Сервер)\s+', '', a.name, flags=re.I).strip()
-                # Если имя состоит из шаблона вендор+модель
-                if cls.parse_vendor(name_clean):
-                    cand_name = name_clean
+            if model_name not in model_candidates:
+                model_candidates[model_name] = []
+                model_meta[model_name] = m_info
+            model_candidates[model_name].append(a)
 
-            if not cand_name and a.hostname:
-                # Попробуем разобрать префиксы хоста (напр. HP400-01 -> HP ProDesk 400)
-                h = a.hostname.upper()
-                if "HP" in h:
-                    cand_name = "HP ProDesk Workstation"
-                elif "DELL" in h:
-                    cand_name = "Dell OptiPlex Workstation"
-                elif "LENOVO" in h or "TP" in h:
-                    cand_name = "Lenovo ThinkPad Workstation"
-                else:
-                    cand_name = f"Офисный ПК ({a.os_name or 'Windows'})"
-
-            if cand_name:
-                cand_name = cand_name.strip()
-                if cand_name not in model_candidates:
-                    model_candidates[cand_name] = []
-                model_candidates[cand_name].append(a)
-
-        # Для каждого кандидата создаем или обновляем запись в EquipmentModel
+        # Сохраняем агрегированные модели в справочник
         for m_name, asset_group in model_candidates.items():
-            parsed = cls.parse_model_details(m_name)
-            vendor = parsed["vendor"]
-            cat = parsed["category"]
+            meta = model_meta[m_name]
+            vendor = meta["vendor"]
+            cat = meta["category"]
 
-            # Вычисляем типовые характеристики на основе группы компьютеров
             stats = cls.calculate_average_specs(
                 db=db,
                 category=cat,
                 vendor=vendor,
                 model_name=m_name
             )
-
             specs_str = stats.get("specs_template")
 
             existing = db.query(EquipmentModel).filter(EquipmentModel.name.ilike(m_name)).first()
             if existing:
-                if not existing.specs_template or "Windows" not in existing.specs_template:
-                    existing.specs_template = specs_str
-                    updated_count += 1
+                existing.category = cat
+                if vendor:
+                    existing.vendor = vendor
+                existing.specs_template = specs_str
+                existing.notes = f"Автоматически сформировано из Active Directory (охватывает {len(asset_group)} устр.)"
+                updated_count += 1
             else:
                 new_m = EquipmentModel(
                     name=m_name,
                     category=cat,
                     vendor=vendor,
                     specs_template=specs_str,
-                    notes=f"Автоматически сформировано из Active Directory (охватывает {len(asset_group)} устройств)"
+                    notes=f"Автоматически сформировано из Active Directory (охватывает {len(asset_group)} устр.)"
                 )
                 db.add(new_m)
                 created_count += 1
@@ -358,7 +443,7 @@ class ModelParserService:
 
         return {
             "status": "success",
-            "message": f"Сформировано {created_count} новых моделей, обновлено {updated_count}. Всего в справочнике: {total_models} моделей.",
+            "message": f"Сформировано {created_count} моделей, обновлено {updated_count}. Всего в справочнике: {total_models} моделей.",
             "created": created_count,
             "updated": updated_count,
             "total_models": total_models

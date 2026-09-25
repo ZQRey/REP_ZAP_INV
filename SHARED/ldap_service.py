@@ -246,10 +246,30 @@ class LDAPService:
 
                 full_os = f"{os_title} {os_ver}".strip()
 
+                from REPAIR.app.services.model_parser_service import ModelParserService
+                m_info = ModelParserService.determine_computer_model(
+                    hostname=hostname,
+                    os_name=full_os,
+                    notes=desc,
+                    current_asset_type=asset_type
+                )
+                model_name = m_info["name"]
+
                 if asset:
                     asset.hostname = hostname
                     asset.os_name = full_os
                     asset.ad_guid = guid
+                    asset.name = model_name
+                    if not asset.branch_id and default_branch_id:
+                        asset.branch_id = default_branch_id
+                    if not asset.status:
+                        asset.status = AssetStatus.AT_WORKPLACE
+                    if not asset.condition:
+                        asset.condition = AssetCondition.WORKING
+                    if m_info["category"] == "server":
+                        asset.asset_type = AssetType.SERVER
+                    elif m_info["category"] == "laptop":
+                        asset.asset_type = AssetType.LAPTOP
                     if desc:
                         asset.notes = f"AD Description: {desc}"
                     if loc and not asset.cabinet:
@@ -259,8 +279,8 @@ class LDAPService:
                     new_asset = Asset(
                         inventory_number=inv_number,
                         serial_number=None,
-                        name=f"Компьютер {hostname.upper()}",
-                        asset_type=asset_type,
+                        name=model_name,
+                        asset_type=AssetType.SERVER if m_info["category"] == "server" else (AssetType.LAPTOP if m_info["category"] == "laptop" else AssetType.WORKSTATION),
                         status=AssetStatus.AT_WORKPLACE,
                         condition=AssetCondition.WORKING,
                         ad_guid=guid,
@@ -273,6 +293,9 @@ class LDAPService:
                     )
                     db.add(new_asset)
                     added_count += 1
+
+            if default_branch_id:
+                db.query(Asset).filter(Asset.branch_id.is_(None)).update({Asset.branch_id: default_branch_id}, synchronize_session=False)
 
             db.commit()
             conn.unbind()
@@ -312,6 +335,11 @@ class LDAPService:
         if existing_pc_count > 0:
             return {"status": "info", "message": f"В базе уже имеется {existing_pc_count} компьютеров из AD.", "added": 0, "updated": 0}
 
+        if not branch_id:
+            first_b = db.query(Branch).first()
+            if first_b:
+                branch_id = first_b.id
+
         demo_pcs = [
             ("AD-PC-BUH01", "buh-pc01", "Windows 11 Pro 23H2", "Бухгалтерия Главный бухгалтер", "Кабинет 201", "guid-buh-01"),
             ("AD-PC-BUH02", "buh-pc02", "Windows 10 Pro 22H2", "Бухгалтерия Расчетчик", "Кабинет 201", "guid-buh-02"),
@@ -321,12 +349,18 @@ class LDAPService:
             ("AD-SRV-DC01", "srv-dc01", "Windows Server 2022", "Контроллер домена AD", "Серверная", "guid-srv-01"),
         ]
 
+        from REPAIR.app.services.model_parser_service import ModelParserService
         added = 0
         for inv, host, os_name, desc, cab, guid in demo_pcs:
+            m_info = ModelParserService.determine_computer_model(
+                hostname=host,
+                os_name=os_name,
+                notes=desc
+            )
             asset = Asset(
                 inventory_number=inv,
-                name=f"Компьютер {host.upper()}",
-                asset_type=AssetType.SERVER if "Server" in os_name else AssetType.WORKSTATION,
+                name=m_info["name"],
+                asset_type=AssetType.SERVER if m_info["category"] == "server" else (AssetType.LAPTOP if m_info["category"] == "laptop" else AssetType.WORKSTATION),
                 status=AssetStatus.AT_WORKPLACE,
                 condition=AssetCondition.WORKING,
                 ad_guid=guid,
@@ -343,7 +377,6 @@ class LDAPService:
         db.commit()
 
         try:
-            from REPAIR.app.services.model_parser_service import ModelParserService
             ModelParserService.sync_models_from_ad_computers(db)
         except Exception as m_err:
             logger.warning(f"Auto-sync demo models failed: {m_err}")

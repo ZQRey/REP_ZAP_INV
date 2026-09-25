@@ -29,9 +29,9 @@ def list_equipment_models(
     Возвращает список моделей с количеством закрепленных в организации устройств.
     """
     query = db.query(EquipmentModel)
-    if category:
+    if category and isinstance(category, str):
         query = query.filter(EquipmentModel.category == category)
-    if search and search.strip():
+    if search and isinstance(search, str) and search.strip():
         s = f"%{search.strip()}%"
         query = query.filter(
             or_(
@@ -45,15 +45,21 @@ def list_equipment_models(
 
     # Подсчитываем количество устройств (units_count) для каждой модели
     result = []
+    import re
     for m in models:
         m_name_clean = m.name.strip()
-        # Ищем устройства в парке по прямому совпадению или подстроке
-        count = db.query(func.count(Asset.id)).filter(
-            or_(
-                Asset.name.ilike(f"%{m_name_clean}%"),
-                func.lower(m_name_clean).contains(func.lower(Asset.name))
-            )
-        ).scalar() or 0
+        conds = [
+            Asset.name == m_name_clean,
+            Asset.name.ilike(f"%{m_name_clean}%"),
+            func.lower(m_name_clean).contains(func.lower(Asset.name))
+        ]
+        # Если модель содержит подстроку ОС в скобках (напр. "ПК Рабочая станция (Windows 10 Pro)")
+        os_match = re.search(r'\(([^)]+)\)', m_name_clean)
+        if os_match:
+            os_term = os_match.group(1).strip()
+            conds.append(Asset.os_name.ilike(f"%{os_term}%"))
+
+        count = db.query(func.count(Asset.id)).filter(or_(*conds)).scalar() or 0
 
         result.append(EquipmentModelResponse(
             id=m.id,

@@ -46,24 +46,30 @@ class ModelParseSuggestResponse(BaseModel):
 
 
 class SwitchConfigSchema(BaseModel):
-    ip_address: str
+    ip_address: str = "192.168.1.1"
     management_type: str = "snmp"
-    mgmt_port: int = 161
+    mgmt_port: Optional[int] = 161
+    management_port: Optional[int] = 161
     username: Optional[str] = None
     password: Optional[str] = None
     snmp_community: Optional[str] = "public"
     model: Optional[str] = None
     total_ports: int = 24
     site: Optional[str] = "Default"
+    is_online: Optional[bool] = False
+    last_sync_at: Optional[datetime] = None
 
 
 class SwitchTestResponse(BaseModel):
     success: bool
-    reachable: bool
+    reachable: bool = False
+    is_online: bool = False
     learned_mac_count: int = 0
     message: str
     ports_up: Optional[int] = None
     ports_total: Optional[int] = None
+    ports_count: Optional[int] = None
+    mac_count: Optional[int] = None
 
 
 # --- Техника и IT-активы (Asset) ---
@@ -129,10 +135,10 @@ class EquipmentResponse(BaseModel):
     id: int
     inventory_number: str
     serial_number: Optional[str] = None
-    name: str
-    asset_type: AssetType
-    status: AssetStatus
-    condition: AssetCondition
+    name: str = "Оборудование"
+    asset_type: Optional[AssetType] = AssetType.WORKSTATION
+    status: Optional[AssetStatus] = AssetStatus.AT_WORKPLACE
+    condition: Optional[AssetCondition] = AssetCondition.WORKING
     cabinet: Optional[str] = None
     branch_id: Optional[int] = None
     branch_name: Optional[str] = None
