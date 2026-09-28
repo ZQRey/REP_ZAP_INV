@@ -8,9 +8,9 @@ from sqlalchemy.orm import Session, joinedload
 from SHARED.database import get_db
 from SHARED.models import Cartridge, CartridgeStatus, AppUser
 from SHARED.notification_service import enqueue, make_idempotency_key
-from app.schemas import NotifyWhatsAppRequest
-from app.services.settings_service import SettingsService
-from app.services.whatsapp_service import WhatsAppService
+from CARTRIDGE.app.schemas import NotifyWhatsAppRequest
+from CARTRIDGE.app.services.settings_service import SettingsService
+from CARTRIDGE.app.services.whatsapp_service import WhatsAppService
 
 router = APIRouter(prefix="/api/notifications", tags=["Notifications"])
 
