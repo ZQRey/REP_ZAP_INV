@@ -33,7 +33,12 @@ services:
     command: ["alembic", "upgrade", "head"]
     environment:
       - DATABASE_URL=${DATABASE_URL:?Set the application database URL}
+      - SECRET_KEY=${SECRET_KEY:?Set a random JWT secret}
+      - REDIS_URL=${REDIS_URL:?Set an authenticated Redis URL}
+      - NETWORK_CREDENTIAL_KEY=${NETWORK_CREDENTIAL_KEY:?Set a random network credential encryption key}
       - APP_ENV=${APP_ENV:-production}
+      - WHATSAPP_ENABLED=false
+      - LDAP_ENABLED=false
     depends_on:
       postgres-db:
         condition: service_healthy
