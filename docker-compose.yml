@@ -55,6 +55,31 @@ services:
       whatsapp-gateway:
         condition: service_started
 
+  # Durable notification worker. PostgreSQL keeps the outbox; Redis only wakes workers.
+  notification-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: it_notification_worker
+    restart: unless-stopped
+    command: ["python", "-m", "SHARED.notification_worker"]
+    volumes:
+      - ./secrets/ssh:/run/ssh:ro
+    environment:
+      - DATABASE_URL=${DATABASE_URL:?Set the application database URL}
+      - SECRET_KEY=${SECRET_KEY:?Set a random JWT secret}
+      - REDIS_URL=${REDIS_URL:?Set an authenticated Redis URL}
+      - APP_ENV=${APP_ENV:-production}
+      - NOTIFICATION_POLL_SECONDS=${NOTIFICATION_POLL_SECONDS:-5}
+      - NOTIFICATION_BATCH_SIZE=${NOTIFICATION_BATCH_SIZE:-25}
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      whatsapp-gateway:
+        condition: service_started
+
   # Единая СУБД: PostgreSQL 15 с расширением PostGIS для интерактивной карты
   postgres-db:
     image: postgis/postgis:15-3.3-alpine
