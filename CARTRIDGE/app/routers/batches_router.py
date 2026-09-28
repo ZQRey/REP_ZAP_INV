@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, joinedload
 
 from SHARED.database import get_db
+from SHARED.domain_transitions import InvalidTransition, transition_cartridge
 from SHARED.models import Batch, BatchItem, Cartridge, CartridgeStatus, HistoryLog, Branch, AppUser
 from app.schemas import BatchResponse, BatchCreateRequest
 from app.services.settings_service import SettingsService
@@ -126,7 +127,10 @@ def create_batch(
     db.flush()
 
     for cart in cartridges:
-        cart.status = CartridgeStatus.AT_VENDOR
+        try:
+            transition_cartridge(cart, CartridgeStatus.AT_VENDOR)
+        except InvalidTransition as exc:
+            raise HTTPException(status_code=409, detail=f"{cart.marker_label}: {exc}") from exc
         cart.updated_at = now
 
         # Привязка к акту
