@@ -31,7 +31,7 @@ from REPAIR.app.schemas import (
     EquipmentAcceptanceRequest,
     InstallAtWorkplaceRequest,
     ReturnFromSCRequest,
-    SwitchConfigSchema,
+    SwitchConfigSchema, SwitchConfigResponse,
     SwitchTestResponse
 )
 from REPAIR.app.services.equipment_service import EquipmentService
@@ -40,7 +40,7 @@ from LOCATION.app.services.switch_integration_service import SwitchIntegrationSe
 router = APIRouter(prefix="/api/v1/repair/equipment", tags=["Repair Equipment"])
 
 
-def _build_switch_config(asset: Asset) -> Optional[SwitchConfigSchema]:
+def _build_switch_config(asset: Asset) -> Optional[SwitchConfigResponse]:
     if not asset.switch_device:
         return None
     sw = asset.switch_device
@@ -50,14 +50,12 @@ def _build_switch_config(asset: Asset) -> Optional[SwitchConfigSchema]:
     if getattr(sw, "extra_params", None) and isinstance(sw.extra_params, dict):
         site_name = sw.extra_params.get("site", "Default")
 
-    return SwitchConfigSchema(
+    return SwitchConfigResponse(
+        credentials_configured=bool(sw.password or sw.snmp_community),
         ip_address=sw.ip_address or "",
         management_type=sw.management_type or "snmp",
         mgmt_port=port,
         management_port=port,
-        username=sw.username,
-        password=sw.password,
-        snmp_community=sw.snmp_community or "public",
         model=sw.model,
         total_ports=sw.total_ports or 24,
         site=site_name,
@@ -65,13 +63,12 @@ def _build_switch_config(asset: Asset) -> Optional[SwitchConfigSchema]:
         last_sync_at=sw.last_polled_at
     )
 
-
 def _to_equipment_response(a: Asset) -> EquipmentResponse:
     sw_cfg = None
     try:
         sw_cfg = _build_switch_config(a)
     except Exception as e:
-        logger.warning(f"Error building switch config for asset {a.id}: {e}")
+        logger.warning(f"Error building switch config for asset {a.id}: {type(e).__name__}")
 
     # Fallback to sensible defaults if DB fields are empty
     a_type = a.asset_type or AssetType.WORKSTATION
@@ -129,11 +126,11 @@ def _save_switch_device(db: Session, asset: Asset, switch_cfg: Optional[SwitchCo
             mgmt_port=port,
             username=cfg.username,
             password=cfg.password,
-            snmp_community=cfg.snmp_community or "public",
+            snmp_community=cfg.snmp_community or "",
             model=cfg.model,
             total_ports=total_ports,
             last_poll_status="ok" if cfg.is_online else "never",
-            extra_params={"site": cfg.site or "Default", "allow_demo_fallback": True}
+            extra_params={"site": cfg.site or "Default", "allow_demo_fallback": False}
         )
         db.add(sw)
         db.flush()
@@ -152,11 +149,11 @@ def _save_switch_device(db: Session, asset: Asset, switch_cfg: Optional[SwitchCo
             sw.management_type = mgmt_type
         if port is not None:
             sw.mgmt_port = port
-        if cfg.username is not None:
+        if cfg.username:
             sw.username = cfg.username
-        if cfg.password is not None:
+        if cfg.password:
             sw.password = cfg.password
-        if cfg.snmp_community is not None:
+        if cfg.snmp_community:
             sw.snmp_community = cfg.snmp_community
         if cfg.model is not None:
             sw.model = cfg.model
@@ -617,63 +614,14 @@ def test_switch_connection(
     payload: SwitchConfigSchema,
     current_user: AppUser = Depends(require_role(["superadmin", "admin", "technician"]))
 ):
-    """
-    Проверка сетевого подключения к коммутатору:
-    - Проверка доступности IP и порта (TCP connect для SSH/Telnet/Omada или сокет-тест для SNMP).
-    - Возврат статуса соединения и готовности к синхронизации портов и MAC-адресов.
-    """
-    import socket
-    ip = (payload.ip_address or "").strip()
-    if not ip:
-        return SwitchTestResponse(
-            success=False,
-            is_online=False,
-            message="Не указан IP-адрес коммутатора"
-        )
-
-    mgmt_type = (payload.management_type or "snmp").lower()
-    default_port = 161 if mgmt_type == "snmp" else (8043 if mgmt_type == "omada" else 22)
-    port = payload.management_port or getattr(payload, "mgmt_port", None) or default_port
-
-    is_online = False
-    sock_err = None
-    try:
-        if mgmt_type == "snmp":
-            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            s.settimeout(2.0)
-            s.connect((ip, port))
-            is_online = True
-            s.close()
-        else:
-            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.settimeout(2.5)
-            res = s.connect_ex((ip, port))
-            s.close()
-            is_online = (res == 0)
-            if not is_online:
-                sock_err = f"Порт {port} закрыт или хост недоступен (код {res})"
-    except Exception as e:
-        sock_err = str(e)
-        is_online = False
-
-    if not is_online and sock_err:
-        return SwitchTestResponse(
-            success=False,
-            reachable=False,
-            is_online=False,
-            message=f"Коммутатор {ip}:{port} ({mgmt_type.upper()}) не отвечает: {sock_err}",
-            ports_count=payload.total_ports or 24,
-            mac_count=0
-        )
-
-    return SwitchTestResponse(
-        success=True,
-        reachable=True,
-        is_online=True,
-        message=f"Подключение к коммутатору {ip}:{port} ({mgmt_type.upper()}) успешно установлено! Порты и таблица MAC готовы к синхронизации.",
-        ports_count=payload.total_ports or 24,
-        mac_count=payload.total_ports or 24
-    )
+    result = SwitchIntegrationService.test_connection(
+        ip_address=payload.ip_address, management_type=payload.management_type,
+        mgmt_port=payload.management_port or payload.mgmt_port,
+        username=payload.username, password=payload.password,
+        snmp_community=payload.snmp_community, extra_params={"site": payload.site})
+    return SwitchTestResponse(success=result["success"], reachable=result["reachable"],
+                              is_online=result["success"], message=result["message"],
+                              ports_count=payload.total_ports, mac_count=0)
 
 
 @router.post("/{asset_id}/sync-switch")
@@ -702,8 +650,8 @@ def sync_switch_equipment(
             "last_poll_message": asset.switch_device.last_poll_message
         }
     except Exception as e:
-        logger.exception(f"Error polling switch {asset_id}: {e}")
-        raise HTTPException(status_code=500, detail=f"Ошибка опроса коммутатора: {str(e)}")
+        logger.exception(f"Error polling switch {asset_id}: {type(e).__name__}")
+        raise HTTPException(status_code=500, detail=f"Ошибка опроса коммутатора: {type(e).__name__}")
 
 
 @router.delete("/{asset_id}")
@@ -761,8 +709,8 @@ def delete_equipment(
         raise
     except Exception as e:
         db.rollback()
-        logger.exception(f"Error deleting equipment {asset_id}: {e}")
-        raise HTTPException(status_code=500, detail=f"Ошибка удаления оборудования: {str(e)}")
+        logger.exception(f"Error deleting equipment {asset_id}: {type(e).__name__}")
+        raise HTTPException(status_code=500, detail=f"Ошибка удаления оборудования: {type(e).__name__}")
 
 
 # ==========================================
@@ -866,3 +814,4 @@ def install_equipment_at_workplace(
         "count": count,
         "message": f"Успешно установлено на рабочие места: {count} единиц техники."
     }
+

@@ -1,3 +1,4 @@
+import secrets
 import re
 from typing import Dict, Any, Optional, List
 import httpx
@@ -58,6 +59,8 @@ class WhatsAppService:
         settings = SettingsService.get_all(db)
         api_url = settings.get("wa_api_url", "http://whatsapp-gateway:8080").rstrip("/")
         api_key = settings.get("wa_api_key", "")
+        if not api_key:
+            return {"success": False, "message": "Evolution credentials are not configured"}
         instance = instance_name or settings.get("wa_instance_name", "cartridge_bot")
 
         headers = {
@@ -95,7 +98,7 @@ class WhatsAppService:
                         "instance": instance,
                         "connected": False,
                         "state": "error",
-                        "message": f"Ответ шлюза: HTTP {resp.status_code} ({resp.text[:100]})"
+                        "message": f"Ответ шлюза: HTTP {resp.status_code} ([upstream error])"
                     }
         except httpx.ConnectError:
             return {
@@ -109,7 +112,7 @@ class WhatsAppService:
                 "instance": instance,
                 "connected": False,
                 "state": "error",
-                "message": f"Ошибка проверки подключения: {str(e)}"
+                "message": f"Ошибка проверки подключения: {type(e).__name__}"
             }
 
     @classmethod
@@ -180,6 +183,8 @@ class WhatsAppService:
         settings = SettingsService.get_all(db)
         api_url = settings.get("wa_api_url", "http://whatsapp-gateway:8080").rstrip("/")
         api_key = settings.get("wa_api_key", "")
+        if not api_key:
+            return {"success": False, "message": "Evolution credentials are not configured"}
         instance = instance_name or settings.get("wa_instance_name", "cartridge_bot")
 
         headers = {
@@ -254,7 +259,7 @@ class WhatsAppService:
                 # 2. Инстанс отсутствует либо завис — создаем или пересоздаем
                 create_payload = {
                     "instanceName": instance,
-                    "token": f"{instance}_token",
+                    "token": secrets.token_urlsafe(48),
                     "qrcode": True,
                     "integration": "WHATSAPP-BAILEYS"
                 }
@@ -310,7 +315,7 @@ class WhatsAppService:
                 return {
                     "success": False,
                     "instance": instance,
-                    "message": f"Ошибка создания инстанса (HTTP {create_resp.status_code}): {create_resp.text[:200]}"
+                    "message": f"Ошибка создания инстанса (HTTP {create_resp.status_code}): [upstream error]"
                 }
         except httpx.ConnectError:
             return {
@@ -322,7 +327,7 @@ class WhatsAppService:
             return {
                 "success": False,
                 "instance": instance,
-                "message": f"Ошибка получения QR-кода: {str(e)}"
+                "message": f"Ошибка получения QR-кода: {type(e).__name__}"
             }
 
     @classmethod
@@ -346,6 +351,8 @@ class WhatsAppService:
         settings = SettingsService.get_all(db)
         api_url = settings.get("wa_api_url", "http://whatsapp-gateway:8080").rstrip("/")
         api_key = settings.get("wa_api_key", "")
+        if not api_key:
+            return {"success": False, "message": "Evolution credentials are not configured"}
         instance = instance_name or settings.get("wa_instance_name", "cartridge_bot")
 
         # 1. Проверяем, подключен ли данный инстанс к WhatsApp
@@ -379,12 +386,12 @@ class WhatsAppService:
                     return {
                         "success": True,
                         "message": f"Сообщение успешно отправлено через '{instance}'.",
-                        "data": resp.json()
+                        "data": {"status": "sent"}
                     }
                 else:
                     return {
                         "success": False,
-                        "message": f"Ошибка отправки через '{instance}' (HTTP {resp.status_code}): {resp.text}"
+                        "message": f"Ошибка отправки через '{instance}' (HTTP {resp.status_code}): [upstream error]"
                     }
         except httpx.TimeoutException:
             return {
@@ -397,8 +404,9 @@ class WhatsAppService:
                 "message": f"Не удалось подключиться к шлюзу Evolution API ({api_url}). Убедитесь, что контейнер запущен."
             }
         except Exception as e:
-            err = str(e) or repr(e) or type(e).__name__
+            err = type(e).__name__
             return {
                 "success": False,
-                "message": f"Ошибка при отправке сообщения через '{instance}': {err}"
+                "message": f"Ошибка при отправке сообщения через '{instance}': {type(err).__name__}"
             }
+

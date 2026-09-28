@@ -48,7 +48,7 @@ def get_repair_report_json(
         )
         return {"success": True, "report": data}
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Ошибка формирования отчета: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Ошибка формирования отчета: {type(e).__name__}")
 
 
 @router.get("/export/excel")
@@ -106,4 +106,5 @@ def export_repair_report_excel(
             headers=headers
         )
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Ошибка генерации Excel: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Ошибка генерации Excel: {type(e).__name__}")
+

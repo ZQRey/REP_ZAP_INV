@@ -53,7 +53,7 @@ def run_migration():
             db.commit()
             print("[+] Филиалы успешно перенесены.")
         except Exception as e:
-            print(f"[-] Ошибка миграции филиалов: {e}")
+            print(f"[-] Ошибка миграции филиалов: {type(e).__name__}")
             db.rollback()
 
         # 2. Пользователи (AppUsers)
@@ -82,7 +82,7 @@ def run_migration():
             db.commit()
             print("[+] Пользователи успешно перенесены.")
         except Exception as e:
-            print(f"[-] Ошибка миграции пользователей: {e}")
+            print(f"[-] Ошибка миграции пользователей: {type(e).__name__}")
             db.rollback()
 
         # 3. Сотрудники AD (ADUsers)
@@ -103,7 +103,7 @@ def run_migration():
             db.commit()
             print("[+] Сотрудники AD перенесены.")
         except Exception as e:
-            print(f"[-] Ошибка миграции сотрудников AD: {e}")
+            print(f"[-] Ошибка миграции сотрудников AD: {type(e).__name__}")
             db.rollback()
 
         # 4. Модели картриджей (CartridgeModels)
@@ -124,7 +124,7 @@ def run_migration():
             db.commit()
             print("[+] Модели картриджей перенесены.")
         except Exception as e:
-            print(f"[-] Ошибка миграции моделей картриджей: {e}")
+            print(f"[-] Ошибка миграции моделей картриджей: {type(e).__name__}")
             db.rollback()
 
         # 5. Картриджи (Cartridges)
@@ -150,7 +150,7 @@ def run_migration():
             db.commit()
             print("[+] Картриджи успешно перенесены.")
         except Exception as e:
-            print(f"[-] Ошибка миграции картриджей: {e}")
+            print(f"[-] Ошибка миграции картриджей: {type(e).__name__}")
             db.rollback()
 
         # 6. Партии заправки (Batches & BatchItems)
@@ -184,7 +184,7 @@ def run_migration():
             db.commit()
             print("[+] Акты и позиции картриджей перенесены.")
         except Exception as e:
-            print(f"[-] Ошибка миграции актов: {e}")
+            print(f"[-] Ошибка миграции актов: {type(e).__name__}")
             db.rollback()
 
         print("[*] Миграция успешно завершена! Единая база данных готова в BD/app_unified.db")
@@ -196,3 +196,4 @@ def run_migration():
 
 if __name__ == "__main__":
     run_migration()
+

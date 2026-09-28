@@ -461,7 +461,7 @@ class NetworkSwitch(Base):
     mgmt_port = Column(Integer, default=161)
     username = Column(String(100), nullable=True)
     password = Column(String(255), nullable=True)
-    snmp_community = Column(String(100), default="public")
+    snmp_community = Column(String(100), default="")
     model = Column(String(150), nullable=True)
     total_ports = Column(Integer, default=24)               # 24 или 48 портов
     extra_params = Column(JSON, nullable=True)              # {"site": "Default", "enable_pwd": "..."}
@@ -494,3 +494,4 @@ class SwitchPort(Base):
     switch = relationship("NetworkSwitch", back_populates="ports")
     zone = relationship("Zone")
     connected_asset = relationship("Asset", foreign_keys=[connected_asset_id])
+

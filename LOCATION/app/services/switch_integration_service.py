@@ -1,3 +1,6 @@
+from SHARED.network_policy import validate_device_address
+from SHARED.transport_security import ssh_client, tls_context
+from SHARED.security_config import DEMO_ENABLED
 import re
 import socket
 import logging
@@ -46,6 +49,10 @@ class SwitchIntegrationService:
         if not switch:
             raise ValueError(f"Коммутатор #{switch_id} не найден")
 
+        validate_device_address(switch.ip_address)
+        from SHARED.logging_security import register_secret
+        register_secret(switch.password)
+        register_secret(switch.snmp_community)
         mgmt_type = (switch.management_type or "snmp").lower()
         mac_table: List[Dict[str, Any]] = []
         poll_error: Optional[str] = None
@@ -68,12 +75,12 @@ class SwitchIntegrationService:
                 mac_table = cls._poll_snmp_bridge(switch)
 
         except Exception as e:
-            poll_error = str(e)
-            logger.error(f"Switch poll error for #{switch.id} ({switch.ip_address}): {e}")
+            poll_error = type(e).__name__
+            logger.error(f"Switch poll error for #{switch.id} ({switch.ip_address}): {type(e).__name__}")
 
         # Если физическое подключение не удалось (лабораторная сеть, стенд, офлайн),
         # но в extra_params есть симулированные MAC или тестовый режим
-        if poll_error and switch.extra_params and switch.extra_params.get("allow_demo_fallback"):
+        if DEMO_ENABLED and poll_error and switch.extra_params and switch.extra_params.get("allow_demo_fallback"):
             logger.info("Using demo fallback MAC table for switch %s", switch.ip_address)
             mac_table = cls._get_demo_mac_table(switch)
             poll_error = None
@@ -120,22 +127,22 @@ class SwitchIntegrationService:
         """
         host = switch.ip_address.strip()
         port = switch.mgmt_port or 8043
-        user = switch.username or "admin"
+        user = switch.username or ""
         pwd = switch.password or ""
         site_name = (switch.extra_params or {}).get("site", "Default")
 
-        scheme = "https" if port in (443, 8043) else "http"
+        scheme = "https"
         base_url = f"{scheme}://{host}:{port}"
 
         mac_entries = []
-        with httpx.Client(verify=False, timeout=6.0) as client:
+        with httpx.Client(verify=tls_context(), timeout=6.0) as client:
             # 1. Авторизация в Omada Controller API
             login_url = f"{base_url}/api/v2/users/login"
             login_payload = {"username": user, "password": pwd}
             login_res = client.post(login_url, json=login_payload)
             
             if login_res.status_code != 200:
-                raise ConnectionError(f"Ошибка входа в Omada Controller ({login_res.status_code}): {login_res.text[:200]}")
+                raise ConnectionError(f"Ошибка входа в Omada Controller ({login_res.status_code}): [upstream error]")
 
             login_data = login_res.json()
             token = login_data.get("result", {}).get("token") or login_res.cookies.get("TP_SESSIONID")
@@ -171,11 +178,11 @@ class SwitchIntegrationService:
 
         host = switch.ip_address.strip()
         port = switch.mgmt_port or 22
-        user = switch.username or "admin"
+        user = switch.username or ""
         pwd = switch.password or ""
 
-        ssh = paramiko.SSHClient()
-        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh = ssh_client()
+
         ssh.connect(host, port=port, username=user, password=pwd, timeout=5, look_for_keys=False, allow_agent=False)
 
         # Выполняем команду вывода таблицы хостов моста
@@ -210,8 +217,8 @@ class SwitchIntegrationService:
             user = switch.username or "manager"
             pwd = switch.password or ""
 
-            ssh = paramiko.SSHClient()
-            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            ssh = ssh_client()
+
             ssh.connect(host, port=port, username=user, password=pwd, timeout=5, look_for_keys=False, allow_agent=False)
 
             stdin, stdout, stderr = ssh.exec_command("show mac-address", timeout=8)
@@ -249,11 +256,11 @@ class SwitchIntegrationService:
             import paramiko
             host = switch.ip_address.strip()
             port = switch.mgmt_port or 22
-            user = switch.username or "admin"
+            user = switch.username or ""
             pwd = switch.password or ""
 
-            ssh = paramiko.SSHClient()
-            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            ssh = ssh_client()
+
             ssh.connect(host, port=port, username=user, password=pwd, timeout=5, look_for_keys=False, allow_agent=False)
 
             stdin, stdout, stderr = ssh.exec_command("show mac address-table", timeout=8)
@@ -284,11 +291,11 @@ class SwitchIntegrationService:
         import paramiko
         host = switch.ip_address.strip()
         port = switch.mgmt_port or 22
-        user = switch.username or "admin"
+        user = switch.username or ""
         pwd = switch.password or ""
 
-        ssh = paramiko.SSHClient()
-        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh = ssh_client()
+
         ssh.connect(host, port=port, username=user, password=pwd, timeout=5, look_for_keys=False, allow_agent=False)
 
         stdin, stdout, stderr = ssh.exec_command("show mac address-table", timeout=8)
@@ -312,24 +319,7 @@ class SwitchIntegrationService:
         Универсальный опрос по протоколу SNMP v2c (dot1dTpFdbTable - OID 1.3.6.1.2.1.17.4.3.1.2).
         Подходит для коммутаторов всех производителей (HP, TP-Link, Cisco, D-Link, MikroTik).
         """
-        host = switch.ip_address.strip()
-        community = switch.snmp_community or "public"
-        port = switch.mgmt_port or 161
-
-        # Открываем UDP сокет для проверки доступности SNMP порта
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.settimeout(2.5)
-        try:
-            s.connect((host, port))
-            # Сокет открывается без ошибки
-        except Exception as e:
-            raise ConnectionError(f"SNMP узел {host}:{port} недоступен: {e}")
-        finally:
-            s.close()
-
-        # В реальной инфраструктуре здесь выполняется SNMP walk dot1dTpFdbTable
-        # Возвращаем пустую или обнаруженную таблицу
-        return []
+        raise NotImplementedError("SNMP bridge walk is not implemented; no synthetic result will be returned")
 
     @classmethod
     def _get_demo_mac_table(cls, switch: NetworkSwitch) -> List[Dict[str, Any]]:
@@ -499,6 +489,8 @@ class SwitchIntegrationService:
         Симулирует подключение оборудования с заданным MAC к указанному порту.
         Позволяет мгновенно проверить переезд устройства на карте и в карточке техники!
         """
+        if not DEMO_ENABLED:
+            raise ValueError("Demo simulation is disabled")
         switch = db.query(NetworkSwitch).filter(NetworkSwitch.id == switch_id).first()
         if not switch:
             raise ValueError("Коммутатор не найден")
@@ -543,15 +535,19 @@ class SwitchIntegrationService:
         mgmt_port: Optional[int] = None,
         username: Optional[str] = None,
         password: Optional[str] = None,
-        snmp_community: Optional[str] = "public",
+        snmp_community: Optional[str] = None,
         extra_params: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
         Проверка доступности коммутатора и корректности параметров интеграции.
         """
+        from SHARED.logging_security import register_secret
+        register_secret(password)
+        register_secret(snmp_community)
         import time
         t0 = time.time()
-        host = ip_address.strip() if ip_address else ""
+        host = (ip_address or "").strip()
+        validate_device_address(host)
         if not host:
             return {"success": False, "reachable": False, "status": "error", "message": "IP-адрес не указан"}
 
@@ -564,7 +560,7 @@ class SwitchIntegrationService:
             try:
                 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 s.settimeout(2.0)
-                comm = (snmp_community or "public").encode('latin1')
+                comm = (snmp_community or "").encode('latin1')
                 # Минимальный SNMP v2c GetRequest для sysDescr (1.3.6.1.2.1.1.1.0)
                 packet = (
                     b'\x30\x29\x02\x01\x01\x04' + bytes([len(comm)]) + comm +
@@ -581,17 +577,17 @@ class SwitchIntegrationService:
                         "reachable": True,
                         "status": "ok",
                         "latency_ms": latency_ms,
-                        "message": f"SNMP v2c успешно ответил ({latency_ms} мс). Community '{snmp_community}' подтвержден."
+                        "message": f"SNMP v2c успешно ответил ({latency_ms} мс). SNMP credentials подтвержден."
                     }
                 except socket.timeout:
                     s.close()
                     latency_ms = round((time.time() - t0) * 1000, 1)
                     return {
-                        "success": True,
+                        "success": False,
                         "reachable": True,
                         "status": "warning",
                         "latency_ms": latency_ms,
-                        "message": f"Хост {host} отвечает, но порт SNMP {mgmt_port} не вернул ответ на Community '{snmp_community}' (проверьте параметры доступа на свитче)."
+                        "message": f"Хост {host} отвечает, но порт SNMP {mgmt_port} не вернул ответ на SNMP credentials (проверьте параметры доступа на свитче)."
                     }
             except Exception as e:
                 return {
@@ -599,17 +595,17 @@ class SwitchIntegrationService:
                     "reachable": False,
                     "status": "error",
                     "latency_ms": round((time.time() - t0) * 1000, 1),
-                    "message": f"Ошибка соединения с {host}:{mgmt_port} - {str(e)}"
+                    "message": f"Ошибка соединения с {host}:{mgmt_port} - {type(e).__name__}"
                 }
 
         # 2. Omada SDN Controller API проверка
         elif mgmt_type == "omada":
-            scheme = "https" if mgmt_port in (443, 8043) else "http"
+            scheme = "https"
             base_url = f"{scheme}://{host}:{mgmt_port}"
             try:
-                with httpx.Client(verify=False, timeout=3.5) as client:
+                with httpx.Client(verify=tls_context(), timeout=3.5) as client:
                     t_req = time.time()
-                    resp = client.get(base_url, follow_redirects=True)
+                    resp = client.get(base_url, follow_redirects=False)
                     latency_ms = round((time.time() - t_req) * 1000, 1)
                     if username and password:
                         login_url = f"{base_url}/api/v2/users/login"
@@ -624,7 +620,7 @@ class SwitchIntegrationService:
                             }
                         else:
                             return {
-                                "success": True,
+                                "success": False,
                                 "reachable": True,
                                 "status": "warning",
                                 "latency_ms": latency_ms,
@@ -643,7 +639,7 @@ class SwitchIntegrationService:
                     "reachable": False,
                     "status": "error",
                     "latency_ms": round((time.time() - t0) * 1000, 1),
-                    "message": f"Не удалось подключиться к Omada {base_url}: {str(e)}"
+                    "message": f"Не удалось подключиться к Omada {base_url}: {type(e).__name__}"
                 }
 
         # 3. SSH / TCP проверка (MikroTik, HP/Aruba, Cisco, TP-Link, Huawei, Eltex)
@@ -662,14 +658,14 @@ class SwitchIntegrationService:
                     "reachable": False,
                     "status": "error",
                     "latency_ms": round((time.time() - t0) * 1000, 1),
-                    "message": f"Порт {mgmt_port} на {host} недоступен: {str(e)}"
+                    "message": f"Порт {mgmt_port} на {host} недоступен: {type(e).__name__}"
                 }
 
             if username and password:
                 try:
                     import paramiko
-                    ssh = paramiko.SSHClient()
-                    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                    ssh = ssh_client()
+
                     ssh.connect(host, port=mgmt_port, username=username, password=password, timeout=4.0, look_for_keys=False, allow_agent=False)
                     ssh.close()
                     return {
@@ -680,17 +676,17 @@ class SwitchIntegrationService:
                         "message": f"Связь и авторизация по SSH успешны ({latency_ms} мс). Коммутатор готов к опросу."
                     }
                 except Exception as ssh_err:
-                    err_text = str(ssh_err)
-                    if "Authentication failed" in err_text:
+                    err_text = type(ssh_err).__name__
+                    if isinstance(ssh_err, paramiko.AuthenticationException):
                         return {
-                            "success": True,
+                            "success": False,
                             "reachable": True,
                             "status": "warning",
                             "latency_ms": latency_ms,
                             "message": f"Порт SSH {mgmt_port} открыт, но логин или пароль не подошли."
                         }
                     return {
-                        "success": True,
+                        "success": False,
                         "reachable": True,
                         "status": "warning",
                         "latency_ms": latency_ms,
@@ -704,3 +700,4 @@ class SwitchIntegrationService:
                 "latency_ms": latency_ms,
                 "message": f"Порт {mgmt_port} успешно открыт и отвечает ({latency_ms} мс)."
             }
+
