@@ -5,10 +5,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from SHARED.database import get_db
 from SHARED.models import AppUser
-from app.schemas import SettingsDict, LdapTestRequest, WhatsAppTestRequest
-from app.services.settings_service import SettingsService
-from app.services.ldap_service import LDAPService
-from app.services.whatsapp_service import WhatsAppService
+from CARTRIDGE.app.schemas import SettingsDict, LdapTestRequest, WhatsAppTestRequest
+from CARTRIDGE.app.services.settings_service import SettingsService
+from CARTRIDGE.app.services.ldap_service import LDAPService
+from CARTRIDGE.app.services.whatsapp_service import WhatsAppService
 
 router = APIRouter(prefix="/api/settings", tags=["Settings"])
 
