@@ -15,7 +15,9 @@ from sqlalchemy import (
     Enum as SQLEnum,
     func
 )
-from sqlalchemy.orm import relationship, synonym
+from sqlalchemy.orm import relationship
+from sqlalchemy.ext.hybrid import hybrid_property
+from SHARED.credential_crypto import encrypt_secret, decrypt_secret
 from SHARED.database import Base
 
 
@@ -551,9 +553,25 @@ class NetworkSwitch(Base):
     ip_address = Column(String(50), nullable=False)
     management_type = Column(String(50), default="snmp")    # "omada", "mikrotik", "hp", "tplink", "snmp", "ssh_cli"
     mgmt_port = Column(Integer, default=161, nullable=False)
-    username = Column(String(100), nullable=True)
-    password = Column(String(255), nullable=True)
-    snmp_community = Column(String(100), default="")
+    username = Column(String(500), nullable=True)
+    _password = Column("password", String(1000), nullable=True)
+    _snmp_community = Column("snmp_community", String(1000), default="")
+
+    @hybrid_property
+    def password(self):
+        return decrypt_secret(self._password)
+
+    @password.setter
+    def password(self, value):
+        self._password = encrypt_secret(value)
+
+    @hybrid_property
+    def snmp_community(self):
+        return decrypt_secret(self._snmp_community)
+
+    @snmp_community.setter
+    def snmp_community(self, value):
+        self._snmp_community = encrypt_secret(value)
     model = Column(String(150), nullable=True)
     total_ports = Column(Integer, default=24, nullable=False)               # 24 или 48 портов
     extra_params = Column(JSON, nullable=True)              # {"site": "Default", "enable_pwd": "..."}

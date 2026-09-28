@@ -37,6 +37,7 @@ if REDIS_URL and (urlsplit(REDIS_URL).scheme not in {"redis", "rediss"} or (PROD
     raise RuntimeError("Invalid Redis URL or missing production Redis credentials")
 EVOLUTION_API_KEY = secret("EVOLUTION_API_KEY", required=PRODUCTION and os.getenv("WHATSAPP_ENABLED") == "true")
 LDAP_BIND_PASSWORD = secret("LDAP_BIND_PASSWORD", required=PRODUCTION and os.getenv("LDAP_ENABLED") == "true")
+NETWORK_CREDENTIAL_KEY = secret("NETWORK_CREDENTIAL_KEY", required=PRODUCTION)
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
 if not 1 <= ACCESS_TOKEN_EXPIRE_MINUTES <= 120:
     raise RuntimeError("ACCESS_TOKEN_EXPIRE_MINUTES must be between 1 and 120")

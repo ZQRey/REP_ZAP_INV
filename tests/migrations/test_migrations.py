@@ -50,7 +50,7 @@ def test_empty_startup_is_read_only_and_requires_migration(empty_database):
 
 def test_fresh_upgrade_model_parity_and_startup(empty_database):
     command.upgrade(config(), "head")
-    assert current() == "0004_notification_outbox"
+    assert current() == "0005_network_credentials"
     command.check(config())  # zero missing columns/FKs/indexes/types/defaults at head
     inspector = sa.inspect(engine)
     spec = json.loads((ROOT / "alembic/integrity_spec.json").read_text(encoding="utf-8"))
@@ -226,7 +226,7 @@ def test_downgrade_requires_explicit_destructive_flag_and_reupgrade_preserves_ro
     from SHARED.models import Branch
     with SessionLocal() as db:
         branch_id = db.query(Branch).first().id
-    with pytest.raises(RuntimeError, match="allow_destructive"):
+    with pytest.raises(RuntimeError, match="cannot be safely narrowed|allow_destructive"):
         command.downgrade(config(), "0002_legacy_alignment")
     command.downgrade(config(allow_destructive=True), "0001_baseline")
     command.upgrade(config(), "head")
