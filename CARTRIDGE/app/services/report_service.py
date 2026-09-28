@@ -18,7 +18,7 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 
 from SHARED.models import Cartridge, CartridgeStatus, HistoryLog, Branch, AppUser, Batch
-from app.services.settings_service import SettingsService
+from CARTRIDGE.app.services.settings_service import SettingsService
 
 STATUS_NAMES_RU = {
     CartridgeStatus.IN_USE: "В работе",

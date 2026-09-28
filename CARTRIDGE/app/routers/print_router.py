@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from SHARED.database import get_db
 from SHARED.models import Batch, BatchItem, Cartridge
-from app.services.settings_service import SettingsService
+from CARTRIDGE.app.services.settings_service import SettingsService
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))

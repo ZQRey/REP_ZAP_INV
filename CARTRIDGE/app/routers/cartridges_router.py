@@ -8,7 +8,7 @@ from sqlalchemy import or_
 from SHARED.database import get_db
 from SHARED.domain_transitions import InvalidTransition, transition_cartridge
 from SHARED.models import Cartridge, CartridgeStatus, ADUser, HistoryLog, Branch, AppUser
-from app.schemas import (
+from CARTRIDGE.app.schemas import (
     CartridgeResponse,
     CartridgeDetailResponse,
     CartridgeCreate,
