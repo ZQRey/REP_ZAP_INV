@@ -42,7 +42,7 @@ services:
     restart: "no"
     command: ["alembic", "upgrade", "head"]
     environment:
-      - DATABASE_URL=${DATABASE_URL:-postgresql://app_user:rep_zap_internal_db@postgres-db:5432/it_management}
+      - DATABASE_URL=${DATABASE_URL:?Run ./scripts/init-env.sh first}
     depends_on:
       secret-bootstrap:
         condition: service_completed_successfully
@@ -62,10 +62,10 @@ services:
       - app_secrets:/run/app-secrets:ro
       - ./uploads:/app/LOCATION/app/static/uploads
     environment:
-      - DATABASE_URL=${DATABASE_URL:-postgresql://app_user:rep_zap_internal_db@postgres-db:5432/it_management}
-      - REDIS_URL=${REDIS_URL:-redis://:rep_zap_internal_redis@redis:6379/0}
+      - DATABASE_URL=${DATABASE_URL:?Run ./scripts/init-env.sh first}
+      - REDIS_URL=${REDIS_URL:?Run ./scripts/init-env.sh first}
       - EVOLUTION_API_URL=http://whatsapp-gateway:8080
-      - EVOLUTION_API_KEY=${EVOLUTION_API_KEY:-rep_zap_internal_evolution}
+      - EVOLUTION_API_KEY=${EVOLUTION_API_KEY:?Run ./scripts/init-env.sh first}
       - PYTHONUNBUFFERED=1
       - APP_ENV=${APP_ENV:-production}
       - NETWORK_ALLOWED_CIDRS=${NETWORK_ALLOWED_CIDRS:-}
@@ -102,8 +102,8 @@ services:
       - ./secrets/ssh:/run/ssh:ro
       - app_secrets:/run/app-secrets:ro
     environment:
-      - DATABASE_URL=${DATABASE_URL:-postgresql://app_user:rep_zap_internal_db@postgres-db:5432/it_management}
-      - REDIS_URL=${REDIS_URL:-redis://:rep_zap_internal_redis@redis:6379/0}
+      - DATABASE_URL=${DATABASE_URL:?Run ./scripts/init-env.sh first}
+      - REDIS_URL=${REDIS_URL:?Run ./scripts/init-env.sh first}
       - APP_ENV=${APP_ENV:-production}
       - NOTIFICATION_POLL_SECONDS=${NOTIFICATION_POLL_SECONDS:-5}
       - NOTIFICATION_BATCH_SIZE=${NOTIFICATION_BATCH_SIZE:-25}
@@ -124,7 +124,7 @@ services:
     environment:
       - POSTGRES_DB=it_management
       - POSTGRES_USER=app_user
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-rep_zap_internal_db}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?Run ./scripts/init-env.sh first}
     volumes:
       - ./BD/postgres_data:/var/lib/postgresql/data
       - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
@@ -139,7 +139,7 @@ services:
     image: redis:7-alpine
     command: ["sh", "-c", 'exec redis-server --requirepass "$$REDIS_PASSWORD"']
     environment:
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-rep_zap_internal_redis}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:?Run ./scripts/init-env.sh first}
     container_name: it_unified_redis
     restart: unless-stopped
     volumes:
@@ -156,16 +156,16 @@ services:
       - SERVER_PORT=8080
       - SERVER_TYPE=http
       - SERVER_URL=http://whatsapp-gateway:8080
-      - AUTHENTICATION_API_KEY=${EVOLUTION_API_KEY:-rep_zap_internal_evolution}
+      - AUTHENTICATION_API_KEY=${EVOLUTION_API_KEY:?Run ./scripts/init-env.sh first}
       - AUTHENTICATION_TYPE=apikey
       - LOG_LEVEL=ERROR,WARN,INFO
       - DEL_INSTANCE=false
       - DATABASE_ENABLED=true
       - DATABASE_PROVIDER=postgresql
-      - DATABASE_CONNECTION_URI=${EVOLUTION_DATABASE_URL:-postgresql://app_user:rep_zap_internal_db@postgres-db:5432/evolution}
+      - DATABASE_CONNECTION_URI=${EVOLUTION_DATABASE_URL:?Run ./scripts/init-env.sh first}
       - DATABASE_CLIENT_NAME=evolution_cartridge
       - CACHE_REDIS_ENABLED=true
-      - CACHE_REDIS_URI=${EVOLUTION_REDIS_URL:-redis://:rep_zap_internal_redis@redis:6379/1}
+      - CACHE_REDIS_URI=${EVOLUTION_REDIS_URL:?Run ./scripts/init-env.sh first}
     depends_on:
       postgres-db:
         condition: service_healthy
