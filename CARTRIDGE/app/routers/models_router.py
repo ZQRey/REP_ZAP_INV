@@ -6,7 +6,7 @@ from sqlalchemy import func
 
 from SHARED.database import get_db
 from SHARED.models import CartridgeModel, Cartridge, AppUser
-from app.schemas import CartridgeModelCreate, CartridgeModelUpdate, CartridgeModelResponse
+from CARTRIDGE.app.schemas import CartridgeModelCreate, CartridgeModelUpdate, CartridgeModelResponse
 
 router = APIRouter(prefix="/api/cartridge-models", tags=["CartridgeModels"])
 
