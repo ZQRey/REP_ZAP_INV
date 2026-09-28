@@ -72,6 +72,7 @@ services:
       - APP_ENV=${APP_ENV:-production}
       - NOTIFICATION_POLL_SECONDS=${NOTIFICATION_POLL_SECONDS:-5}
       - NOTIFICATION_BATCH_SIZE=${NOTIFICATION_BATCH_SIZE:-25}
+      - NOTIFICATION_PROCESSING_LEASE_SECONDS=${NOTIFICATION_PROCESSING_LEASE_SECONDS:-120}
     depends_on:
       postgres-db:
         condition: service_healthy
