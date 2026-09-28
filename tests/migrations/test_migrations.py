@@ -50,7 +50,7 @@ def test_empty_startup_is_read_only_and_requires_migration(empty_database):
 
 def test_fresh_upgrade_model_parity_and_startup(empty_database):
     command.upgrade(config(), "head")
-    assert current() == "0003_integrity_numbering"
+    assert current() == "0004_notification_outbox"
     command.check(config())  # zero missing columns/FKs/indexes/types/defaults at head
     inspector = sa.inspect(engine)
     spec = json.loads((ROOT / "alembic/integrity_spec.json").read_text(encoding="utf-8"))
