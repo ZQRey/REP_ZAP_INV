@@ -23,6 +23,21 @@ services:
       timeout: 5s
       retries: 3
 
+  # One-shot schema gate. Every normal Compose deployment applies reviewed Alembic
+  # migrations before application processes are allowed to start.
+  database-migrations:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: "no"
+    command: ["alembic", "upgrade", "head"]
+    environment:
+      - DATABASE_URL=${DATABASE_URL:?Set the application database URL}
+      - APP_ENV=${APP_ENV:-production}
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+
   # Единый веб-сервер и портал (Portal, Cartridge, Repair, Location API)
   unified-server:
     build:
@@ -50,8 +65,8 @@ services:
       - LDAP_BIND_PASSWORD=${LDAP_BIND_PASSWORD:-}
       - SSH_KNOWN_HOSTS=/run/ssh/known_hosts
     depends_on:
-      postgres-db:
-        condition: service_healthy
+      database-migrations:
+        condition: service_completed_successfully
       redis:
         condition: service_started
       whatsapp-gateway:
@@ -83,8 +98,8 @@ services:
       - NOTIFICATION_BATCH_SIZE=${NOTIFICATION_BATCH_SIZE:-25}
       - NOTIFICATION_PROCESSING_LEASE_SECONDS=${NOTIFICATION_PROCESSING_LEASE_SECONDS:-120}
     depends_on:
-      postgres-db:
-        condition: service_healthy
+      database-migrations:
+        condition: service_completed_successfully
       redis:
         condition: service_started
       whatsapp-gateway:
