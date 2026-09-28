@@ -1,3 +1,4 @@
+from SHARED.document_numbers import next_document_number
 from datetime import datetime
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -110,12 +111,7 @@ def create_batch(
     prefix = settings.get("act_prefix", "АКТ-")
 
     now = datetime.utcnow()
-    # Генерация номера акта: ПРЕФИКС-ГГГГММДД-КОЛ-ВО
-    date_str = now.strftime("%Y%m%d")
-    today_batches_count = db.query(Batch).filter(
-        Batch.created_at >= datetime(now.year, now.month, now.day)
-    ).count() + 1
-    act_number = f"{prefix}{date_str}-{today_batches_count:03d}"
+    act_number = next_document_number(db, "cartridge", prefix, now.strftime("%Y%m%d"), 3)
 
     # Создание акта
     batch = Batch(

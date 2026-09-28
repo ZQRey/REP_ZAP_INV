@@ -1,7 +1,7 @@
 from contextlib import contextmanager
 from SHARED.security_config import DEMO_ENABLED
 import logging
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import declarative_base, sessionmaker
 from SHARED.security_config import DATABASE_URL
 from SHARED.config import DEFAULT_SETTINGS, SETTING_DESCRIPTIONS
@@ -29,6 +29,11 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
 
+if engine.dialect.name == "sqlite":
+    @event.listens_for(engine, "connect")
+    def enable_sqlite_foreign_keys(connection, record):
+        connection.execute("PRAGMA foreign_keys=ON")
+
 
 @contextmanager
 def session_scope():
@@ -51,116 +56,15 @@ def get_db():
 
 def init_db():
     """
-    Инициализация таблиц базы данных и базовых записей:
+    Проверка версии схемы и инициализация базовых записей (без DDL):
     - Дефолтные системные настройки
     - Главный филиал
     - No implicit administrator provisioning
     - Базовые модели картриджей и техники
     """
     from SHARED import models
-    from SHARED.migrations.add_branch_network_subnets import require_compatible_branches
-    require_compatible_branches(engine)
-    
-    # Создаем все зарегистрированные таблицы
-    Base.metadata.create_all(bind=engine)
-
-    # Автоматическая миграция схемы для существующих баз данных (PostgreSQL и SQLite)
-    try:
-        from sqlalchemy import inspect, text
-        inspector = inspect(engine)
-        existing_tables = set(inspector.get_table_names())
-        is_sqlite = "sqlite" in engine.dialect.name
-
-        with engine.begin() as conn:
-            # 1. network_switches
-            if "network_switches" in existing_tables:
-                cols = {c["name"] for c in inspector.get_columns("network_switches")}
-                switch_cols = [
-                    ("management_type", "VARCHAR(50) DEFAULT 'snmp'"),
-                    ("mgmt_port", "INTEGER DEFAULT 161"),
-                    ("username", "VARCHAR(100)"),
-                    ("password", "VARCHAR(255)"),
-                    ("snmp_community", "VARCHAR(100) DEFAULT ''"),
-                    ("model", "VARCHAR(150)"),
-                    ("total_ports", "INTEGER DEFAULT 24"),
-                    ("extra_params", "JSON"),
-                    ("last_poll_status", "VARCHAR(20) DEFAULT 'never'"),
-                    ("last_poll_message", "VARCHAR(500)"),
-                    ("last_polled_at", "DATETIME" if is_sqlite else "TIMESTAMP")
-                ]
-                for col_name, col_def in switch_cols:
-                    if col_name not in cols:
-                        try:
-                            conn.execute(text(f"ALTER TABLE network_switches ADD COLUMN {col_name} {col_def}"))
-                        except Exception as c_err:
-                            logger.warning(f"Error adding {col_name} to network_switches: {type(c_err).__name__}")
-
-            # 2. switch_ports
-            if "switch_ports" in existing_tables:
-                cols_p = {c["name"] for c in inspector.get_columns("switch_ports")}
-                port_cols = [
-                    ("cabinet", "VARCHAR(100)"),
-                    ("socket_label", "VARCHAR(100)"),
-                    ("zone_id", "INTEGER"),
-                    ("last_mac", "VARCHAR(50)"),
-                    ("last_ip", "VARCHAR(50)"),
-                    ("last_seen_at", "DATETIME" if is_sqlite else "TIMESTAMP"),
-                    ("connected_asset_id", "INTEGER")
-                ]
-                for col_name, col_def in port_cols:
-                    if col_name not in cols_p:
-                        try:
-                            conn.execute(text(f"ALTER TABLE switch_ports ADD COLUMN {col_name} {col_def}"))
-                        except Exception as c_err:
-                            logger.warning(f"Error adding {col_name} to switch_ports: {type(c_err).__name__}")
-
-            # 3. cartridges
-            if "cartridges" in existing_tables:
-                cols_cart = {c["name"] for c in inspector.get_columns("cartridges")}
-                if "branch_id" not in cols_cart:
-                    try:
-                        conn.execute(text("ALTER TABLE cartridges ADD COLUMN branch_id INTEGER"))
-                    except Exception as c_err:
-                        logger.warning(f"Error adding branch_id to cartridges: {type(c_err).__name__}")
-                if "condition" not in cols_cart:
-                    try:
-                        conn.execute(text("ALTER TABLE cartridges ADD COLUMN condition VARCHAR(20) DEFAULT 'working'"))
-                    except Exception as c_err:
-                        logger.warning(f"Error adding condition to cartridges: {type(c_err).__name__}")
-
-            # 4. batches
-            if "batches" in existing_tables:
-                cols_batch = {c["name"] for c in inspector.get_columns("batches")}
-                if "branch_id" not in cols_batch:
-                    try:
-                        conn.execute(text("ALTER TABLE batches ADD COLUMN branch_id INTEGER"))
-                    except Exception as c_err:
-                        logger.warning(f"Error adding branch_id to batches: {type(c_err).__name__}")
-
-            # 5. app_users
-            if "app_users" in existing_tables:
-                cols_u = {c["name"] for c in inspector.get_columns("app_users")}
-                if "wa_instance_name" not in cols_u:
-                    try:
-                        conn.execute(text("ALTER TABLE app_users ADD COLUMN wa_instance_name VARCHAR(100)"))
-                    except Exception as c_err:
-                        logger.warning(f"Error adding wa_instance_name to app_users: {type(c_err).__name__}")
-
-            # 6. branches
-            if "branches" in existing_tables:
-                cols_b = {c["name"] for c in inspector.get_columns("branches")}
-                if "it_office" not in cols_b:
-                    try:
-                        conn.execute(text("ALTER TABLE branches ADD COLUMN it_office VARCHAR(100)"))
-                    except Exception as c_err:
-                        logger.warning(f"Error adding it_office to branches: {type(c_err).__name__}")
-                if "wa_message_template" not in cols_b:
-                    try:
-                        conn.execute(text("ALTER TABLE branches ADD COLUMN wa_message_template TEXT"))
-                    except Exception as c_err:
-                        logger.warning(f"Error adding wa_message_template to branches: {type(c_err).__name__}")
-    except Exception as ex:
-        logger.warning(f"Schema migration warning: {type(ex).__name__}")
+    from SHARED.schema_management import require_schema_head
+    require_schema_head(engine)
 
     try:
         with session_scope() as db:

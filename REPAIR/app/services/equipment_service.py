@@ -1,3 +1,4 @@
+from SHARED.document_numbers import next_document_number
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 from sqlalchemy.orm import Session, joinedload
@@ -25,22 +26,7 @@ class EquipmentService:
         prefix = prefix_setting.value if prefix_setting and prefix_setting.value else "АКТ-РЕМ-"
         
         year_str = datetime.utcnow().strftime("%Y")
-        pattern = f"{prefix}{year_str}-%"
-        
-        last_batch = db.query(RepairBatch).filter(
-            RepairBatch.act_number.like(pattern)
-        ).order_by(desc(RepairBatch.id)).first()
-
-        next_seq = 1
-        if last_batch and last_batch.act_number:
-            try:
-                parts = last_batch.act_number.split("-")
-                last_num_str = parts[-1]
-                next_seq = int(last_num_str) + 1
-            except Exception:
-                next_seq = db.query(RepairBatch).count() + 1
-
-        return f"{prefix}{year_str}-{next_seq:04d}"
+        return next_document_number(db, "repair", prefix, year_str, 4)
 
     @staticmethod
     def log_history(
@@ -143,3 +129,4 @@ class EquipmentService:
         db.commit()
         db.refresh(asset)
         return asset
+
