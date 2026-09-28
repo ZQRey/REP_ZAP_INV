@@ -221,6 +221,43 @@ class HistoryLog(Base):
     cartridge = relationship("Cartridge", back_populates="history")
 
 
+class NotificationStatus(str, enum.Enum):
+    PENDING = "pending"
+    PROCESSING = "processing"
+    SENT = "sent"
+    RETRY = "retry"
+    FAILED = "failed"
+    DEAD = "dead"
+
+
+class Notification(Base):
+    """Durable outbox entry for asynchronous user notifications."""
+    __tablename__ = "notifications"
+    __table_args__ = (
+        UniqueConstraint("idempotency_key", name="uq_notifications_idempotency_key"),
+        Index("ix_notifications_dispatch", "status", "next_attempt_at"),
+        Index("ix_notifications_branch_id", "branch_id"),
+        CheckConstraint("attempts >= 0", name="ck_notifications_attempts"),
+    )
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    branch_id = Column(Integer, ForeignKey("branches.id", ondelete="SET NULL"), nullable=True)
+    cartridge_id = Column(Integer, ForeignKey("cartridges.id", ondelete="SET NULL"), nullable=True)
+    channel = Column(String(32), nullable=False, default="whatsapp")
+    recipient = Column(String(100), nullable=False)
+    template = Column(String(100), nullable=True)
+    payload = Column(JSON, nullable=False, default=dict)
+    status = Column(SQLEnum(NotificationStatus), nullable=False, default=NotificationStatus.PENDING)
+    attempts = Column(Integer, nullable=False, default=0)
+    next_attempt_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    sent_at = Column(DateTime, nullable=True)
+    provider_message_id = Column(String(255), nullable=True)
+    idempotency_key = Column(String(255), nullable=False)
+    last_error = Column(Text, nullable=True)
+    instance_name = Column(String(100), nullable=True)
+
+
 # ==========================================
 # 3. МОДУЛЬ ТЕХНИКИ И РЕМОНТА (REPAIR & ASSETS)
 # ==========================================
