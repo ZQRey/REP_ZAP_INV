@@ -1,4 +1,4 @@
-from SHARED.auth_service import get_current_user
+from SHARED.authentication import require_authenticated_user
 from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
@@ -30,7 +30,7 @@ def format_russian_date(dt) -> str:
 
 
 @router.get("/act/{batch_id}", response_class=HTMLResponse)
-def print_act(request: Request, batch_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+def print_act(request: Request, batch_id: int, db: Session = Depends(get_db), current_user=Depends(require_authenticated_user)):
     """Печатная страница А4 для акта передачи картриджей поставщику."""
     batch = db.query(Batch).options(
         joinedload(Batch.items).joinedload(BatchItem.cartridge),

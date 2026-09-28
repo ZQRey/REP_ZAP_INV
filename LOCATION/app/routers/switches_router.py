@@ -1,3 +1,4 @@
+from SHARED.authentication import require_authenticated_user
 from typing import List, Optional
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query, Body, status
@@ -16,7 +17,6 @@ from SHARED.models import (
     Zone,
     EquipmentHistoryLog
 )
-from SHARED.auth_service import get_current_user, require_role
 from LOCATION.app.schemas import (
     NetworkSwitchResponse,
     NetworkSwitchCreate,
@@ -80,7 +80,7 @@ def _format_switch_response(sw: NetworkSwitch) -> NetworkSwitchResponse:
 def get_floor_switches(
     floor_id: int,
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(get_current_user)
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """Список коммутаторов на этаже с подробной раскладкой портов и привязкой к кабинетам."""
     switches = db.query(NetworkSwitch).join(Asset).options(
@@ -96,7 +96,7 @@ def get_floor_switches(
 def create_switch(
     payload: NetworkSwitchCreate,
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_role(["superadmin", "admin", "technician"]))
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """Добавить новый управляемый коммутатор на этаж."""
     floor = db.query(Floor).filter(Floor.id == payload.floor_id).first()
@@ -167,7 +167,7 @@ def update_switch(
     switch_id: int,
     payload: NetworkSwitchUpdate,
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_role(["superadmin", "admin", "technician"]))
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """Обновить параметры подключения и интеграции коммутатора (Omada, MikroTik, HP, TP-Link, SNMP)."""
     sw = db.query(NetworkSwitch).options(
@@ -218,7 +218,7 @@ def update_switch(
 @router.post("/switches/test-connection", response_model=SwitchConnectionTestResponse)
 def test_switch_connection(
     payload: SwitchConnectionTestRequest,
-    current_user: AppUser = Depends(require_role(["superadmin", "admin", "technician", "operator"]))
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """
     Проверка доступности коммутатора и корректности параметров авторизации (SSH / Omada / SNMP).
@@ -239,7 +239,7 @@ def test_switch_connection(
 def delete_switch(
     switch_id: int,
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_role(["superadmin", "admin", "technician"]))
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """Удалить коммутатор с карты с очисткой портов."""
     try:
@@ -272,7 +272,7 @@ def update_switch_port(
     port_number: int,
     payload: SwitchPortUpdate,
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_role(["superadmin", "admin", "technician", "operator"]))
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """
     Настройка порта коммутатора:
@@ -339,7 +339,7 @@ def connect_switch_port(
     port_number: int,
     asset_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_role(["superadmin", "admin", "technician"]))
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """Быстрая коммутация порта с оконечным устройством."""
     sport = db.query(SwitchPort).filter(
@@ -360,7 +360,7 @@ def connect_switch_port(
 def poll_switch_mac_table(
     switch_id: int,
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_role(["superadmin", "admin", "technician", "operator"]))
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """
     Опрос коммутатора (Omada, MikroTik, HP, TP-Link, SNMP) и синхронизация MAC-таблицы:
@@ -380,7 +380,7 @@ def simulate_switch_event(
     switch_id: int,
     payload: SwitchSimulateRequest,
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_role(["superadmin", "admin", "technician"]))
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """
     Тестирование / демонстрация перемещения техники (L2 Roaming):

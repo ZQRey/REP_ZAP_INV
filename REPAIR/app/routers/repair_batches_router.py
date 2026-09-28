@@ -1,3 +1,4 @@
+from SHARED.authentication import require_authenticated_user
 from typing import Optional, List
 from datetime import datetime
 from fastapi import APIRouter, Depends, Query, HTTPException, status
@@ -14,7 +15,6 @@ from SHARED.models import (
     Branch,
     AppUser
 )
-from SHARED.auth_service import get_current_user, require_role
 from REPAIR.app.schemas import (
     RepairBatchResponse,
     RepairBatchItemResponse,
@@ -31,7 +31,7 @@ def list_repair_batches(
     status_filter: Optional[str] = Query(None), # open / closed
     branch_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(get_current_user)
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """Список актов передачи техники в сервисный центр."""
     query = db.query(RepairBatch).options(
@@ -105,7 +105,7 @@ def list_repair_batches(
 def get_repair_batch_detail(
     batch_id: int,
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(get_current_user)
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """Детальная информация об акте передачи техники в СЦ."""
     batch = db.query(RepairBatch).options(
@@ -169,7 +169,7 @@ def get_repair_batch_detail(
 def create_repair_batch(
     payload: RepairBatchCreate,
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_role(["superadmin", "admin", "technician", "operator"]))
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """
     ЭТАП 2: Формирование акта и отправка партии техники в сервисный центр.
@@ -237,7 +237,7 @@ def create_repair_batch(
 def close_repair_batch(
     batch_id: int,
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_role(["superadmin", "admin", "technician", "operator"]))
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """Закрыть акт передачи в СЦ (все позиции приняты обратно)."""
     batch = db.query(RepairBatch).filter(RepairBatch.id == batch_id).first()
@@ -248,3 +248,4 @@ def close_repair_batch(
     batch.closed_at = datetime.utcnow()
     db.commit()
     return {"success": True, "message": f"Акт {batch.act_number} успешно закрыт"}
+

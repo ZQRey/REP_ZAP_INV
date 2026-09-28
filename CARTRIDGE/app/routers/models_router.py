@@ -1,3 +1,4 @@
+from SHARED.authentication import require_authenticated_user
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
@@ -6,7 +7,6 @@ from sqlalchemy import func
 from SHARED.database import get_db
 from SHARED.models import CartridgeModel, Cartridge, AppUser
 from app.schemas import CartridgeModelCreate, CartridgeModelUpdate, CartridgeModelResponse
-from app.services.auth_service import require_operator, require_admin
 
 router = APIRouter(prefix="/api/cartridge-models", tags=["CartridgeModels"])
 
@@ -15,7 +15,7 @@ router = APIRouter(prefix="/api/cartridge-models", tags=["CartridgeModels"])
 def get_cartridge_models(
     q: Optional[str] = Query(None, description="Поиск по названию или совместимым принтерам"),
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_operator)
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """Получить список всех моделей картриджей со счетчиком их использования."""
     query = db.query(CartridgeModel)
@@ -49,7 +49,7 @@ def get_cartridge_models(
 def create_cartridge_model(
     payload: CartridgeModelCreate,
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_admin)
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """Добавить новую модель картриджа в справочник (Администратор и Супер администратор)."""
     name = payload.name.strip()
@@ -81,7 +81,7 @@ def update_cartridge_model(
     model_id: int,
     payload: CartridgeModelUpdate,
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_admin)
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """Редактировать модель картриджа."""
     model = db.query(CartridgeModel).filter(CartridgeModel.id == model_id).first()
@@ -125,7 +125,7 @@ def update_cartridge_model(
 def delete_cartridge_model(
     model_id: int,
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_admin)
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """Удалить модель картриджа из справочника."""
     model = db.query(CartridgeModel).filter(CartridgeModel.id == model_id).first()

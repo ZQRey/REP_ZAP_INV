@@ -10,7 +10,6 @@ from SHARED.models import AppUser
 from app.services.ldap_service import LDAPService
 
 
-security = HTTPBearer(auto_error=False)
 
 
 class AuthService:
@@ -107,62 +106,9 @@ class AuthService:
         return user
 
 
-def get_current_user_optional(
-    auth: Optional[HTTPAuthorizationCredentials] = Depends(security),
-    db: Session = Depends(get_db)
-) -> Optional[AppUser]:
-    """Возвращает текущего пользователя из JWT токена, если токен передан."""
-    if not auth:
-        return None
-    payload = AuthService.decode_access_token(auth.credentials)
-    if not payload or "sub" not in payload:
-        return None
-    username = payload["sub"]
-    user = db.query(AppUser).filter(AppUser.username == username).first()
-    if not user or not user.is_active:
-        return None
-    return user
-
-
-def get_current_user(
-    user: Optional[AppUser] = Depends(get_current_user_optional)
-) -> AppUser:
-    """Обязательная проверка авторизации для защищенных эндпоинтов."""
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Необходима авторизация в системе.",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    return user
-
-
-def require_superadmin(user: AppUser = Depends(get_current_user)) -> AppUser:
-    """Проверка прав: только Супер администратор (полный доступ к настройкам, пользователям и AD)."""
-    if user.role != "superadmin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Недостаточно прав. Требуются права Супер администратора."
-        )
-    return user
-
-
-def require_admin(user: AppUser = Depends(get_current_user)) -> AppUser:
-    """Проверка прав: Супер администратор или Администратор."""
-    if user.role not in ("admin", "superadmin"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Недостаточно прав. Требуются права Администратора."
-        )
-    return user
-
-
-def require_operator(user: AppUser = Depends(get_current_user)) -> AppUser:
-    """Проверка прав: Супер администратор, Администратор или Оператор (приемка, акты, выдача)."""
-    if user.role not in ("operator", "admin", "superadmin"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Недостаточно прав. Доступно только операторам и администраторам."
-        )
-    return user
-
+from SHARED.authentication import (
+    require_authenticated_user, get_current_user, require_role,
+    require_superadmin, require_admin, require_operator,
+)
+# Compatibility name is mandatory authentication now; no optional authorization bypass.
+get_current_user_optional = require_authenticated_user

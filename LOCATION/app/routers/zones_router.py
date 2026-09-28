@@ -1,9 +1,9 @@
+from SHARED.authentication import require_authenticated_user
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from SHARED.database import get_db
 from SHARED.models import Zone, Floor, AppUser
-from SHARED.auth_service import get_current_user, require_role
 from LOCATION.app.schemas import ZoneResponse, ZoneBase
 
 router = APIRouter(prefix="/api/v1/location", tags=["Location Zones"])
@@ -14,7 +14,7 @@ def save_floor_zone(
     floor_id: int,
     payload: ZoneBase,
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_role(["superadmin", "admin", "technician"]))
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """Сохранение векторного полигона комнаты или коридора на этаже."""
     floor = db.query(Floor).filter(Floor.id == floor_id).first()
@@ -41,7 +41,7 @@ def save_floor_zone(
 def delete_zone(
     zone_id: int,
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_role(["superadmin", "admin"]))
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """Удаление полигона зоны."""
     zone = db.query(Zone).filter(Zone.id == zone_id).first()
@@ -51,3 +51,4 @@ def delete_zone(
     db.delete(zone)
     db.commit()
     return {"success": True, "message": "Зона удалена"}
+

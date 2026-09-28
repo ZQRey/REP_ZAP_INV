@@ -1,3 +1,4 @@
+from SHARED.authentication import require_authenticated_user
 from typing import List, Optional
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
@@ -5,7 +6,6 @@ from sqlalchemy import or_
 from SHARED.database import get_db
 from SHARED.models import ADUser, AppUser
 from app.schemas import ADUserResponse
-from app.services.auth_service import require_operator
 
 router = APIRouter(prefix="/api/users", tags=["Users"])
 
@@ -16,7 +16,7 @@ def search_users(
     q: Optional[str] = Query(None, description="Строка поиска по имени, логину, кабинету или отделу"),
     limit: int = Query(500, le=10000),
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_operator)
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """Поиск сотрудников из локальной синхронизированной базы Active Directory."""
     query = db.query(ADUser)

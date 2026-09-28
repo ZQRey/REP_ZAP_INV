@@ -1,0 +1,1761 @@
+{
+  "CARTRIDGE/app/main.py:health:GET": {
+    "path": "/health",
+    "roles": [],
+    "action": "read",
+    "domain": "public",
+    "branch_scope": false,
+    "public": true,
+    "network": false,
+    "paths": [
+      "/health"
+    ]
+  },
+  "CARTRIDGE/app/main.py:index:GET": {
+    "path": "/",
+    "roles": [],
+    "action": "read",
+    "domain": "public",
+    "branch_scope": false,
+    "public": true,
+    "network": false,
+    "paths": [
+      "/"
+    ]
+  },
+  "CARTRIDGE/app/routers/app_users_router.py:get_users:GET": {
+    "path": "/api/app-users",
+    "roles": [
+      "superadmin",
+      "admin"
+    ],
+    "action": "read",
+    "domain": "users",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/app-users"
+    ]
+  },
+  "CARTRIDGE/app/routers/app_users_router.py:create_user:POST": {
+    "path": "/api/app-users",
+    "roles": [
+      "superadmin",
+      "admin"
+    ],
+    "action": "write",
+    "domain": "users",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/app-users"
+    ]
+  },
+  "CARTRIDGE/app/routers/app_users_router.py:update_user:PUT": {
+    "path": "/api/app-users/{user_id}",
+    "roles": [
+      "superadmin",
+      "admin"
+    ],
+    "action": "write",
+    "domain": "users",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/app-users/{user_id}"
+    ]
+  },
+  "CARTRIDGE/app/routers/app_users_router.py:delete_user:DELETE": {
+    "path": "/api/app-users/{user_id}",
+    "roles": [
+      "superadmin",
+      "admin"
+    ],
+    "action": "write",
+    "domain": "users",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/app-users/{user_id}"
+    ]
+  },
+  "CARTRIDGE/app/routers/app_users_router.py:toggle_user_active:POST": {
+    "path": "/api/app-users/{user_id}/toggle-active",
+    "roles": [
+      "superadmin",
+      "admin"
+    ],
+    "action": "write",
+    "domain": "users",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/app-users/{user_id}/toggle-active"
+    ]
+  },
+  "CARTRIDGE/app/routers/auth_router.py:login:POST": {
+    "path": "/api/auth/login",
+    "roles": [],
+    "action": "write",
+    "domain": "public",
+    "branch_scope": false,
+    "public": true,
+    "network": false,
+    "paths": [
+      "/api/auth/login"
+    ]
+  },
+  "CARTRIDGE/app/routers/auth_router.py:get_current_user_profile:GET": {
+    "path": "/api/auth/me",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician",
+      "operator",
+      "viewer",
+      "user"
+    ],
+    "action": "read",
+    "domain": "profile",
+    "branch_scope": false,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/auth/me"
+    ]
+  },
+  "CARTRIDGE/app/routers/batches_router.py:get_batches:GET": {
+    "path": "/api/batches",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician",
+      "operator",
+      "viewer"
+    ],
+    "action": "read",
+    "domain": "cartridges",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/batches"
+    ]
+  },
+  "CARTRIDGE/app/routers/batches_router.py:get_batch:GET": {
+    "path": "/api/batches/{batch_id}",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician",
+      "operator",
+      "viewer"
+    ],
+    "action": "read",
+    "domain": "cartridges",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/batches/{batch_id}"
+    ]
+  },
+  "CARTRIDGE/app/routers/batches_router.py:create_batch:POST": {
+    "path": "/api/batches",
+    "roles": [
+      "superadmin",
+      "admin",
+      "operator"
+    ],
+    "action": "write",
+    "domain": "cartridges",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/batches"
+    ]
+  },
+  "CARTRIDGE/app/routers/branches_router.py:get_branches:GET": {
+    "path": "/api/branches",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician",
+      "operator",
+      "viewer",
+      "user"
+    ],
+    "action": "read",
+    "domain": "branches",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/branches"
+    ]
+  },
+  "CARTRIDGE/app/routers/branches_router.py:create_branch:POST": {
+    "path": "/api/branches",
+    "roles": [
+      "superadmin"
+    ],
+    "action": "write",
+    "domain": "branches",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/branches"
+    ]
+  },
+  "CARTRIDGE/app/routers/branches_router.py:update_branch:PUT": {
+    "path": "/api/branches/{branch_id}",
+    "roles": [
+      "superadmin",
+      "admin"
+    ],
+    "action": "write",
+    "domain": "branches",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/branches/{branch_id}"
+    ]
+  },
+  "CARTRIDGE/app/routers/branches_router.py:delete_branch:DELETE": {
+    "path": "/api/branches/{branch_id}",
+    "roles": [
+      "superadmin"
+    ],
+    "action": "write",
+    "domain": "branches",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/branches/{branch_id}"
+    ]
+  },
+  "CARTRIDGE/app/routers/cartridges_router.py:get_cartridges:GET": {
+    "path": "/api/cartridges",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician",
+      "operator",
+      "viewer",
+      "user"
+    ],
+    "action": "read",
+    "domain": "cartridges",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/cartridges"
+    ]
+  },
+  "CARTRIDGE/app/routers/cartridges_router.py:quick_search:GET": {
+    "path": "/api/cartridges/search/quick",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician",
+      "operator",
+      "viewer",
+      "user"
+    ],
+    "action": "read",
+    "domain": "cartridges",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/cartridges/search/quick"
+    ]
+  },
+  "CARTRIDGE/app/routers/cartridges_router.py:get_cartridge_detail:GET": {
+    "path": "/api/cartridges/{cartridge_id}",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician",
+      "operator",
+      "viewer",
+      "user"
+    ],
+    "action": "read",
+    "domain": "cartridges",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/cartridges/{cartridge_id}"
+    ]
+  },
+  "CARTRIDGE/app/routers/cartridges_router.py:create_cartridge:POST": {
+    "path": "/api/cartridges",
+    "roles": [
+      "superadmin",
+      "admin",
+      "operator"
+    ],
+    "action": "write",
+    "domain": "cartridges",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/cartridges"
+    ]
+  },
+  "CARTRIDGE/app/routers/cartridges_router.py:update_cartridge:PUT": {
+    "path": "/api/cartridges/{cartridge_id}",
+    "roles": [
+      "superadmin",
+      "admin",
+      "operator"
+    ],
+    "action": "write",
+    "domain": "cartridges",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/cartridges/{cartridge_id}"
+    ]
+  },
+  "CARTRIDGE/app/routers/cartridges_router.py:delete_cartridge:DELETE": {
+    "path": "/api/cartridges/{cartridge_id}",
+    "roles": [
+      "superadmin",
+      "admin"
+    ],
+    "action": "write",
+    "domain": "cartridges",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/cartridges/{cartridge_id}"
+    ]
+  },
+  "CARTRIDGE/app/routers/cartridges_router.py:accept_cartridge:POST": {
+    "path": "/api/cartridges/accept",
+    "roles": [
+      "superadmin",
+      "admin",
+      "operator"
+    ],
+    "action": "write",
+    "domain": "cartridges",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/cartridges/accept"
+    ]
+  },
+  "CARTRIDGE/app/routers/cartridges_router.py:issue_cartridge:POST": {
+    "path": "/api/cartridges/{cartridge_id}/issue",
+    "roles": [
+      "superadmin",
+      "admin",
+      "operator"
+    ],
+    "action": "write",
+    "domain": "cartridges",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/cartridges/{cartridge_id}/issue"
+    ]
+  },
+  "CARTRIDGE/app/routers/cartridges_router.py:bulk_issue_cartridges:POST": {
+    "path": "/api/cartridges/bulk-issue",
+    "roles": [
+      "superadmin",
+      "admin",
+      "operator"
+    ],
+    "action": "write",
+    "domain": "cartridges",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/cartridges/bulk-issue"
+    ]
+  },
+  "CARTRIDGE/app/routers/cartridges_router.py:return_cartridges_from_vendor:POST": {
+    "path": "/api/cartridges/return-vendor",
+    "roles": [
+      "superadmin",
+      "admin",
+      "operator"
+    ],
+    "action": "write",
+    "domain": "cartridges",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/cartridges/return-vendor"
+    ]
+  },
+  "CARTRIDGE/app/routers/models_router.py:get_cartridge_models:GET": {
+    "path": "/api/cartridge-models",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician",
+      "operator",
+      "viewer",
+      "user"
+    ],
+    "action": "read",
+    "domain": "catalogs",
+    "branch_scope": false,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/cartridge-models"
+    ]
+  },
+  "CARTRIDGE/app/routers/models_router.py:create_cartridge_model:POST": {
+    "path": "/api/cartridge-models",
+    "roles": [
+      "superadmin"
+    ],
+    "action": "write",
+    "domain": "catalogs",
+    "branch_scope": false,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/cartridge-models"
+    ]
+  },
+  "CARTRIDGE/app/routers/models_router.py:update_cartridge_model:PUT": {
+    "path": "/api/cartridge-models/{model_id}",
+    "roles": [
+      "superadmin"
+    ],
+    "action": "write",
+    "domain": "catalogs",
+    "branch_scope": false,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/cartridge-models/{model_id}"
+    ]
+  },
+  "CARTRIDGE/app/routers/models_router.py:delete_cartridge_model:DELETE": {
+    "path": "/api/cartridge-models/{model_id}",
+    "roles": [
+      "superadmin"
+    ],
+    "action": "write",
+    "domain": "catalogs",
+    "branch_scope": false,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/cartridge-models/{model_id}"
+    ]
+  },
+  "CARTRIDGE/app/routers/notifications_router.py:notify_ready_cartridges:POST": {
+    "path": "/api/notifications/whatsapp/ready",
+    "roles": [
+      "superadmin",
+      "admin",
+      "operator"
+    ],
+    "action": "write",
+    "domain": "cartridges",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/notifications/whatsapp/ready"
+    ]
+  },
+  "CARTRIDGE/app/routers/print_router.py:print_act:GET": {
+    "path": "/print/act/{batch_id}",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician",
+      "operator",
+      "viewer"
+    ],
+    "action": "read",
+    "domain": "cartridges",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/print/act/{batch_id}"
+    ]
+  },
+  "CARTRIDGE/app/routers/reports_router.py:get_report_data:GET": {
+    "path": "/api/reports/data",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician",
+      "operator",
+      "viewer"
+    ],
+    "action": "read",
+    "domain": "cartridges",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/reports/data"
+    ]
+  },
+  "CARTRIDGE/app/routers/reports_router.py:export_report_excel:GET": {
+    "path": "/api/reports/export/excel",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician",
+      "operator",
+      "viewer"
+    ],
+    "action": "read",
+    "domain": "cartridges",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/reports/export/excel"
+    ]
+  },
+  "CARTRIDGE/app/routers/reports_router.py:export_report_pdf:GET": {
+    "path": "/api/reports/export/pdf",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician",
+      "operator",
+      "viewer"
+    ],
+    "action": "read",
+    "domain": "cartridges",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/reports/export/pdf"
+    ]
+  },
+  "CARTRIDGE/app/routers/settings_router.py:get_settings:GET": {
+    "path": "/api/settings",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician",
+      "operator",
+      "viewer",
+      "user"
+    ],
+    "action": "read",
+    "domain": "settings",
+    "branch_scope": false,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/settings"
+    ]
+  },
+  "CARTRIDGE/app/routers/settings_router.py:update_settings:POST": {
+    "path": "/api/settings",
+    "roles": [
+      "superadmin"
+    ],
+    "action": "write",
+    "domain": "settings",
+    "branch_scope": false,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/settings"
+    ]
+  },
+  "CARTRIDGE/app/routers/settings_router.py:update_settings:PUT": {
+    "path": "/api/settings",
+    "roles": [
+      "superadmin"
+    ],
+    "action": "write",
+    "domain": "settings",
+    "branch_scope": false,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/settings"
+    ]
+  },
+  "CARTRIDGE/app/routers/settings_router.py:test_ldap_connection:POST": {
+    "path": "/api/settings/ldap/test",
+    "roles": [
+      "superadmin"
+    ],
+    "action": "write",
+    "domain": "settings",
+    "branch_scope": false,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/settings/ldap/test"
+    ]
+  },
+  "CARTRIDGE/app/routers/settings_router.py:sync_ad_users:POST": {
+    "path": "/api/settings/ad-sync",
+    "roles": [
+      "superadmin"
+    ],
+    "action": "write",
+    "domain": "settings",
+    "branch_scope": false,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/settings/ldap/sync",
+      "/api/settings/ad-sync"
+    ]
+  },
+  "CARTRIDGE/app/routers/settings_router.py:get_whatsapp_status:GET": {
+    "path": "/api/settings/wa/status",
+    "roles": [
+      "superadmin",
+      "admin",
+      "operator"
+    ],
+    "action": "wa_self",
+    "domain": "whatsapp",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/settings/wa/status"
+    ]
+  },
+  "CARTRIDGE/app/routers/settings_router.py:get_operators_wa_status:GET": {
+    "path": "/api/settings/wa/operators-status",
+    "roles": [
+      "superadmin"
+    ],
+    "action": "read",
+    "domain": "settings",
+    "branch_scope": false,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/settings/wa/operators-status"
+    ]
+  },
+  "CARTRIDGE/app/routers/settings_router.py:get_whatsapp_qr:POST": {
+    "path": "/api/settings/wa/qr",
+    "roles": [
+      "superadmin",
+      "admin",
+      "operator"
+    ],
+    "action": "wa_self",
+    "domain": "whatsapp",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/settings/wa/qr"
+    ]
+  },
+  "CARTRIDGE/app/routers/settings_router.py:reset_whatsapp_instance:POST": {
+    "path": "/api/settings/wa/reset",
+    "roles": [
+      "superadmin",
+      "admin",
+      "operator"
+    ],
+    "action": "wa_self",
+    "domain": "whatsapp",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/settings/wa/reset"
+    ]
+  },
+  "CARTRIDGE/app/routers/settings_router.py:send_whatsapp_test:POST": {
+    "path": "/api/settings/wa/test",
+    "roles": [
+      "superadmin"
+    ],
+    "action": "write",
+    "domain": "settings",
+    "branch_scope": false,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/settings/wa/test"
+    ]
+  },
+  "CARTRIDGE/app/routers/users_router.py:search_users:GET": {
+    "path": "/api/users/ad",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician",
+      "operator"
+    ],
+    "action": "read",
+    "domain": "directory",
+    "branch_scope": false,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/users",
+      "/api/users/ad"
+    ]
+  },
+  "LOCATION/app/main.py:health:GET": {
+    "path": "/health",
+    "roles": [],
+    "action": "read",
+    "domain": "public",
+    "branch_scope": false,
+    "public": true,
+    "network": false,
+    "paths": [
+      "/health"
+    ]
+  },
+  "LOCATION/app/main.py:index:GET": {
+    "path": "/",
+    "roles": [],
+    "action": "read",
+    "domain": "public",
+    "branch_scope": false,
+    "public": true,
+    "network": false,
+    "paths": [
+      "/"
+    ]
+  },
+  "LOCATION/app/routers/assets_placement_router.py:get_floor_placed_assets:GET": {
+    "path": "/api/v1/location/floors/{floor_id}/assets",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician",
+      "operator",
+      "viewer"
+    ],
+    "action": "read",
+    "domain": "location",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/v1/location/floors/{floor_id}/assets"
+    ]
+  },
+  "LOCATION/app/routers/assets_placement_router.py:get_all_placed_assets:GET": {
+    "path": "/api/v1/location/placed-assets",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician",
+      "operator",
+      "viewer"
+    ],
+    "action": "read",
+    "domain": "location",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/v1/location/placed-assets"
+    ]
+  },
+  "LOCATION/app/routers/assets_placement_router.py:get_unplaced_assets_pool:GET": {
+    "path": "/api/v1/location/unplaced-assets",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician",
+      "operator",
+      "viewer"
+    ],
+    "action": "read",
+    "domain": "location",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/v1/location/unplaced-assets"
+    ]
+  },
+  "LOCATION/app/routers/assets_placement_router.py:update_asset_position:POST": {
+    "path": "/api/v1/location/assets/{asset_id}/position",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician"
+    ],
+    "action": "write",
+    "domain": "location",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/v1/location/assets/{asset_id}/position"
+    ]
+  },
+  "LOCATION/app/routers/assets_placement_router.py:assign_cabinet_and_place:POST": {
+    "path": "/api/v1/location/assets/{asset_id}/assign-cabinet",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician",
+      "operator"
+    ],
+    "action": "write",
+    "domain": "location",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/v1/location/assets/{asset_id}/assign-cabinet"
+    ]
+  },
+  "LOCATION/app/routers/assets_placement_router.py:unplace_asset:POST": {
+    "path": "/api/v1/location/assets/{asset_id}/unplace",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician"
+    ],
+    "action": "write",
+    "domain": "location",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/v1/location/assets/{asset_id}/unplace"
+    ]
+  },
+  "LOCATION/app/routers/assets_placement_router.py:create_and_place_asset:POST": {
+    "path": "/api/v1/location/assets/create-and-place",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician",
+      "operator"
+    ],
+    "action": "write",
+    "domain": "location",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/v1/location/assets/create-and-place"
+    ]
+  },
+  "LOCATION/app/routers/floors_router.py:get_branch_floors:GET": {
+    "path": "/api/v1/location/branches/{branch_id}/floors",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician",
+      "operator",
+      "viewer"
+    ],
+    "action": "read",
+    "domain": "location",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/v1/location/branches/{branch_id}/floors"
+    ]
+  },
+  "LOCATION/app/routers/floors_router.py:create_floor:POST": {
+    "path": "/api/v1/location/floors",
+    "roles": [
+      "superadmin",
+      "admin"
+    ],
+    "action": "write",
+    "domain": "location",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/v1/location/floors"
+    ]
+  },
+  "LOCATION/app/routers/floors_router.py:update_floor:PUT": {
+    "path": "/api/v1/location/floors/{floor_id}",
+    "roles": [
+      "superadmin",
+      "admin"
+    ],
+    "action": "write",
+    "domain": "location",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/v1/location/floors/{floor_id}"
+    ]
+  },
+  "LOCATION/app/routers/floors_router.py:delete_floor:DELETE": {
+    "path": "/api/v1/location/floors/{floor_id}",
+    "roles": [
+      "superadmin",
+      "admin"
+    ],
+    "action": "write",
+    "domain": "location",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/v1/location/floors/{floor_id}"
+    ]
+  },
+  "LOCATION/app/routers/floors_router.py:upload_floor_map:POST": {
+    "path": "/api/v1/location/floors/{floor_id}/upload-map",
+    "roles": [
+      "superadmin",
+      "admin"
+    ],
+    "action": "write",
+    "domain": "location",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/v1/location/floors/{floor_id}/upload-map"
+    ]
+  },
+  "LOCATION/app/routers/pathfinding_router.py:trace_cable_path:GET": {
+    "path": "/api/v1/location/network/trace",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician",
+      "operator",
+      "viewer"
+    ],
+    "action": "read",
+    "domain": "location",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/v1/location/network/trace"
+    ]
+  },
+  "LOCATION/app/routers/pathfinding_router.py:get_location_stats:GET": {
+    "path": "/api/v1/location/stats",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician",
+      "operator",
+      "viewer"
+    ],
+    "action": "read",
+    "domain": "location",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/v1/location/stats"
+    ]
+  },
+  "LOCATION/app/routers/switches_router.py:get_floor_switches:GET": {
+    "path": "/api/v1/location/floors/{floor_id}/switches",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician",
+      "operator",
+      "viewer"
+    ],
+    "action": "read",
+    "domain": "location",
+    "branch_scope": true,
+    "public": false,
+    "network": true,
+    "paths": [
+      "/api/v1/location/floors/{floor_id}/switches"
+    ]
+  },
+  "LOCATION/app/routers/switches_router.py:create_switch:POST": {
+    "path": "/api/v1/location/switches",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician"
+    ],
+    "action": "write",
+    "domain": "location",
+    "branch_scope": true,
+    "public": false,
+    "network": true,
+    "paths": [
+      "/api/v1/location/switches"
+    ]
+  },
+  "LOCATION/app/routers/switches_router.py:update_switch:PUT": {
+    "path": "/api/v1/location/switches/{switch_id}",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician"
+    ],
+    "action": "write",
+    "domain": "location",
+    "branch_scope": true,
+    "public": false,
+    "network": true,
+    "paths": [
+      "/api/v1/location/switches/{switch_id}"
+    ]
+  },
+  "LOCATION/app/routers/switches_router.py:test_switch_connection:POST": {
+    "path": "/api/v1/location/switches/test-connection",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician"
+    ],
+    "action": "write",
+    "domain": "location",
+    "branch_scope": true,
+    "public": false,
+    "network": true,
+    "paths": [
+      "/api/v1/location/switches/test-connection"
+    ]
+  },
+  "LOCATION/app/routers/switches_router.py:delete_switch:DELETE": {
+    "path": "/api/v1/location/switches/{switch_id}",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician"
+    ],
+    "action": "write",
+    "domain": "location",
+    "branch_scope": true,
+    "public": false,
+    "network": true,
+    "paths": [
+      "/api/v1/location/switches/{switch_id}"
+    ]
+  },
+  "LOCATION/app/routers/switches_router.py:update_switch_port:PUT": {
+    "path": "/api/v1/location/switches/{switch_id}/ports/{port_number}",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician",
+      "operator"
+    ],
+    "action": "write",
+    "domain": "location",
+    "branch_scope": true,
+    "public": false,
+    "network": true,
+    "paths": [
+      "/api/v1/location/switches/{switch_id}/ports/{port_number}"
+    ]
+  },
+  "LOCATION/app/routers/switches_router.py:connect_switch_port:POST": {
+    "path": "/api/v1/location/switches/{switch_id}/ports/{port_number}/connect",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician"
+    ],
+    "action": "write",
+    "domain": "location",
+    "branch_scope": true,
+    "public": false,
+    "network": true,
+    "paths": [
+      "/api/v1/location/switches/{switch_id}/ports/{port_number}/connect"
+    ]
+  },
+  "LOCATION/app/routers/switches_router.py:poll_switch_mac_table:POST": {
+    "path": "/api/v1/location/switches/{switch_id}/poll",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician",
+      "operator"
+    ],
+    "action": "write",
+    "domain": "location",
+    "branch_scope": true,
+    "public": false,
+    "network": true,
+    "paths": [
+      "/api/v1/location/switches/{switch_id}/poll"
+    ]
+  },
+  "LOCATION/app/routers/switches_router.py:simulate_switch_event:POST": {
+    "path": "/api/v1/location/switches/{switch_id}/simulate-event",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician"
+    ],
+    "action": "write",
+    "domain": "location",
+    "branch_scope": true,
+    "public": false,
+    "network": true,
+    "paths": [
+      "/api/v1/location/switches/{switch_id}/simulate-event"
+    ]
+  },
+  "LOCATION/app/routers/zones_router.py:save_floor_zone:POST": {
+    "path": "/api/v1/location/floors/{floor_id}/zones",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician"
+    ],
+    "action": "write",
+    "domain": "location",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/v1/location/floors/{floor_id}/zones"
+    ]
+  },
+  "LOCATION/app/routers/zones_router.py:delete_zone:DELETE": {
+    "path": "/api/v1/location/zones/{zone_id}",
+    "roles": [
+      "superadmin",
+      "admin"
+    ],
+    "action": "write",
+    "domain": "location",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/v1/location/zones/{zone_id}"
+    ]
+  },
+  "main_server.py:login:POST": {
+    "path": "/api/v1/auth/login",
+    "roles": [],
+    "action": "write",
+    "domain": "public",
+    "branch_scope": false,
+    "public": true,
+    "network": false,
+    "paths": [
+      "/api/v1/auth/login"
+    ]
+  },
+  "main_server.py:get_current_profile:GET": {
+    "path": "/api/v1/auth/me",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician",
+      "operator",
+      "viewer",
+      "user"
+    ],
+    "action": "read",
+    "domain": "profile",
+    "branch_scope": false,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/v1/auth/me"
+    ]
+  },
+  "main_server.py:get_cartridge_app_js:GET": {
+    "path": "/static/js/app.js",
+    "roles": [],
+    "action": "read",
+    "domain": "public",
+    "branch_scope": false,
+    "public": true,
+    "network": false,
+    "paths": [
+      "/static/js/app.js"
+    ]
+  },
+  "main_server.py:get_cartridge_qr_scanner_js:GET": {
+    "path": "/static/js/qr-scanner.js",
+    "roles": [],
+    "action": "read",
+    "domain": "public",
+    "branch_scope": false,
+    "public": true,
+    "network": false,
+    "paths": [
+      "/static/js/qr-scanner.js"
+    ]
+  },
+  "main_server.py:get_cartridge_custom_css:GET": {
+    "path": "/static/css/custom.css",
+    "roles": [],
+    "action": "read",
+    "domain": "public",
+    "branch_scope": false,
+    "public": true,
+    "network": false,
+    "paths": [
+      "/static/css/custom.css"
+    ]
+  },
+  "main_server.py:portal_index:GET": {
+    "path": "/",
+    "roles": [],
+    "action": "read",
+    "domain": "public",
+    "branch_scope": false,
+    "public": true,
+    "network": false,
+    "paths": [
+      "/"
+    ]
+  },
+  "main_server.py:unified_health:GET": {
+    "path": "/health",
+    "roles": [],
+    "action": "read",
+    "domain": "public",
+    "branch_scope": false,
+    "public": true,
+    "network": false,
+    "paths": [
+      "/health"
+    ]
+  },
+  "REPAIR/app/main.py:health:GET": {
+    "path": "/health",
+    "roles": [],
+    "action": "read",
+    "domain": "public",
+    "branch_scope": false,
+    "public": true,
+    "network": false,
+    "paths": [
+      "/health"
+    ]
+  },
+  "REPAIR/app/main.py:index:GET": {
+    "path": "/",
+    "roles": [],
+    "action": "read",
+    "domain": "public",
+    "branch_scope": false,
+    "public": true,
+    "network": false,
+    "paths": [
+      "/"
+    ]
+  },
+  "REPAIR/app/routers/ad_computers_router.py:sync_computers_from_active_directory:POST": {
+    "path": "/api/v1/repair/ad/sync-computers",
+    "roles": [
+      "superadmin"
+    ],
+    "action": "write",
+    "domain": "ad_sync",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/v1/repair/ad/sync-computers"
+    ]
+  },
+  "REPAIR/app/routers/ad_computers_router.py:get_ad_computer_stats:GET": {
+    "path": "/api/v1/repair/ad/stats",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician",
+      "operator",
+      "viewer"
+    ],
+    "action": "read",
+    "domain": "repair",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/v1/repair/ad/stats"
+    ]
+  },
+  "REPAIR/app/routers/equipment_models_router.py:list_equipment_models:GET": {
+    "path": "/api/v1/repair/models",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician",
+      "operator",
+      "viewer",
+      "user"
+    ],
+    "action": "read",
+    "domain": "catalogs",
+    "branch_scope": false,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/v1/repair/models"
+    ]
+  },
+  "REPAIR/app/routers/equipment_models_router.py:sync_models_from_active_directory:POST": {
+    "path": "/api/v1/repair/models/sync-from-ad",
+    "roles": [
+      "superadmin"
+    ],
+    "action": "write",
+    "domain": "catalogs",
+    "branch_scope": false,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/v1/repair/models/sync-from-ad"
+    ]
+  },
+  "REPAIR/app/routers/equipment_models_router.py:suggest_model_specs:GET": {
+    "path": "/api/v1/repair/models/suggest-specs",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician",
+      "operator",
+      "viewer",
+      "user"
+    ],
+    "action": "read",
+    "domain": "catalogs",
+    "branch_scope": false,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/v1/repair/models/suggest-specs"
+    ]
+  },
+  "REPAIR/app/routers/equipment_models_router.py:create_equipment_model:POST": {
+    "path": "/api/v1/repair/models",
+    "roles": [
+      "superadmin"
+    ],
+    "action": "write",
+    "domain": "catalogs",
+    "branch_scope": false,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/v1/repair/models"
+    ]
+  },
+  "REPAIR/app/routers/equipment_models_router.py:update_equipment_model:PUT": {
+    "path": "/api/v1/repair/models/{model_id}",
+    "roles": [
+      "superadmin"
+    ],
+    "action": "write",
+    "domain": "catalogs",
+    "branch_scope": false,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/v1/repair/models/{model_id}"
+    ]
+  },
+  "REPAIR/app/routers/equipment_models_router.py:delete_equipment_model:DELETE": {
+    "path": "/api/v1/repair/models/{model_id}",
+    "roles": [
+      "superadmin"
+    ],
+    "action": "write",
+    "domain": "catalogs",
+    "branch_scope": false,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/v1/repair/models/{model_id}"
+    ]
+  },
+  "REPAIR/app/routers/equipment_router.py:list_equipment:GET": {
+    "path": "/api/v1/repair/equipment",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician",
+      "operator",
+      "viewer",
+      "user"
+    ],
+    "action": "read",
+    "domain": "repair",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/v1/repair/equipment"
+    ]
+  },
+  "REPAIR/app/routers/equipment_router.py:find_by_inv_or_serial:GET": {
+    "path": "/api/v1/repair/equipment/find-by-inv",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician",
+      "operator",
+      "viewer",
+      "user"
+    ],
+    "action": "read",
+    "domain": "repair",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/v1/repair/equipment/find-by-inv"
+    ]
+  },
+  "REPAIR/app/routers/equipment_router.py:get_repair_ad_users:GET": {
+    "path": "/api/v1/repair/equipment/users/ad",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician",
+      "operator"
+    ],
+    "action": "read",
+    "domain": "directory",
+    "branch_scope": false,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/v1/repair/equipment/ad-users",
+      "/api/v1/repair/equipment/users/ad"
+    ]
+  },
+  "REPAIR/app/routers/equipment_router.py:get_equipment_detail:GET": {
+    "path": "/api/v1/repair/equipment/{asset_id}",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician",
+      "operator",
+      "viewer",
+      "user"
+    ],
+    "action": "read",
+    "domain": "repair",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/v1/repair/equipment/{asset_id}"
+    ]
+  },
+  "REPAIR/app/routers/equipment_router.py:accept_broken_equipment:POST": {
+    "path": "/api/v1/repair/equipment/accept",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician",
+      "operator"
+    ],
+    "action": "write",
+    "domain": "repair",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/v1/repair/equipment/accept"
+    ]
+  },
+  "REPAIR/app/routers/equipment_router.py:create_manual_equipment:POST": {
+    "path": "/api/v1/repair/equipment",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician",
+      "operator"
+    ],
+    "action": "write",
+    "domain": "repair",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/v1/repair/equipment"
+    ]
+  },
+  "REPAIR/app/routers/equipment_router.py:update_equipment:PUT": {
+    "path": "/api/v1/repair/equipment/{asset_id}",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician",
+      "operator"
+    ],
+    "action": "write",
+    "domain": "repair",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/v1/repair/equipment/{asset_id}"
+    ]
+  },
+  "REPAIR/app/routers/equipment_router.py:test_switch_connection:POST": {
+    "path": "/api/v1/repair/equipment/test-switch-connection",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician"
+    ],
+    "action": "write",
+    "domain": "repair",
+    "branch_scope": true,
+    "public": false,
+    "network": true,
+    "paths": [
+      "/api/v1/repair/equipment/test-switch-connection"
+    ]
+  },
+  "REPAIR/app/routers/equipment_router.py:sync_switch_equipment:POST": {
+    "path": "/api/v1/repair/equipment/{asset_id}/sync-switch",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician"
+    ],
+    "action": "write",
+    "domain": "repair",
+    "branch_scope": true,
+    "public": false,
+    "network": true,
+    "paths": [
+      "/api/v1/repair/equipment/{asset_id}/sync-switch"
+    ]
+  },
+  "REPAIR/app/routers/equipment_router.py:delete_equipment:DELETE": {
+    "path": "/api/v1/repair/equipment/{asset_id}",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician"
+    ],
+    "action": "write",
+    "domain": "repair",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/v1/repair/equipment/{asset_id}"
+    ]
+  },
+  "REPAIR/app/routers/equipment_router.py:return_equipment_from_sc:POST": {
+    "path": "/api/v1/repair/equipment/return-sc",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician",
+      "operator"
+    ],
+    "action": "write",
+    "domain": "repair",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/v1/repair/equipment/return-sc"
+    ]
+  },
+  "REPAIR/app/routers/equipment_router.py:install_equipment_at_workplace:POST": {
+    "path": "/api/v1/repair/equipment/install-workplace",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician",
+      "operator"
+    ],
+    "action": "write",
+    "domain": "repair",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/v1/repair/equipment/install-workplace"
+    ]
+  },
+  "REPAIR/app/routers/repair_batches_router.py:list_repair_batches:GET": {
+    "path": "/api/v1/repair/batches",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician",
+      "operator",
+      "viewer"
+    ],
+    "action": "read",
+    "domain": "repair",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/v1/repair/batches"
+    ]
+  },
+  "REPAIR/app/routers/repair_batches_router.py:get_repair_batch_detail:GET": {
+    "path": "/api/v1/repair/batches/{batch_id}",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician",
+      "operator",
+      "viewer"
+    ],
+    "action": "read",
+    "domain": "repair",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/v1/repair/batches/{batch_id}"
+    ]
+  },
+  "REPAIR/app/routers/repair_batches_router.py:create_repair_batch:POST": {
+    "path": "/api/v1/repair/batches",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician",
+      "operator"
+    ],
+    "action": "write",
+    "domain": "repair",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/v1/repair/batches"
+    ]
+  },
+  "REPAIR/app/routers/repair_batches_router.py:close_repair_batch:POST": {
+    "path": "/api/v1/repair/batches/{batch_id}/close",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician",
+      "operator"
+    ],
+    "action": "write",
+    "domain": "repair",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/v1/repair/batches/{batch_id}/close"
+    ]
+  },
+  "REPAIR/app/routers/repair_print_router.py:print_repair_act:GET": {
+    "path": "/print/repair-act/{batch_id}",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician",
+      "operator",
+      "viewer"
+    ],
+    "action": "read",
+    "domain": "repair",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/print/repair-act/{batch_id}"
+    ]
+  },
+  "REPAIR/app/routers/repair_reports_router.py:get_repair_report_json:GET": {
+    "path": "/api/v1/repair/reports/data",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician",
+      "operator",
+      "viewer"
+    ],
+    "action": "read",
+    "domain": "repair",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/v1/repair/reports/data"
+    ]
+  },
+  "REPAIR/app/routers/repair_reports_router.py:export_repair_report_excel:GET": {
+    "path": "/api/v1/repair/reports/export/excel",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician",
+      "operator",
+      "viewer"
+    ],
+    "action": "read",
+    "domain": "repair",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/v1/repair/reports/export/excel"
+    ]
+  },
+  "LOCATION/app/routers/floors_router.py:get_floor_map:GET": {
+    "path": "/api/v1/location/floors/{floor_id}/map",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician",
+      "operator",
+      "viewer"
+    ],
+    "action": "read",
+    "domain": "location",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/v1/location/floors/{floor_id}/map"
+    ]
+  }
+}

@@ -128,12 +128,8 @@ class RepairReportService:
             joinedload(Asset.responsible_ad_user)
         )
 
-        # Филиальное разграничение
-        effective_branch_id = branch_id
-        if current_user and current_user.role not in ("superadmin", None) and current_user.branch_id:
-            effective_branch_id = current_user.branch_id
-            query = query.filter(Asset.branch_id == effective_branch_id)
-        elif effective_branch_id:
+        effective_branch_id = db.info.get("scope_branch", branch_id)
+        if effective_branch_id:
             query = query.filter(Asset.branch_id == effective_branch_id)
 
         # Фильтр по техническому состоянию (Рабочее / Сломанное)
@@ -618,3 +614,4 @@ class RepairReportService:
         wb.save(output)
         output.seek(0)
         return output
+

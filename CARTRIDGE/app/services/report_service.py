@@ -129,21 +129,10 @@ class ReportService:
     ) -> Dict[str, Any]:
         """
         Формирует структурированные данные отчета.
-        Проверяет права доступа:
-        - суперпользователь: любой филиал или все сразу
-        - администратор/оператор с branch_id: строго только свой филиал
-        - администратор/оператор без branch_id: любой филиал или все сразу
+        Доступ и выбор филиала задаются центральной политикой запроса.
         """
-        effective_branch_id = branch_id
-        is_branch_locked = False
-        if current_user:
-            if current_user.role == "user":
-                raise PermissionError("Доступ к формированию отчетов запрещен для вашей роли.")
-
-            # Ограничение филиала по роли
-            if current_user.role in ("admin", "operator") and current_user.branch_id:
-                effective_branch_id = current_user.branch_id
-                is_branch_locked = True
+        effective_branch_id = db.info.get("scope_branch", branch_id)
+        is_branch_locked = bool(current_user and current_user.role != "superadmin")
 
         branch_obj = None
         branch_name = "Все филиалы"

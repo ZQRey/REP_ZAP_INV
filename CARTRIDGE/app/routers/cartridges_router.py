@@ -1,3 +1,4 @@
+from SHARED.authentication import require_authenticated_user
 from datetime import datetime
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -16,11 +17,6 @@ from app.schemas import (
     CartridgeIssueRequest,
     BulkIssueRequest
 )
-from app.services.auth_service import (
-    get_current_user_optional,
-    require_operator,
-    require_admin
-)
 
 router = APIRouter(prefix="/api/cartridges", tags=["Cartridges"])
 
@@ -33,31 +29,13 @@ def get_cartridges(
     limit: int = Query(100, le=500),
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
-    current_user: Optional[AppUser] = Depends(get_current_user_optional)
+    current_user: Optional[AppUser] = Depends(require_authenticated_user)
 ):
     """Список картриджей с фильтрацией по статусу, филиалу и роли пользователя."""
     query = db.query(Cartridge).options(
         joinedload(Cartridge.current_user),
         joinedload(Cartridge.branch)
     )
-
-    # 1. Разграничение доступа по ролям:
-    if current_user:
-        if current_user.role == "user":
-            # Пользователь видит ТОЛЬКО картриджи, закрепленные за ним
-            query = query.filter(
-                or_(
-                    Cartridge.current_user_id.ilike(current_user.username),
-                    Cartridge.current_user_id.ilike(current_user.full_name)
-                )
-            )
-        elif current_user.role in ("admin", "operator") and current_user.branch_id:
-            # Оператор и Администратор видят картриджи своего филиала
-            query = query.filter(Cartridge.branch_id == current_user.branch_id)
-        elif branch_id:
-            query = query.filter(Cartridge.branch_id == branch_id)
-    elif branch_id:
-        query = query.filter(Cartridge.branch_id == branch_id)
 
     # 2. Фильтр по статусу
     if status_filter:
@@ -108,7 +86,7 @@ def quick_search(
 def get_cartridge_detail(
     cartridge_id: int,
     db: Session = Depends(get_db),
-    current_user: Optional[AppUser] = Depends(get_current_user_optional)
+    current_user: Optional[AppUser] = Depends(require_authenticated_user)
 ):
     """Получить подробную информацию о картридже и полную историю перемещений."""
     cart = db.query(Cartridge).options(
@@ -120,14 +98,6 @@ def get_cartridge_detail(
     if not cart:
         raise HTTPException(status_code=404, detail="Картридж не найден.")
 
-    if current_user and current_user.role == "user":
-        is_owner = (
-            (cart.current_user_id and cart.current_user_id.lower() == current_user.username.lower()) or
-            (cart.current_user and cart.current_user.display_name and cart.current_user.display_name.lower() == current_user.full_name.lower())
-        )
-        if not is_owner:
-            raise HTTPException(status_code=403, detail="Доступ запрещен: картридж закреплен за другим сотрудником.")
-
     return cart
 
 
@@ -135,7 +105,7 @@ def get_cartridge_detail(
 def create_cartridge(
     payload: CartridgeCreate,
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_operator)
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """Создать новый картридж в системе."""
     # Проверка уникальности маркера
@@ -148,7 +118,7 @@ def create_cartridge(
         qr_code=payload.qr_code.strip() if payload.qr_code else None,
         model=payload.model.strip(),
         cabinet=payload.cabinet.strip(),
-        branch_id=payload.branch_id,
+        branch_id=payload.branch_id if current_user.role == "superadmin" else current_user.branch_id,
         status=payload.status,
         current_user_id=payload.current_user_id,
         notes=payload.notes,
@@ -178,7 +148,7 @@ def update_cartridge(
     cartridge_id: int,
     payload: CartridgeUpdate,
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_operator)
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """Редактировать параметры картриджа."""
     cart = db.query(Cartridge).filter(Cartridge.id == cartridge_id).first()
@@ -236,7 +206,7 @@ def update_cartridge(
 def delete_cartridge(
     cartridge_id: int,
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_admin)
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """Удалить картридж из системы (Администратор или Супер администратор)."""
     cart = db.query(Cartridge).filter(Cartridge.id == cartridge_id).first()
@@ -251,7 +221,7 @@ def delete_cartridge(
 def accept_cartridge(
     payload: CartridgeAcceptanceRequest,
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_operator)
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """
     ЭТАП 1: ПРИЕМКА (только операторы и администраторы)
@@ -276,7 +246,7 @@ def accept_cartridge(
             qr_code=payload.qr_code.strip() if payload.qr_code else None,
             model=payload.model.strip(),
             cabinet=payload.cabinet.strip(),
-            branch_id=payload.branch_id,
+            branch_id=payload.branch_id if current_user.role == "superadmin" else current_user.branch_id,
             status=CartridgeStatus.PENDING_VENDOR,
             condition=payload.condition or "broken",
             current_user_id=payload.current_user_id,
@@ -330,7 +300,7 @@ def issue_cartridge(
     payload: Optional[CartridgeIssueRequest] = None,
     notes: Optional[str] = Query(None),
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_operator)
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """
     ЭТАП 4: ВЫДАЧА (только операторы и администраторы)
@@ -365,7 +335,7 @@ def issue_cartridge(
 def bulk_issue_cartridges(
     payload: BulkIssueRequest,
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_operator)
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """
     Массовая выдача готовых картриджей в работу (для ручной выдачи из отчета рассылки).
@@ -407,7 +377,7 @@ def bulk_issue_cartridges(
 def return_cartridges_from_vendor(
     payload: ReturnFromVendorRequest,
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_operator)
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """
     ЭТАП 3: ВОЗВРАТ С ЗАПРАВКИ (только операторы и администраторы)
