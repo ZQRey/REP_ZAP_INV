@@ -6,6 +6,10 @@ from urllib.parse import urlsplit
 
 def secret(name: str, required: bool = False) -> str:
     value, filename = os.getenv(name, ""), os.getenv(name + "_FILE", "")
+    if not filename:
+        default_file = Path("/run/app-secrets") / name.lower()
+        if default_file.is_file():
+            filename = str(default_file)
     if value and filename:
         raise RuntimeError(f"Configure only {name} or {name}_FILE")
     if filename:

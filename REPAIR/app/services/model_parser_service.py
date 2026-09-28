@@ -1,3 +1,4 @@
+import logging
 import re
 import statistics
 from typing import Dict, Any, Optional, List, Tuple
@@ -6,6 +7,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, or_
 
 from SHARED.models import Asset, AssetType, EquipmentModel
+
+logger = logging.getLogger(__name__)
 
 # Справочник известных вендоров
 KNOWN_VENDORS = [

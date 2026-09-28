@@ -32,13 +32,7 @@ services:
     restart: "no"
     command: ["alembic", "upgrade", "head"]
     environment:
-      - DATABASE_URL=${DATABASE_URL:?Set the application database URL}
-      - SECRET_KEY=${SECRET_KEY:?Set a random JWT secret}
-      - REDIS_URL=${REDIS_URL:?Set an authenticated Redis URL}
-      - NETWORK_CREDENTIAL_KEY=${NETWORK_CREDENTIAL_KEY:?Set a random network credential encryption key}
-      - APP_ENV=${APP_ENV:-production}
-      - WHATSAPP_ENABLED=false
-      - LDAP_ENABLED=false
+      - DATABASE_URL=${DATABASE_URL:?Run ./scripts/init-env.sh first}
     depends_on:
       postgres-db:
         condition: service_healthy
@@ -55,15 +49,15 @@ services:
       - ./secrets/ssh:/run/ssh:ro
       - ./uploads:/app/LOCATION/app/static/uploads
     environment:
-      - DATABASE_URL=${DATABASE_URL:?Set the application database URL}
-      - SECRET_KEY=${SECRET_KEY:?Set a random JWT secret}
-      - REDIS_URL=${REDIS_URL:?Set an authenticated Redis URL}
+      - DATABASE_URL=${DATABASE_URL:?Run ./scripts/init-env.sh first}
+      - REDIS_URL=${REDIS_URL:?Run ./scripts/init-env.sh first}
+      - SECRET_KEY=${SECRET_KEY:?Run ./scripts/init-env.sh first}
+      - NETWORK_CREDENTIAL_KEY=${NETWORK_CREDENTIAL_KEY:?Run ./scripts/init-env.sh first}
       - EVOLUTION_API_URL=http://whatsapp-gateway:8080
-      - EVOLUTION_API_KEY=${EVOLUTION_API_KEY:?Set a new Evolution key}
+      - EVOLUTION_API_KEY=${EVOLUTION_API_KEY:?Run ./scripts/init-env.sh first}
       - PYTHONUNBUFFERED=1
       - APP_ENV=${APP_ENV:-production}
       - NETWORK_ALLOWED_CIDRS=${NETWORK_ALLOWED_CIDRS:-}
-      - NETWORK_CREDENTIAL_KEY=${NETWORK_CREDENTIAL_KEY:?Set a random network credential encryption key}
       - CORS_ORIGINS=${CORS_ORIGINS:-}
       - WHATSAPP_ENABLED=true
       - LDAP_ENABLED=${LDAP_ENABLED:-false}
@@ -94,11 +88,11 @@ services:
     volumes:
       - ./secrets/ssh:/run/ssh:ro
     environment:
-      - DATABASE_URL=${DATABASE_URL:?Set the application database URL}
-      - SECRET_KEY=${SECRET_KEY:?Set a random JWT secret}
-      - REDIS_URL=${REDIS_URL:?Set an authenticated Redis URL}
+      - DATABASE_URL=${DATABASE_URL:?Run ./scripts/init-env.sh first}
+      - REDIS_URL=${REDIS_URL:?Run ./scripts/init-env.sh first}
+      - SECRET_KEY=${SECRET_KEY:?Run ./scripts/init-env.sh first}
+      - NETWORK_CREDENTIAL_KEY=${NETWORK_CREDENTIAL_KEY:?Run ./scripts/init-env.sh first}
       - APP_ENV=${APP_ENV:-production}
-      - NETWORK_CREDENTIAL_KEY=${NETWORK_CREDENTIAL_KEY:?Set a random network credential encryption key}
       - NOTIFICATION_POLL_SECONDS=${NOTIFICATION_POLL_SECONDS:-5}
       - NOTIFICATION_BATCH_SIZE=${NOTIFICATION_BATCH_SIZE:-25}
       - NOTIFICATION_PROCESSING_LEASE_SECONDS=${NOTIFICATION_PROCESSING_LEASE_SECONDS:-120}
@@ -118,9 +112,10 @@ services:
     environment:
       - POSTGRES_DB=it_management
       - POSTGRES_USER=app_user
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?Set a new database password}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?Run ./scripts/init-env.sh first}
     volumes:
       - ./BD/postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U app_user -d it_management"]
       interval: 5s
@@ -132,7 +127,7 @@ services:
     image: redis:7-alpine
     command: ["sh", "-c", 'exec redis-server --requirepass "$$REDIS_PASSWORD"']
     environment:
-      - REDIS_PASSWORD=${REDIS_PASSWORD:?Set a Redis password}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:?Run ./scripts/init-env.sh first}
     container_name: it_unified_redis
     restart: unless-stopped
     volumes:
@@ -149,16 +144,16 @@ services:
       - SERVER_PORT=8080
       - SERVER_TYPE=http
       - SERVER_URL=http://whatsapp-gateway:8080
-      - AUTHENTICATION_API_KEY=${EVOLUTION_API_KEY:?Set a new Evolution key}
+      - AUTHENTICATION_API_KEY=${EVOLUTION_API_KEY:?Run ./scripts/init-env.sh first}
       - AUTHENTICATION_TYPE=apikey
       - LOG_LEVEL=ERROR,WARN,INFO
       - DEL_INSTANCE=false
       - DATABASE_ENABLED=true
       - DATABASE_PROVIDER=postgresql
-      - DATABASE_CONNECTION_URI=${EVOLUTION_DATABASE_URL:?Set the Evolution database URL}
+      - DATABASE_CONNECTION_URI=${EVOLUTION_DATABASE_URL:?Run ./scripts/init-env.sh first}
       - DATABASE_CLIENT_NAME=evolution_cartridge
       - CACHE_REDIS_ENABLED=true
-      - CACHE_REDIS_URI=${EVOLUTION_REDIS_URL:?Set an authenticated Redis URL}
+      - CACHE_REDIS_URI=${EVOLUTION_REDIS_URL:?Run ./scripts/init-env.sh first}
     depends_on:
       postgres-db:
         condition: service_healthy

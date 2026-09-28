@@ -1,16 +1,17 @@
 from contextlib import contextmanager
-from SHARED.security_config import DEMO_ENABLED
+import os
 import logging
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import declarative_base, sessionmaker
-from SHARED.security_config import DATABASE_URL
 from SHARED.config import DEFAULT_SETTINGS, SETTING_DESCRIPTIONS
 
 logger = logging.getLogger("SHARED.database")
 
 # Поддержка SQLite и PostgreSQL
 connect_args = {}
-effective_db_url = DATABASE_URL
+effective_db_url = os.getenv("DATABASE_URL", "").strip()
+if not effective_db_url:
+    raise RuntimeError("Required configuration missing: DATABASE_URL")
 
 if effective_db_url.startswith("sqlite"):
     connect_args = {"check_same_thread": False}
@@ -105,7 +106,8 @@ def init_db():
             # Administrators are provisioned explicitly via SHARED.bootstrap_admin.
 
             # 4. Базовые популярные модели картриджей (если справочник пуст)
-            if DEMO_ENABLED and db.query(models.CartridgeModel).count() == 0:
+            demo_enabled = os.getenv("DEMO_ENABLED", "false").strip().lower() in {"1", "true", "yes", "on"}
+            if demo_enabled and db.query(models.CartridgeModel).count() == 0:
                 demo_models = [
                     models.CartridgeModel(name="HP 85A (CE285A)", vendor="HP", resource_pages=1600, compatible_printers="HP LaserJet P1102 / M1132 / M1212nf"),
                     models.CartridgeModel(name="HP 83A (CF283A)", vendor="HP", resource_pages=1500, compatible_printers="HP LaserJet Pro M125 / M127 / M201 / M225"),
@@ -117,7 +119,7 @@ def init_db():
                 db.add_all(demo_models)
 
             # 5. Базовые категории моделей техники (если справочник пуст)
-            if DEMO_ENABLED and db.query(models.EquipmentModel).count() == 0:
+            if demo_enabled and db.query(models.EquipmentModel).count() == 0:
                 demo_equip_models = [
                     models.EquipmentModel(name="HP ProDesk 400 G6", category="workstation", vendor="HP", specs_template="Core i5, 16GB RAM, 512GB SSD"),
                     models.EquipmentModel(name="Lenovo ThinkCentre M720q", category="workstation", vendor="Lenovo", specs_template="Core i3, 8GB RAM, 256GB SSD"),
