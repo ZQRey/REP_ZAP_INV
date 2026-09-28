@@ -3,7 +3,7 @@ import os
 import logging
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import declarative_base, sessionmaker
-from SHARED.config import DEFAULT_SETTINGS, SETTING_DESCRIPTIONS
+from SHARED.default_settings import DEFAULT_SETTINGS, SETTING_DESCRIPTIONS
 
 logger = logging.getLogger("SHARED.database")
 
