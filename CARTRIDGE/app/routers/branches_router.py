@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from SHARED.database import get_db
 from SHARED.models import Branch, Cartridge, AppUser, Asset, Floor, RepairBatch, SparePartsWarehouse
-from app.schemas import BranchCreate, BranchUpdate, BranchResponse
+from CARTRIDGE.app.schemas import BranchCreate, BranchUpdate, BranchResponse
 
 router = APIRouter(prefix="/api/branches", tags=["Branches"])
 
