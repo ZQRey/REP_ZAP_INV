@@ -1,14 +1,15 @@
+from SHARED.security_config import CORS_ORIGINS
 import os
 import sys
 from pathlib import Path
 from contextlib import asynccontextmanager
 from typing import Optional
-from fastapi import FastAPI, Depends, HTTPException, status, Body
+from fastapi import FastAPI, Request, Depends, HTTPException, status, Body
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 # Добавляем корень проекта и подпапки в путь поиска модулей
 BASE_DIR = Path(__file__).resolve().parent
@@ -52,11 +53,7 @@ app = FastAPI(
 # CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:8000",
-        "http://127.0.0.1:8000",
-        os.getenv("CORS_ORIGIN", "http://localhost:8000"),
-    ],
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -68,51 +65,18 @@ app.add_middleware(
 # ==========================================
 
 class LoginRequest(BaseModel):
-    username: str
-    password: str
+    username: str = Field(min_length=1, max_length=256)
+    password: str = Field(min_length=1, max_length=1024)
     auth_type: str = "local" # "local" | "ad"
 
 
 @app.post("/api/v1/auth/login")
-def login(payload: LoginRequest, db: Session = Depends(get_db)):
+def login(payload: LoginRequest, request: Request, db: Session = Depends(get_db)):
     """Единая точка аутентификации (Single Sign-On) для всех трех приложений."""
-    username = payload.username.strip()
-    password = payload.password
-
-    user = None
-    # 1. Локальная проверка
-    if payload.auth_type == "local":
-        user = AuthService.authenticate_local_user(db, username, password)
-
-    # 2. Если не найден локально или указан AD, проверяем домен
-    if not user and payload.auth_type == "ad":
-        # Проверяем учетку в AD через LDAP bind
-        settings = LDAPService.get_ldap_settings(db)
-        host = settings.get("ad_host")
-        if host:
-            try:
-                from ldap3 import Server, Connection, ALL
-                server = Server(host, get_info=ALL, connect_timeout=5)
-                # Пытаемся забиндиться пользователем
-                bind_dn = f"{username}@{settings.get('ad_base_dn', '').replace('DC=', '').replace(',', '.')}"
-                conn = Connection(server, user=bind_dn, password=password)
-                if conn.bind():
-                    # Создаем или находим локального пользователя с ролью operator
-                    user = db.query(AppUser).filter(AppUser.username == username).first()
-                    if not user:
-                        user = AppUser(
-                            username=username,
-                            full_name=username,
-                            auth_type="ad",
-                            role="viewer",  # Минимальные права; повышение — через панель администратора
-                            is_active=True
-                        )
-                        db.add(user)
-                        db.commit()
-                        db.refresh(user)
-                    conn.unbind()
-            except Exception as e:
-                pass
+    from SHARED.login_security import check_login
+    from app.services.auth_service import AuthService as LoginService
+    check_login(request, payload.username)
+    user = LoginService.authenticate_user(db, payload.username, payload.password, payload.auth_type)
 
     if not user:
         raise HTTPException(
@@ -283,4 +247,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     print(f"[*] Starting Unified IT Enterprise Platform on http://{args.host}:{args.port}")
-    uvicorn.run("main_server:app", host=args.host, port=args.port, reload=args.reload)
+    uvicorn.run("main_server:app", host=args.host, port=args.port, reload=args.reload, access_log=False)
+
+
+from SHARED.http_security import install as install_http_security
+install_http_security(app)

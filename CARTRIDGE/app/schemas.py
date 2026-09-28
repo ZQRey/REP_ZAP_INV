@@ -48,7 +48,7 @@ class AppUserBase(BaseModel):
 class AppUserCreate(BaseModel):
     username: str
     full_name: str
-    password: Optional[str] = None
+    password: Optional[str] = Field(default=None, min_length=12, max_length=1024)
     auth_type: str = "local"
     role: str = "user"
     is_active: bool = True
@@ -57,7 +57,7 @@ class AppUserCreate(BaseModel):
 
 class AppUserUpdate(BaseModel):
     full_name: Optional[str] = None
-    password: Optional[str] = None
+    password: Optional[str] = Field(default=None, min_length=12, max_length=1024)
     role: Optional[str] = None
     is_active: Optional[bool] = None
     branch_id: Optional[int] = None
@@ -72,8 +72,8 @@ class AppUserResponse(AppUserBase):
 
 
 class LoginRequest(BaseModel):
-    username: str
-    password: str
+    username: str = Field(min_length=1, max_length=256)
+    password: str = Field(min_length=1, max_length=1024)
     auth_type: str = "local"  # "local" | "ad"
 
 
@@ -100,7 +100,7 @@ class LdapTestRequest(BaseModel):
     host: Optional[str] = None
     base_dn: Optional[str] = None
     bind_user: Optional[str] = None
-    bind_password: Optional[str] = None
+    bind_password: Optional[str] = Field(default=None, min_length=12, max_length=1024)
 
 
 class WhatsAppTestRequest(BaseModel):
@@ -270,4 +270,5 @@ class CartridgeModelResponse(CartridgeModelBase):
     created_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
+
 

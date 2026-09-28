@@ -1,3 +1,4 @@
+from SHARED.security_config import CORS_ORIGINS
 import os
 from pathlib import Path
 from contextlib import asynccontextmanager
@@ -42,7 +43,7 @@ app = FastAPI(
 # CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -73,3 +74,7 @@ def health():
 @app.get("/")
 def index():
     return FileResponse(str(STATIC_DIR / "index.html"))
+
+
+from SHARED.http_security import install as install_http_security
+install_http_security(app)

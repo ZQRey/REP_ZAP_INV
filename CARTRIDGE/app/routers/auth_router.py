@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Request, Depends, HTTPException, status
 from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
@@ -10,8 +10,10 @@ router = APIRouter(prefix="/api/auth", tags=["Auth"])
 
 
 @router.post("/login", response_model=LoginResponse)
-def login(payload: LoginRequest, db: Session = Depends(get_db)):
+def login(payload: LoginRequest, request: Request, db: Session = Depends(get_db)):
     """Аутентификация пользователя (локально или через Active Directory)."""
+    from SHARED.login_security import check_login
+    check_login(request, payload.username)
     user = AuthService.authenticate_user(
         db=db,
         username=payload.username,
@@ -52,3 +54,4 @@ def get_current_user_profile(user: AppUser = Depends(get_current_user), db: Sess
         joinedload(AppUser.branch)
     ).filter(AppUser.id == user.id).first()
     return user_with_branch
+
