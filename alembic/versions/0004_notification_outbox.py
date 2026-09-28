@@ -13,7 +13,12 @@ depends_on = None
 
 
 def upgrade():
-    # The enum may already exist on databases that were partially prepared by\n    # earlier startup attempts. Create it once, then reference it without\n    # letting CREATE TABLE emit a second CREATE TYPE.\n    status_enum = sa.Enum("PENDING", "PROCESSING", "SENT", "RETRY", "FAILED", "DEAD", name="notificationstatus")\n    status_enum.create(op.get_bind(), checkfirst=True)\n    status_column_enum = sa.Enum("PENDING", "PROCESSING", "SENT", "RETRY", "FAILED", "DEAD", name="notificationstatus", create_type=False)
+    # The enum may already exist on databases that were partially prepared by
+    # earlier startup attempts. Create it once, then reference it without
+    # letting CREATE TABLE emit a second CREATE TYPE.
+    status_enum = sa.Enum("PENDING", "PROCESSING", "SENT", "RETRY", "FAILED", "DEAD", name="notificationstatus")
+    status_enum.create(op.get_bind(), checkfirst=True)
+    status_column_enum = sa.Enum("PENDING", "PROCESSING", "SENT", "RETRY", "FAILED", "DEAD", name="notificationstatus", create_type=False)
     op.create_table(
         "notifications",
         sa.Column("id", sa.BigInteger(), primary_key=True, autoincrement=True),
