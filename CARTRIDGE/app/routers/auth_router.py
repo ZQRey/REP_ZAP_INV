@@ -4,8 +4,8 @@ from sqlalchemy.orm import Session, joinedload
 
 from SHARED.database import get_db
 from SHARED.models import AppUser
-from app.schemas import LoginRequest, LoginResponse, AppUserResponse
-from app.services.auth_service import AuthService
+from CARTRIDGE.app.schemas import LoginRequest, LoginResponse, AppUserResponse
+from CARTRIDGE.app.services.auth_service import AuthService
 
 router = APIRouter(prefix="/api/auth", tags=["Auth"])
 
