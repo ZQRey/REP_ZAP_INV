@@ -13,8 +13,7 @@ depends_on = None
 
 
 def upgrade():
-    status_enum = sa.Enum("PENDING", "PROCESSING", "SENT", "RETRY", "FAILED", "DEAD", name="notificationstatus")
-    status_enum.create(op.get_bind(), checkfirst=True)
+    # The enum may already exist on databases that were partially prepared by\n    # earlier startup attempts. Create it once, then reference it without\n    # letting CREATE TABLE emit a second CREATE TYPE.\n    status_enum = sa.Enum("PENDING", "PROCESSING", "SENT", "RETRY", "FAILED", "DEAD", name="notificationstatus")\n    status_enum.create(op.get_bind(), checkfirst=True)\n    status_column_enum = sa.Enum("PENDING", "PROCESSING", "SENT", "RETRY", "FAILED", "DEAD", name="notificationstatus", create_type=False)
     op.create_table(
         "notifications",
         sa.Column("id", sa.BigInteger(), primary_key=True, autoincrement=True),
@@ -24,7 +23,7 @@ def upgrade():
         sa.Column("recipient", sa.String(100), nullable=False),
         sa.Column("template", sa.String(100), nullable=True),
         sa.Column("payload", sa.JSON(), nullable=False),
-        sa.Column("status", status_enum, nullable=False),
+        sa.Column("status", status_column_enum, nullable=False),
         sa.Column("attempts", sa.Integer(), nullable=False, server_default="0"),
         sa.Column("next_attempt_at", sa.DateTime(), nullable=True),
         sa.Column("created_at", sa.DateTime(), nullable=False, server_default=sa.func.now()),
