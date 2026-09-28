@@ -1,0 +1,5553 @@
+{
+  "base_commit": "3b4e419d6efe1c63431eeab88fbf1134bd46c509",
+  "shared": {
+    "Branch": {
+      "table": "branches",
+      "columns": {
+        "id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": true,
+          "autoincrement": true,
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "name": {
+          "type": "VARCHAR(150)",
+          "nullable": false,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": true,
+          "index": true,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "code": {
+          "type": "VARCHAR(50)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "address": {
+          "type": "VARCHAR(255)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "it_office": {
+          "type": "VARCHAR(255)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "network_subnets": {
+          "type": "JSON",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "list",
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "wa_message_template": {
+          "type": "TEXT",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "notes": {
+          "type": "TEXT",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "created_at": {
+          "type": "DATETIME",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "datetime.utcnow",
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        }
+      },
+      "relationships": {
+        "users": {
+          "target": "AppUser",
+          "back_populates": "branch",
+          "uselist": true,
+          "cascade": [
+            "merge",
+            "save-update"
+          ],
+          "lazy": "select",
+          "passive_deletes": false,
+          "viewonly": false,
+          "join": "branches.id = app_users.branch_id",
+          "order_by": [],
+          "foreign_keys": []
+        },
+        "cartridges": {
+          "target": "Cartridge",
+          "back_populates": "branch",
+          "uselist": true,
+          "cascade": [
+            "merge",
+            "save-update"
+          ],
+          "lazy": "select",
+          "passive_deletes": false,
+          "viewonly": false,
+          "join": "branches.id = cartridges.branch_id",
+          "order_by": [],
+          "foreign_keys": []
+        },
+        "cartridge_batches": {
+          "target": "Batch",
+          "back_populates": "branch",
+          "uselist": true,
+          "cascade": [
+            "merge",
+            "save-update"
+          ],
+          "lazy": "select",
+          "passive_deletes": false,
+          "viewonly": false,
+          "join": "branches.id = batches.branch_id",
+          "order_by": [],
+          "foreign_keys": []
+        },
+        "assets": {
+          "target": "Asset",
+          "back_populates": "branch",
+          "uselist": true,
+          "cascade": [
+            "merge",
+            "save-update"
+          ],
+          "lazy": "select",
+          "passive_deletes": false,
+          "viewonly": false,
+          "join": "branches.id = assets.branch_id",
+          "order_by": [],
+          "foreign_keys": []
+        },
+        "floors": {
+          "target": "Floor",
+          "back_populates": "branch",
+          "uselist": true,
+          "cascade": [
+            "delete",
+            "delete-orphan",
+            "expunge",
+            "merge",
+            "refresh-expire",
+            "save-update"
+          ],
+          "lazy": "select",
+          "passive_deletes": false,
+          "viewonly": false,
+          "join": "branches.id = floors.branch_id",
+          "order_by": [],
+          "foreign_keys": []
+        },
+        "repair_batches": {
+          "target": "RepairBatch",
+          "back_populates": "branch",
+          "uselist": true,
+          "cascade": [
+            "merge",
+            "save-update"
+          ],
+          "lazy": "select",
+          "passive_deletes": false,
+          "viewonly": false,
+          "join": "branches.id = repair_batches.branch_id",
+          "order_by": [],
+          "foreign_keys": []
+        },
+        "spare_parts": {
+          "target": "SparePartsWarehouse",
+          "back_populates": "branch",
+          "uselist": true,
+          "cascade": [
+            "merge",
+            "save-update"
+          ],
+          "lazy": "select",
+          "passive_deletes": false,
+          "viewonly": false,
+          "join": "branches.id = spare_parts_warehouse.branch_id",
+          "order_by": [],
+          "foreign_keys": []
+        }
+      },
+      "indexes": [
+        {
+          "name": "ix_branches_name",
+          "columns": [
+            "name"
+          ],
+          "unique": true
+        }
+      ],
+      "constraints": [
+        {
+          "type": "PrimaryKeyConstraint",
+          "name": null,
+          "columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    "AppUser": {
+      "table": "app_users",
+      "columns": {
+        "id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": true,
+          "autoincrement": true,
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "username": {
+          "type": "VARCHAR(100)",
+          "nullable": false,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": true,
+          "index": true,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "full_name": {
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "password_hash": {
+          "type": "VARCHAR(255)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "auth_type": {
+          "type": "VARCHAR(20)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "local",
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "role": {
+          "type": "VARCHAR(20)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "operator",
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "is_active": {
+          "type": "BOOLEAN",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "True",
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "branch_id": {
+          "type": "INTEGER",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [
+            {
+              "target": "branches.id",
+              "ondelete": "SET NULL",
+              "onupdate": null
+            }
+          ],
+          "enum": null
+        },
+        "wa_instance_name": {
+          "type": "VARCHAR(100)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "created_at": {
+          "type": "DATETIME",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "datetime.utcnow",
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        }
+      },
+      "relationships": {
+        "branch": {
+          "target": "Branch",
+          "back_populates": "users",
+          "uselist": false,
+          "cascade": [
+            "merge",
+            "save-update"
+          ],
+          "lazy": "select",
+          "passive_deletes": false,
+          "viewonly": false,
+          "join": "branches.id = app_users.branch_id",
+          "order_by": [],
+          "foreign_keys": []
+        }
+      },
+      "indexes": [
+        {
+          "name": "ix_app_users_username",
+          "columns": [
+            "username"
+          ],
+          "unique": true
+        }
+      ],
+      "constraints": [
+        {
+          "type": "ForeignKeyConstraint",
+          "name": null,
+          "columns": [
+            "branch_id"
+          ]
+        },
+        {
+          "type": "PrimaryKeyConstraint",
+          "name": null,
+          "columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    "SystemSetting": {
+      "table": "system_settings",
+      "columns": {
+        "key": {
+          "type": "VARCHAR(100)",
+          "nullable": false,
+          "primary_key": true,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": true,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "value": {
+          "type": "TEXT",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "description": {
+          "type": "VARCHAR(255)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        }
+      },
+      "relationships": {},
+      "indexes": [
+        {
+          "name": "ix_system_settings_key",
+          "columns": [
+            "key"
+          ],
+          "unique": false
+        }
+      ],
+      "constraints": [
+        {
+          "type": "PrimaryKeyConstraint",
+          "name": null,
+          "columns": [
+            "key"
+          ]
+        }
+      ]
+    },
+    "ADUser": {
+      "table": "ad_users",
+      "columns": {
+        "samaccountname": {
+          "type": "VARCHAR(100)",
+          "nullable": false,
+          "primary_key": true,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": true,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "display_name": {
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": true,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "department": {
+          "type": "VARCHAR(255)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "cabinet": {
+          "type": "VARCHAR(100)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "phone": {
+          "type": "VARCHAR(100)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "updated_at": {
+          "type": "DATETIME",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "datetime.utcnow",
+          "onupdate": "datetime.utcnow",
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        }
+      },
+      "relationships": {
+        "cartridges": {
+          "target": "Cartridge",
+          "back_populates": "current_user",
+          "uselist": true,
+          "cascade": [
+            "merge",
+            "save-update"
+          ],
+          "lazy": "select",
+          "passive_deletes": false,
+          "viewonly": false,
+          "join": "ad_users.samaccountname = cartridges.current_user_id",
+          "order_by": [],
+          "foreign_keys": []
+        },
+        "assets": {
+          "target": "Asset",
+          "back_populates": "responsible_ad_user",
+          "uselist": true,
+          "cascade": [
+            "merge",
+            "save-update"
+          ],
+          "lazy": "select",
+          "passive_deletes": false,
+          "viewonly": false,
+          "join": "ad_users.samaccountname = assets.current_user_id",
+          "order_by": [],
+          "foreign_keys": []
+        }
+      },
+      "indexes": [
+        {
+          "name": "ix_ad_users_display_name",
+          "columns": [
+            "display_name"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_ad_users_samaccountname",
+          "columns": [
+            "samaccountname"
+          ],
+          "unique": false
+        }
+      ],
+      "constraints": [
+        {
+          "type": "PrimaryKeyConstraint",
+          "name": null,
+          "columns": [
+            "samaccountname"
+          ]
+        }
+      ]
+    },
+    "AuditLog": {
+      "table": "audit_logs",
+      "columns": {
+        "id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": true,
+          "autoincrement": true,
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "user_id": {
+          "type": "INTEGER",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [
+            {
+              "target": "app_users.id",
+              "ondelete": "SET NULL",
+              "onupdate": null
+            }
+          ],
+          "enum": null
+        },
+        "username": {
+          "type": "VARCHAR(100)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "action": {
+          "type": "VARCHAR(100)",
+          "nullable": false,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "target_module": {
+          "type": "VARCHAR(50)",
+          "nullable": false,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "target_entity": {
+          "type": "VARCHAR(100)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "entity_id": {
+          "type": "VARCHAR(100)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "details": {
+          "type": "TEXT",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "ip_address": {
+          "type": "VARCHAR(50)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "created_at": {
+          "type": "DATETIME",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "datetime.utcnow",
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": true,
+          "foreign_keys": [],
+          "enum": null
+        }
+      },
+      "relationships": {},
+      "indexes": [
+        {
+          "name": "ix_audit_logs_created_at",
+          "columns": [
+            "created_at"
+          ],
+          "unique": false
+        }
+      ],
+      "constraints": [
+        {
+          "type": "ForeignKeyConstraint",
+          "name": null,
+          "columns": [
+            "user_id"
+          ]
+        },
+        {
+          "type": "PrimaryKeyConstraint",
+          "name": null,
+          "columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    "CartridgeModel": {
+      "table": "cartridge_models",
+      "columns": {
+        "id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": true,
+          "autoincrement": true,
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "name": {
+          "type": "VARCHAR(150)",
+          "nullable": false,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": true,
+          "index": true,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "vendor": {
+          "type": "VARCHAR(100)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "resource_pages": {
+          "type": "INTEGER",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "compatible_printers": {
+          "type": "TEXT",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "notes": {
+          "type": "TEXT",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "created_at": {
+          "type": "DATETIME",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "datetime.utcnow",
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        }
+      },
+      "relationships": {},
+      "indexes": [
+        {
+          "name": "ix_cartridge_models_name",
+          "columns": [
+            "name"
+          ],
+          "unique": true
+        }
+      ],
+      "constraints": [
+        {
+          "type": "PrimaryKeyConstraint",
+          "name": null,
+          "columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    "Cartridge": {
+      "table": "cartridges",
+      "columns": {
+        "id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": true,
+          "autoincrement": true,
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "marker_label": {
+          "type": "VARCHAR(100)",
+          "nullable": false,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": true,
+          "index": true,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "qr_code": {
+          "type": "VARCHAR(100)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": true,
+          "index": true,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "model": {
+          "type": "VARCHAR(100)",
+          "nullable": false,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "cabinet": {
+          "type": "VARCHAR(100)",
+          "nullable": false,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "status": {
+          "type": "VARCHAR(16)",
+          "nullable": false,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "CartridgeStatus.IN_USE",
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": true,
+          "foreign_keys": [],
+          "enum": {
+            "name": "cartridgestatus",
+            "labels": [
+              "IN_USE",
+              "PENDING_VENDOR",
+              "AT_VENDOR",
+              "READY_FOR_PICKUP"
+            ],
+            "native_enum": true,
+            "create_constraint": false,
+            "validate_strings": false
+          }
+        },
+        "branch_id": {
+          "type": "INTEGER",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": true,
+          "foreign_keys": [
+            {
+              "target": "branches.id",
+              "ondelete": "SET NULL",
+              "onupdate": null
+            }
+          ],
+          "enum": null
+        },
+        "current_user_id": {
+          "type": "VARCHAR(100)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [
+            {
+              "target": "ad_users.samaccountname",
+              "ondelete": "SET NULL",
+              "onupdate": null
+            }
+          ],
+          "enum": null
+        },
+        "condition": {
+          "type": "VARCHAR(20)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "working",
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "notes": {
+          "type": "TEXT",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "updated_at": {
+          "type": "DATETIME",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "datetime.utcnow",
+          "onupdate": "datetime.utcnow",
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        }
+      },
+      "relationships": {
+        "branch": {
+          "target": "Branch",
+          "back_populates": "cartridges",
+          "uselist": false,
+          "cascade": [
+            "merge",
+            "save-update"
+          ],
+          "lazy": "select",
+          "passive_deletes": false,
+          "viewonly": false,
+          "join": "branches.id = cartridges.branch_id",
+          "order_by": [],
+          "foreign_keys": []
+        },
+        "current_user": {
+          "target": "ADUser",
+          "back_populates": "cartridges",
+          "uselist": false,
+          "cascade": [
+            "merge",
+            "save-update"
+          ],
+          "lazy": "select",
+          "passive_deletes": false,
+          "viewonly": false,
+          "join": "ad_users.samaccountname = cartridges.current_user_id",
+          "order_by": [],
+          "foreign_keys": []
+        },
+        "history": {
+          "target": "HistoryLog",
+          "back_populates": "cartridge",
+          "uselist": true,
+          "cascade": [
+            "delete",
+            "delete-orphan",
+            "expunge",
+            "merge",
+            "refresh-expire",
+            "save-update"
+          ],
+          "lazy": "select",
+          "passive_deletes": false,
+          "viewonly": false,
+          "join": "cartridges.id = history_logs.cartridge_id",
+          "order_by": [
+            "history_logs.timestamp DESC"
+          ],
+          "foreign_keys": []
+        },
+        "batch_items": {
+          "target": "BatchItem",
+          "back_populates": "cartridge",
+          "uselist": true,
+          "cascade": [
+            "merge",
+            "save-update"
+          ],
+          "lazy": "select",
+          "passive_deletes": false,
+          "viewonly": false,
+          "join": "cartridges.id = batch_items.cartridge_id",
+          "order_by": [],
+          "foreign_keys": []
+        }
+      },
+      "indexes": [
+        {
+          "name": "ix_cartridges_branch_id",
+          "columns": [
+            "branch_id"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_cartridges_marker_label",
+          "columns": [
+            "marker_label"
+          ],
+          "unique": true
+        },
+        {
+          "name": "ix_cartridges_qr_code",
+          "columns": [
+            "qr_code"
+          ],
+          "unique": true
+        },
+        {
+          "name": "ix_cartridges_status",
+          "columns": [
+            "status"
+          ],
+          "unique": false
+        }
+      ],
+      "constraints": [
+        {
+          "type": "ForeignKeyConstraint",
+          "name": null,
+          "columns": [
+            "branch_id"
+          ]
+        },
+        {
+          "type": "ForeignKeyConstraint",
+          "name": null,
+          "columns": [
+            "current_user_id"
+          ]
+        },
+        {
+          "type": "PrimaryKeyConstraint",
+          "name": null,
+          "columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    "Batch": {
+      "table": "batches",
+      "columns": {
+        "id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": true,
+          "autoincrement": true,
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "act_number": {
+          "type": "VARCHAR(100)",
+          "nullable": false,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": true,
+          "index": true,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "vendor_name": {
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "branch_id": {
+          "type": "INTEGER",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": true,
+          "foreign_keys": [
+            {
+              "target": "branches.id",
+              "ondelete": "SET NULL",
+              "onupdate": null
+            }
+          ],
+          "enum": null
+        },
+        "created_at": {
+          "type": "DATETIME",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "datetime.utcnow",
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "status": {
+          "type": "VARCHAR(50)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "open",
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "notes": {
+          "type": "TEXT",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        }
+      },
+      "relationships": {
+        "branch": {
+          "target": "Branch",
+          "back_populates": "cartridge_batches",
+          "uselist": false,
+          "cascade": [
+            "merge",
+            "save-update"
+          ],
+          "lazy": "select",
+          "passive_deletes": false,
+          "viewonly": false,
+          "join": "branches.id = batches.branch_id",
+          "order_by": [],
+          "foreign_keys": []
+        },
+        "items": {
+          "target": "BatchItem",
+          "back_populates": "batch",
+          "uselist": true,
+          "cascade": [
+            "delete",
+            "delete-orphan",
+            "expunge",
+            "merge",
+            "refresh-expire",
+            "save-update"
+          ],
+          "lazy": "select",
+          "passive_deletes": false,
+          "viewonly": false,
+          "join": "batches.id = batch_items.batch_id",
+          "order_by": [],
+          "foreign_keys": []
+        }
+      },
+      "indexes": [
+        {
+          "name": "ix_batches_act_number",
+          "columns": [
+            "act_number"
+          ],
+          "unique": true
+        },
+        {
+          "name": "ix_batches_branch_id",
+          "columns": [
+            "branch_id"
+          ],
+          "unique": false
+        }
+      ],
+      "constraints": [
+        {
+          "type": "ForeignKeyConstraint",
+          "name": null,
+          "columns": [
+            "branch_id"
+          ]
+        },
+        {
+          "type": "PrimaryKeyConstraint",
+          "name": null,
+          "columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    "BatchItem": {
+      "table": "batch_items",
+      "columns": {
+        "id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": true,
+          "autoincrement": true,
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "batch_id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [
+            {
+              "target": "batches.id",
+              "ondelete": "CASCADE",
+              "onupdate": null
+            }
+          ],
+          "enum": null
+        },
+        "cartridge_id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [
+            {
+              "target": "cartridges.id",
+              "ondelete": "CASCADE",
+              "onupdate": null
+            }
+          ],
+          "enum": null
+        },
+        "action_required": {
+          "type": "VARCHAR(100)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "Заправка",
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        }
+      },
+      "relationships": {
+        "batch": {
+          "target": "Batch",
+          "back_populates": "items",
+          "uselist": false,
+          "cascade": [
+            "merge",
+            "save-update"
+          ],
+          "lazy": "select",
+          "passive_deletes": false,
+          "viewonly": false,
+          "join": "batches.id = batch_items.batch_id",
+          "order_by": [],
+          "foreign_keys": []
+        },
+        "cartridge": {
+          "target": "Cartridge",
+          "back_populates": "batch_items",
+          "uselist": false,
+          "cascade": [
+            "merge",
+            "save-update"
+          ],
+          "lazy": "select",
+          "passive_deletes": false,
+          "viewonly": false,
+          "join": "cartridges.id = batch_items.cartridge_id",
+          "order_by": [],
+          "foreign_keys": []
+        }
+      },
+      "indexes": [],
+      "constraints": [
+        {
+          "type": "ForeignKeyConstraint",
+          "name": null,
+          "columns": [
+            "batch_id"
+          ]
+        },
+        {
+          "type": "ForeignKeyConstraint",
+          "name": null,
+          "columns": [
+            "cartridge_id"
+          ]
+        },
+        {
+          "type": "PrimaryKeyConstraint",
+          "name": null,
+          "columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    "HistoryLog": {
+      "table": "history_logs",
+      "columns": {
+        "id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": true,
+          "autoincrement": true,
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "cartridge_id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": true,
+          "foreign_keys": [
+            {
+              "target": "cartridges.id",
+              "ondelete": "CASCADE",
+              "onupdate": null
+            }
+          ],
+          "enum": null
+        },
+        "action": {
+          "type": "VARCHAR(100)",
+          "nullable": false,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "user_name": {
+          "type": "VARCHAR(255)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "timestamp": {
+          "type": "DATETIME",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "datetime.utcnow",
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": true,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "details": {
+          "type": "TEXT",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        }
+      },
+      "relationships": {
+        "cartridge": {
+          "target": "Cartridge",
+          "back_populates": "history",
+          "uselist": false,
+          "cascade": [
+            "merge",
+            "save-update"
+          ],
+          "lazy": "select",
+          "passive_deletes": false,
+          "viewonly": false,
+          "join": "cartridges.id = history_logs.cartridge_id",
+          "order_by": [],
+          "foreign_keys": []
+        }
+      },
+      "indexes": [
+        {
+          "name": "ix_history_logs_cartridge_id",
+          "columns": [
+            "cartridge_id"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_history_logs_timestamp",
+          "columns": [
+            "timestamp"
+          ],
+          "unique": false
+        }
+      ],
+      "constraints": [
+        {
+          "type": "ForeignKeyConstraint",
+          "name": null,
+          "columns": [
+            "cartridge_id"
+          ]
+        },
+        {
+          "type": "PrimaryKeyConstraint",
+          "name": null,
+          "columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    "EquipmentModel": {
+      "table": "equipment_models",
+      "columns": {
+        "id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": true,
+          "autoincrement": true,
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "name": {
+          "type": "VARCHAR(150)",
+          "nullable": false,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": true,
+          "index": true,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "category": {
+          "type": "VARCHAR(50)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "other",
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "vendor": {
+          "type": "VARCHAR(100)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "specs_template": {
+          "type": "TEXT",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "notes": {
+          "type": "TEXT",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "created_at": {
+          "type": "DATETIME",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "datetime.utcnow",
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        }
+      },
+      "relationships": {},
+      "indexes": [
+        {
+          "name": "ix_equipment_models_name",
+          "columns": [
+            "name"
+          ],
+          "unique": true
+        }
+      ],
+      "constraints": [
+        {
+          "type": "PrimaryKeyConstraint",
+          "name": null,
+          "columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    "Asset": {
+      "table": "assets",
+      "columns": {
+        "id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": true,
+          "autoincrement": true,
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "inventory_number": {
+          "type": "VARCHAR(100)",
+          "nullable": false,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": true,
+          "index": true,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "serial_number": {
+          "type": "VARCHAR(100)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": true,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "name": {
+          "type": "VARCHAR(150)",
+          "nullable": false,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "asset_type": {
+          "type": "VARCHAR(11)",
+          "nullable": false,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "AssetType.WORKSTATION",
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": true,
+          "foreign_keys": [],
+          "enum": {
+            "name": "assettype",
+            "labels": [
+              "WORKSTATION",
+              "LAPTOP",
+              "MONITOR",
+              "PRINTER",
+              "SERVER",
+              "SWITCH",
+              "UPS",
+              "OTHER"
+            ],
+            "native_enum": true,
+            "create_constraint": false,
+            "validate_strings": false
+          }
+        },
+        "status": {
+          "type": "VARCHAR(14)",
+          "nullable": false,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "AssetStatus.AT_WORKPLACE",
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": true,
+          "foreign_keys": [],
+          "enum": {
+            "name": "assetstatus",
+            "labels": [
+              "AT_WORKPLACE",
+              "PENDING_SC",
+              "AT_SC",
+              "RETURNED_IT",
+              "DECOMMISSIONED"
+            ],
+            "native_enum": true,
+            "create_constraint": false,
+            "validate_strings": false
+          }
+        },
+        "condition": {
+          "type": "VARCHAR(7)",
+          "nullable": false,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "AssetCondition.WORKING",
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": true,
+          "foreign_keys": [],
+          "enum": {
+            "name": "assetcondition",
+            "labels": [
+              "WORKING",
+              "BROKEN"
+            ],
+            "native_enum": true,
+            "create_constraint": false,
+            "validate_strings": false
+          }
+        },
+        "ad_guid": {
+          "type": "VARCHAR(100)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": true,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "hostname": {
+          "type": "VARCHAR(150)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": true,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "os_name": {
+          "type": "VARCHAR(150)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "last_logon": {
+          "type": "DATETIME",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "ip_address": {
+          "type": "VARCHAR(50)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "mac_address": {
+          "type": "VARCHAR(50)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "branch_id": {
+          "type": "INTEGER",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": true,
+          "foreign_keys": [
+            {
+              "target": "branches.id",
+              "ondelete": "SET NULL",
+              "onupdate": null
+            }
+          ],
+          "enum": null
+        },
+        "cabinet": {
+          "type": "VARCHAR(100)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "current_user_id": {
+          "type": "VARCHAR(100)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [
+            {
+              "target": "ad_users.samaccountname",
+              "ondelete": "SET NULL",
+              "onupdate": null
+            }
+          ],
+          "enum": null
+        },
+        "floor_id": {
+          "type": "INTEGER",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": true,
+          "foreign_keys": [
+            {
+              "target": "floors.id",
+              "ondelete": "SET NULL",
+              "onupdate": null
+            }
+          ],
+          "enum": null
+        },
+        "zone_id": {
+          "type": "INTEGER",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": true,
+          "foreign_keys": [
+            {
+              "target": "zones.id",
+              "ondelete": "SET NULL",
+              "onupdate": null
+            }
+          ],
+          "enum": null
+        },
+        "coords_x": {
+          "type": "FLOAT",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "coords_y": {
+          "type": "FLOAT",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "specs": {
+          "type": "JSON",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "dict",
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "notes": {
+          "type": "TEXT",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "created_at": {
+          "type": "DATETIME",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "datetime.utcnow",
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "updated_at": {
+          "type": "DATETIME",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "datetime.utcnow",
+          "onupdate": "datetime.utcnow",
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        }
+      },
+      "relationships": {
+        "branch": {
+          "target": "Branch",
+          "back_populates": "assets",
+          "uselist": false,
+          "cascade": [
+            "merge",
+            "save-update"
+          ],
+          "lazy": "select",
+          "passive_deletes": false,
+          "viewonly": false,
+          "join": "branches.id = assets.branch_id",
+          "order_by": [],
+          "foreign_keys": []
+        },
+        "responsible_ad_user": {
+          "target": "ADUser",
+          "back_populates": "assets",
+          "uselist": false,
+          "cascade": [
+            "merge",
+            "save-update"
+          ],
+          "lazy": "select",
+          "passive_deletes": false,
+          "viewonly": false,
+          "join": "ad_users.samaccountname = assets.current_user_id",
+          "order_by": [],
+          "foreign_keys": []
+        },
+        "floor": {
+          "target": "Floor",
+          "back_populates": "assets",
+          "uselist": false,
+          "cascade": [
+            "merge",
+            "save-update"
+          ],
+          "lazy": "select",
+          "passive_deletes": false,
+          "viewonly": false,
+          "join": "floors.id = assets.floor_id",
+          "order_by": [],
+          "foreign_keys": []
+        },
+        "zone": {
+          "target": "Zone",
+          "back_populates": "assets",
+          "uselist": false,
+          "cascade": [
+            "merge",
+            "save-update"
+          ],
+          "lazy": "select",
+          "passive_deletes": false,
+          "viewonly": false,
+          "join": "zones.id = assets.zone_id",
+          "order_by": [],
+          "foreign_keys": []
+        },
+        "history": {
+          "target": "EquipmentHistoryLog",
+          "back_populates": "asset",
+          "uselist": true,
+          "cascade": [
+            "delete",
+            "delete-orphan",
+            "expunge",
+            "merge",
+            "refresh-expire",
+            "save-update"
+          ],
+          "lazy": "select",
+          "passive_deletes": false,
+          "viewonly": false,
+          "join": "assets.id = equipment_history_logs.asset_id",
+          "order_by": [
+            "equipment_history_logs.timestamp DESC"
+          ],
+          "foreign_keys": []
+        },
+        "repair_items": {
+          "target": "RepairBatchItem",
+          "back_populates": "asset",
+          "uselist": true,
+          "cascade": [
+            "merge",
+            "save-update"
+          ],
+          "lazy": "select",
+          "passive_deletes": false,
+          "viewonly": false,
+          "join": "assets.id = repair_batch_items.asset_id",
+          "order_by": [],
+          "foreign_keys": []
+        },
+        "switch_device": {
+          "target": "NetworkSwitch",
+          "back_populates": "asset",
+          "uselist": false,
+          "cascade": [
+            "merge",
+            "save-update"
+          ],
+          "lazy": "select",
+          "passive_deletes": false,
+          "viewonly": false,
+          "join": "assets.id = network_switches.asset_id",
+          "order_by": [],
+          "foreign_keys": []
+        }
+      },
+      "indexes": [
+        {
+          "name": "ix_assets_ad_guid",
+          "columns": [
+            "ad_guid"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_assets_asset_type",
+          "columns": [
+            "asset_type"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_assets_branch_id",
+          "columns": [
+            "branch_id"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_assets_condition",
+          "columns": [
+            "condition"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_assets_floor_id",
+          "columns": [
+            "floor_id"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_assets_hostname",
+          "columns": [
+            "hostname"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_assets_inventory_number",
+          "columns": [
+            "inventory_number"
+          ],
+          "unique": true
+        },
+        {
+          "name": "ix_assets_serial_number",
+          "columns": [
+            "serial_number"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_assets_status",
+          "columns": [
+            "status"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_assets_zone_id",
+          "columns": [
+            "zone_id"
+          ],
+          "unique": false
+        }
+      ],
+      "constraints": [
+        {
+          "type": "ForeignKeyConstraint",
+          "name": null,
+          "columns": [
+            "branch_id"
+          ]
+        },
+        {
+          "type": "ForeignKeyConstraint",
+          "name": null,
+          "columns": [
+            "current_user_id"
+          ]
+        },
+        {
+          "type": "ForeignKeyConstraint",
+          "name": null,
+          "columns": [
+            "floor_id"
+          ]
+        },
+        {
+          "type": "ForeignKeyConstraint",
+          "name": null,
+          "columns": [
+            "zone_id"
+          ]
+        },
+        {
+          "type": "PrimaryKeyConstraint",
+          "name": null,
+          "columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    "RepairBatch": {
+      "table": "repair_batches",
+      "columns": {
+        "id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": true,
+          "autoincrement": true,
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "act_number": {
+          "type": "VARCHAR(100)",
+          "nullable": false,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": true,
+          "index": true,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "vendor_name": {
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "branch_id": {
+          "type": "INTEGER",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": true,
+          "foreign_keys": [
+            {
+              "target": "branches.id",
+              "ondelete": "SET NULL",
+              "onupdate": null
+            }
+          ],
+          "enum": null
+        },
+        "status": {
+          "type": "VARCHAR(50)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "open",
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "created_at": {
+          "type": "DATETIME",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "datetime.utcnow",
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "closed_at": {
+          "type": "DATETIME",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "notes": {
+          "type": "TEXT",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        }
+      },
+      "relationships": {
+        "branch": {
+          "target": "Branch",
+          "back_populates": "repair_batches",
+          "uselist": false,
+          "cascade": [
+            "merge",
+            "save-update"
+          ],
+          "lazy": "select",
+          "passive_deletes": false,
+          "viewonly": false,
+          "join": "branches.id = repair_batches.branch_id",
+          "order_by": [],
+          "foreign_keys": []
+        },
+        "items": {
+          "target": "RepairBatchItem",
+          "back_populates": "batch",
+          "uselist": true,
+          "cascade": [
+            "delete",
+            "delete-orphan",
+            "expunge",
+            "merge",
+            "refresh-expire",
+            "save-update"
+          ],
+          "lazy": "select",
+          "passive_deletes": false,
+          "viewonly": false,
+          "join": "repair_batches.id = repair_batch_items.batch_id",
+          "order_by": [],
+          "foreign_keys": []
+        }
+      },
+      "indexes": [
+        {
+          "name": "ix_repair_batches_act_number",
+          "columns": [
+            "act_number"
+          ],
+          "unique": true
+        },
+        {
+          "name": "ix_repair_batches_branch_id",
+          "columns": [
+            "branch_id"
+          ],
+          "unique": false
+        }
+      ],
+      "constraints": [
+        {
+          "type": "ForeignKeyConstraint",
+          "name": null,
+          "columns": [
+            "branch_id"
+          ]
+        },
+        {
+          "type": "PrimaryKeyConstraint",
+          "name": null,
+          "columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    "RepairBatchItem": {
+      "table": "repair_batch_items",
+      "columns": {
+        "id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": true,
+          "autoincrement": true,
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "batch_id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [
+            {
+              "target": "repair_batches.id",
+              "ondelete": "CASCADE",
+              "onupdate": null
+            }
+          ],
+          "enum": null
+        },
+        "asset_id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [
+            {
+              "target": "assets.id",
+              "ondelete": "CASCADE",
+              "onupdate": null
+            }
+          ],
+          "enum": null
+        },
+        "reported_issue": {
+          "type": "TEXT",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "diagnostic_result": {
+          "type": "TEXT",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "work_performed": {
+          "type": "TEXT",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "cost": {
+          "type": "NUMERIC(10, 2)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "0.0",
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "status": {
+          "type": "VARCHAR(50)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "in_repair",
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "returned_at": {
+          "type": "DATETIME",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "installed_at": {
+          "type": "DATETIME",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        }
+      },
+      "relationships": {
+        "batch": {
+          "target": "RepairBatch",
+          "back_populates": "items",
+          "uselist": false,
+          "cascade": [
+            "merge",
+            "save-update"
+          ],
+          "lazy": "select",
+          "passive_deletes": false,
+          "viewonly": false,
+          "join": "repair_batches.id = repair_batch_items.batch_id",
+          "order_by": [],
+          "foreign_keys": []
+        },
+        "asset": {
+          "target": "Asset",
+          "back_populates": "repair_items",
+          "uselist": false,
+          "cascade": [
+            "merge",
+            "save-update"
+          ],
+          "lazy": "select",
+          "passive_deletes": false,
+          "viewonly": false,
+          "join": "assets.id = repair_batch_items.asset_id",
+          "order_by": [],
+          "foreign_keys": []
+        },
+        "parts_used": {
+          "target": "RepairPartUsed",
+          "back_populates": "repair_item",
+          "uselist": true,
+          "cascade": [
+            "delete",
+            "delete-orphan",
+            "expunge",
+            "merge",
+            "refresh-expire",
+            "save-update"
+          ],
+          "lazy": "select",
+          "passive_deletes": false,
+          "viewonly": false,
+          "join": "repair_batch_items.id = repair_parts_used.repair_item_id",
+          "order_by": [],
+          "foreign_keys": []
+        }
+      },
+      "indexes": [],
+      "constraints": [
+        {
+          "type": "ForeignKeyConstraint",
+          "name": null,
+          "columns": [
+            "asset_id"
+          ]
+        },
+        {
+          "type": "ForeignKeyConstraint",
+          "name": null,
+          "columns": [
+            "batch_id"
+          ]
+        },
+        {
+          "type": "PrimaryKeyConstraint",
+          "name": null,
+          "columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    "RepairPartUsed": {
+      "table": "repair_parts_used",
+      "columns": {
+        "id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": true,
+          "autoincrement": true,
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "repair_item_id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [
+            {
+              "target": "repair_batch_items.id",
+              "ondelete": "CASCADE",
+              "onupdate": null
+            }
+          ],
+          "enum": null
+        },
+        "part_name": {
+          "type": "VARCHAR(200)",
+          "nullable": false,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "serial_number": {
+          "type": "VARCHAR(100)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "quantity": {
+          "type": "INTEGER",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "1",
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "cost": {
+          "type": "NUMERIC(10, 2)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "0.0",
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        }
+      },
+      "relationships": {
+        "repair_item": {
+          "target": "RepairBatchItem",
+          "back_populates": "parts_used",
+          "uselist": false,
+          "cascade": [
+            "merge",
+            "save-update"
+          ],
+          "lazy": "select",
+          "passive_deletes": false,
+          "viewonly": false,
+          "join": "repair_batch_items.id = repair_parts_used.repair_item_id",
+          "order_by": [],
+          "foreign_keys": []
+        }
+      },
+      "indexes": [],
+      "constraints": [
+        {
+          "type": "ForeignKeyConstraint",
+          "name": null,
+          "columns": [
+            "repair_item_id"
+          ]
+        },
+        {
+          "type": "PrimaryKeyConstraint",
+          "name": null,
+          "columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    "SparePartsWarehouse": {
+      "table": "spare_parts_warehouse",
+      "columns": {
+        "id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": true,
+          "autoincrement": true,
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "branch_id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [
+            {
+              "target": "branches.id",
+              "ondelete": "CASCADE",
+              "onupdate": null
+            }
+          ],
+          "enum": null
+        },
+        "category": {
+          "type": "VARCHAR(100)",
+          "nullable": false,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "item_name": {
+          "type": "VARCHAR(200)",
+          "nullable": false,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "quantity": {
+          "type": "INTEGER",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "0",
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "min_threshold": {
+          "type": "INTEGER",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "2",
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "unit_price": {
+          "type": "NUMERIC(10, 2)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "0.0",
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        }
+      },
+      "relationships": {
+        "branch": {
+          "target": "Branch",
+          "back_populates": "spare_parts",
+          "uselist": false,
+          "cascade": [
+            "merge",
+            "save-update"
+          ],
+          "lazy": "select",
+          "passive_deletes": false,
+          "viewonly": false,
+          "join": "branches.id = spare_parts_warehouse.branch_id",
+          "order_by": [],
+          "foreign_keys": []
+        }
+      },
+      "indexes": [],
+      "constraints": [
+        {
+          "type": "ForeignKeyConstraint",
+          "name": null,
+          "columns": [
+            "branch_id"
+          ]
+        },
+        {
+          "type": "PrimaryKeyConstraint",
+          "name": null,
+          "columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    "EquipmentHistoryLog": {
+      "table": "equipment_history_logs",
+      "columns": {
+        "id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": true,
+          "autoincrement": true,
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "asset_id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": true,
+          "foreign_keys": [
+            {
+              "target": "assets.id",
+              "ondelete": "CASCADE",
+              "onupdate": null
+            }
+          ],
+          "enum": null
+        },
+        "action": {
+          "type": "VARCHAR(100)",
+          "nullable": false,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "user_name": {
+          "type": "VARCHAR(255)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "timestamp": {
+          "type": "DATETIME",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "datetime.utcnow",
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": true,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "details": {
+          "type": "TEXT",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        }
+      },
+      "relationships": {
+        "asset": {
+          "target": "Asset",
+          "back_populates": "history",
+          "uselist": false,
+          "cascade": [
+            "merge",
+            "save-update"
+          ],
+          "lazy": "select",
+          "passive_deletes": false,
+          "viewonly": false,
+          "join": "assets.id = equipment_history_logs.asset_id",
+          "order_by": [],
+          "foreign_keys": []
+        }
+      },
+      "indexes": [
+        {
+          "name": "ix_equipment_history_logs_asset_id",
+          "columns": [
+            "asset_id"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_equipment_history_logs_timestamp",
+          "columns": [
+            "timestamp"
+          ],
+          "unique": false
+        }
+      ],
+      "constraints": [
+        {
+          "type": "ForeignKeyConstraint",
+          "name": null,
+          "columns": [
+            "asset_id"
+          ]
+        },
+        {
+          "type": "PrimaryKeyConstraint",
+          "name": null,
+          "columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    "Floor": {
+      "table": "floors",
+      "columns": {
+        "id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": true,
+          "autoincrement": true,
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "branch_id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [
+            {
+              "target": "branches.id",
+              "ondelete": "CASCADE",
+              "onupdate": null
+            }
+          ],
+          "enum": null
+        },
+        "floor_number": {
+          "type": "INTEGER",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "1",
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "name": {
+          "type": "VARCHAR(100)",
+          "nullable": false,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "map_image_url": {
+          "type": "VARCHAR(500)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "scale_pixels_per_meter": {
+          "type": "FLOAT",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "20.0",
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "created_at": {
+          "type": "DATETIME",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "datetime.utcnow",
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        }
+      },
+      "relationships": {
+        "branch": {
+          "target": "Branch",
+          "back_populates": "floors",
+          "uselist": false,
+          "cascade": [
+            "merge",
+            "save-update"
+          ],
+          "lazy": "select",
+          "passive_deletes": false,
+          "viewonly": false,
+          "join": "branches.id = floors.branch_id",
+          "order_by": [],
+          "foreign_keys": []
+        },
+        "zones": {
+          "target": "Zone",
+          "back_populates": "floor",
+          "uselist": true,
+          "cascade": [
+            "delete",
+            "delete-orphan",
+            "expunge",
+            "merge",
+            "refresh-expire",
+            "save-update"
+          ],
+          "lazy": "select",
+          "passive_deletes": false,
+          "viewonly": false,
+          "join": "floors.id = zones.floor_id",
+          "order_by": [],
+          "foreign_keys": []
+        },
+        "cable_paths": {
+          "target": "CablePath",
+          "back_populates": "floor",
+          "uselist": true,
+          "cascade": [
+            "delete",
+            "delete-orphan",
+            "expunge",
+            "merge",
+            "refresh-expire",
+            "save-update"
+          ],
+          "lazy": "select",
+          "passive_deletes": false,
+          "viewonly": false,
+          "join": "floors.id = cable_paths.floor_id",
+          "order_by": [],
+          "foreign_keys": []
+        },
+        "assets": {
+          "target": "Asset",
+          "back_populates": "floor",
+          "uselist": true,
+          "cascade": [
+            "merge",
+            "save-update"
+          ],
+          "lazy": "select",
+          "passive_deletes": false,
+          "viewonly": false,
+          "join": "floors.id = assets.floor_id",
+          "order_by": [],
+          "foreign_keys": []
+        }
+      },
+      "indexes": [],
+      "constraints": [
+        {
+          "type": "ForeignKeyConstraint",
+          "name": null,
+          "columns": [
+            "branch_id"
+          ]
+        },
+        {
+          "type": "PrimaryKeyConstraint",
+          "name": null,
+          "columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    "Zone": {
+      "table": "zones",
+      "columns": {
+        "id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": true,
+          "autoincrement": true,
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "floor_id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [
+            {
+              "target": "floors.id",
+              "ondelete": "CASCADE",
+              "onupdate": null
+            }
+          ],
+          "enum": null
+        },
+        "name": {
+          "type": "VARCHAR(150)",
+          "nullable": false,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "zone_type": {
+          "type": "VARCHAR(50)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "office",
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "polygon_coords": {
+          "type": "JSON",
+          "nullable": false,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "list",
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "fill_color": {
+          "type": "VARCHAR(50)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "rgba(59, 130, 246, 0.15)",
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "border_color": {
+          "type": "VARCHAR(50)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "#3b82f6",
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "responsible_person": {
+          "type": "VARCHAR(200)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "room_number": {
+          "type": "VARCHAR(50)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        }
+      },
+      "relationships": {
+        "floor": {
+          "target": "Floor",
+          "back_populates": "zones",
+          "uselist": false,
+          "cascade": [
+            "merge",
+            "save-update"
+          ],
+          "lazy": "select",
+          "passive_deletes": false,
+          "viewonly": false,
+          "join": "floors.id = zones.floor_id",
+          "order_by": [],
+          "foreign_keys": []
+        },
+        "assets": {
+          "target": "Asset",
+          "back_populates": "zone",
+          "uselist": true,
+          "cascade": [
+            "merge",
+            "save-update"
+          ],
+          "lazy": "select",
+          "passive_deletes": false,
+          "viewonly": false,
+          "join": "zones.id = assets.zone_id",
+          "order_by": [],
+          "foreign_keys": []
+        }
+      },
+      "indexes": [],
+      "constraints": [
+        {
+          "type": "ForeignKeyConstraint",
+          "name": null,
+          "columns": [
+            "floor_id"
+          ]
+        },
+        {
+          "type": "PrimaryKeyConstraint",
+          "name": null,
+          "columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    "CablePath": {
+      "table": "cable_paths",
+      "columns": {
+        "id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": true,
+          "autoincrement": true,
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "floor_id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [
+            {
+              "target": "floors.id",
+              "ondelete": "CASCADE",
+              "onupdate": null
+            }
+          ],
+          "enum": null
+        },
+        "name": {
+          "type": "VARCHAR(150)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "path_vectors": {
+          "type": "JSON",
+          "nullable": false,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "list",
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "max_capacity": {
+          "type": "INTEGER",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "48",
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        }
+      },
+      "relationships": {
+        "floor": {
+          "target": "Floor",
+          "back_populates": "cable_paths",
+          "uselist": false,
+          "cascade": [
+            "merge",
+            "save-update"
+          ],
+          "lazy": "select",
+          "passive_deletes": false,
+          "viewonly": false,
+          "join": "floors.id = cable_paths.floor_id",
+          "order_by": [],
+          "foreign_keys": []
+        }
+      },
+      "indexes": [],
+      "constraints": [
+        {
+          "type": "ForeignKeyConstraint",
+          "name": null,
+          "columns": [
+            "floor_id"
+          ]
+        },
+        {
+          "type": "PrimaryKeyConstraint",
+          "name": null,
+          "columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    "NetworkSwitch": {
+      "table": "network_switches",
+      "columns": {
+        "id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": true,
+          "autoincrement": true,
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "asset_id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": true,
+          "index": null,
+          "foreign_keys": [
+            {
+              "target": "assets.id",
+              "ondelete": "CASCADE",
+              "onupdate": null
+            }
+          ],
+          "enum": null
+        },
+        "ip_address": {
+          "type": "VARCHAR(50)",
+          "nullable": false,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "management_type": {
+          "type": "VARCHAR(50)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "snmp",
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "mgmt_port": {
+          "type": "INTEGER",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "161",
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "username": {
+          "type": "VARCHAR(100)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "password": {
+          "type": "VARCHAR(255)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "snmp_community": {
+          "type": "VARCHAR(100)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "",
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "model": {
+          "type": "VARCHAR(150)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "total_ports": {
+          "type": "INTEGER",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "24",
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "extra_params": {
+          "type": "JSON",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "last_poll_status": {
+          "type": "VARCHAR(20)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "never",
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "last_poll_message": {
+          "type": "VARCHAR(500)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "last_polled_at": {
+          "type": "DATETIME",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        }
+      },
+      "relationships": {
+        "asset": {
+          "target": "Asset",
+          "back_populates": "switch_device",
+          "uselist": false,
+          "cascade": [
+            "merge",
+            "save-update"
+          ],
+          "lazy": "select",
+          "passive_deletes": false,
+          "viewonly": false,
+          "join": "assets.id = network_switches.asset_id",
+          "order_by": [],
+          "foreign_keys": []
+        },
+        "ports": {
+          "target": "SwitchPort",
+          "back_populates": "switch",
+          "uselist": true,
+          "cascade": [
+            "delete",
+            "delete-orphan",
+            "expunge",
+            "merge",
+            "refresh-expire",
+            "save-update"
+          ],
+          "lazy": "select",
+          "passive_deletes": false,
+          "viewonly": false,
+          "join": "network_switches.id = switch_ports.switch_id",
+          "order_by": [],
+          "foreign_keys": []
+        }
+      },
+      "indexes": [],
+      "constraints": [
+        {
+          "type": "ForeignKeyConstraint",
+          "name": null,
+          "columns": [
+            "asset_id"
+          ]
+        },
+        {
+          "type": "PrimaryKeyConstraint",
+          "name": null,
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "type": "UniqueConstraint",
+          "name": null,
+          "columns": [
+            "asset_id"
+          ]
+        }
+      ]
+    },
+    "SwitchPort": {
+      "table": "switch_ports",
+      "columns": {
+        "id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": true,
+          "autoincrement": true,
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "switch_id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [
+            {
+              "target": "network_switches.id",
+              "ondelete": "CASCADE",
+              "onupdate": null
+            }
+          ],
+          "enum": null
+        },
+        "port_number": {
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "port_speed": {
+          "type": "VARCHAR(50)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "1Gbps",
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "vlan_id": {
+          "type": "INTEGER",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "1",
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "status": {
+          "type": "VARCHAR(20)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "down",
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "cabinet": {
+          "type": "VARCHAR(100)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "socket_label": {
+          "type": "VARCHAR(100)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "zone_id": {
+          "type": "INTEGER",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [
+            {
+              "target": "zones.id",
+              "ondelete": "SET NULL",
+              "onupdate": null
+            }
+          ],
+          "enum": null
+        },
+        "last_mac": {
+          "type": "VARCHAR(50)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "last_ip": {
+          "type": "VARCHAR(50)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "last_seen_at": {
+          "type": "DATETIME",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "connected_asset_id": {
+          "type": "INTEGER",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [
+            {
+              "target": "assets.id",
+              "ondelete": "SET NULL",
+              "onupdate": null
+            }
+          ],
+          "enum": null
+        }
+      },
+      "relationships": {
+        "switch": {
+          "target": "NetworkSwitch",
+          "back_populates": "ports",
+          "uselist": false,
+          "cascade": [
+            "merge",
+            "save-update"
+          ],
+          "lazy": "select",
+          "passive_deletes": false,
+          "viewonly": false,
+          "join": "network_switches.id = switch_ports.switch_id",
+          "order_by": [],
+          "foreign_keys": []
+        },
+        "zone": {
+          "target": "Zone",
+          "back_populates": null,
+          "uselist": false,
+          "cascade": [
+            "merge",
+            "save-update"
+          ],
+          "lazy": "select",
+          "passive_deletes": false,
+          "viewonly": false,
+          "join": "zones.id = switch_ports.zone_id",
+          "order_by": [],
+          "foreign_keys": []
+        },
+        "connected_asset": {
+          "target": "Asset",
+          "back_populates": null,
+          "uselist": false,
+          "cascade": [
+            "merge",
+            "save-update"
+          ],
+          "lazy": "select",
+          "passive_deletes": false,
+          "viewonly": false,
+          "join": "assets.id = switch_ports.connected_asset_id",
+          "order_by": [],
+          "foreign_keys": [
+            "switch_ports.connected_asset_id"
+          ]
+        }
+      },
+      "indexes": [],
+      "constraints": [
+        {
+          "type": "ForeignKeyConstraint",
+          "name": null,
+          "columns": [
+            "connected_asset_id"
+          ]
+        },
+        {
+          "type": "ForeignKeyConstraint",
+          "name": null,
+          "columns": [
+            "switch_id"
+          ]
+        },
+        {
+          "type": "ForeignKeyConstraint",
+          "name": null,
+          "columns": [
+            "zone_id"
+          ]
+        },
+        {
+          "type": "PrimaryKeyConstraint",
+          "name": null,
+          "columns": [
+            "id"
+          ]
+        }
+      ]
+    }
+  },
+  "legacy": {
+    "Branch": {
+      "table": "branches",
+      "columns": {
+        "id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": true,
+          "autoincrement": true,
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "name": {
+          "type": "VARCHAR(150)",
+          "nullable": false,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": true,
+          "index": true,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "code": {
+          "type": "VARCHAR(50)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "address": {
+          "type": "VARCHAR(255)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "it_office": {
+          "type": "VARCHAR(255)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "wa_message_template": {
+          "type": "TEXT",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "notes": {
+          "type": "TEXT",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "created_at": {
+          "type": "DATETIME",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "datetime.utcnow",
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        }
+      },
+      "relationships": {
+        "users": {
+          "target": "AppUser",
+          "back_populates": "branch",
+          "uselist": true,
+          "cascade": [
+            "merge",
+            "save-update"
+          ],
+          "lazy": "select",
+          "passive_deletes": false,
+          "viewonly": false,
+          "join": "branches.id = app_users.branch_id",
+          "order_by": [],
+          "foreign_keys": []
+        },
+        "cartridges": {
+          "target": "Cartridge",
+          "back_populates": "branch",
+          "uselist": true,
+          "cascade": [
+            "merge",
+            "save-update"
+          ],
+          "lazy": "select",
+          "passive_deletes": false,
+          "viewonly": false,
+          "join": "branches.id = cartridges.branch_id",
+          "order_by": [],
+          "foreign_keys": []
+        },
+        "batches": {
+          "target": "Batch",
+          "back_populates": "branch",
+          "uselist": true,
+          "cascade": [
+            "merge",
+            "save-update"
+          ],
+          "lazy": "select",
+          "passive_deletes": false,
+          "viewonly": false,
+          "join": "branches.id = batches.branch_id",
+          "order_by": [],
+          "foreign_keys": []
+        }
+      },
+      "indexes": [
+        {
+          "name": "ix_branches_name",
+          "columns": [
+            "name"
+          ],
+          "unique": true
+        }
+      ],
+      "constraints": [
+        {
+          "type": "PrimaryKeyConstraint",
+          "name": null,
+          "columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    "CartridgeModel": {
+      "table": "cartridge_models",
+      "columns": {
+        "id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": true,
+          "autoincrement": true,
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "name": {
+          "type": "VARCHAR(150)",
+          "nullable": false,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": true,
+          "index": true,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "vendor": {
+          "type": "VARCHAR(100)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "resource_pages": {
+          "type": "INTEGER",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "compatible_printers": {
+          "type": "TEXT",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "notes": {
+          "type": "TEXT",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "created_at": {
+          "type": "DATETIME",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "datetime.utcnow",
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        }
+      },
+      "relationships": {},
+      "indexes": [
+        {
+          "name": "ix_cartridge_models_name",
+          "columns": [
+            "name"
+          ],
+          "unique": true
+        }
+      ],
+      "constraints": [
+        {
+          "type": "PrimaryKeyConstraint",
+          "name": null,
+          "columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    "AppUser": {
+      "table": "app_users",
+      "columns": {
+        "id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": true,
+          "autoincrement": true,
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "username": {
+          "type": "VARCHAR(100)",
+          "nullable": false,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": true,
+          "index": true,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "full_name": {
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "password_hash": {
+          "type": "VARCHAR(255)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "auth_type": {
+          "type": "VARCHAR(20)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "local",
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "role": {
+          "type": "VARCHAR(20)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "user",
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "is_active": {
+          "type": "BOOLEAN",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "True",
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "branch_id": {
+          "type": "INTEGER",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [
+            {
+              "target": "branches.id",
+              "ondelete": "SET NULL",
+              "onupdate": null
+            }
+          ],
+          "enum": null
+        },
+        "wa_instance_name": {
+          "type": "VARCHAR(100)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "created_at": {
+          "type": "DATETIME",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "datetime.utcnow",
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        }
+      },
+      "relationships": {
+        "branch": {
+          "target": "Branch",
+          "back_populates": "users",
+          "uselist": false,
+          "cascade": [
+            "merge",
+            "save-update"
+          ],
+          "lazy": "select",
+          "passive_deletes": false,
+          "viewonly": false,
+          "join": "branches.id = app_users.branch_id",
+          "order_by": [],
+          "foreign_keys": []
+        }
+      },
+      "indexes": [
+        {
+          "name": "ix_app_users_username",
+          "columns": [
+            "username"
+          ],
+          "unique": true
+        }
+      ],
+      "constraints": [
+        {
+          "type": "ForeignKeyConstraint",
+          "name": null,
+          "columns": [
+            "branch_id"
+          ]
+        },
+        {
+          "type": "PrimaryKeyConstraint",
+          "name": null,
+          "columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    "SystemSetting": {
+      "table": "system_settings",
+      "columns": {
+        "key": {
+          "type": "VARCHAR(100)",
+          "nullable": false,
+          "primary_key": true,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": true,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "value": {
+          "type": "TEXT",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "description": {
+          "type": "VARCHAR(255)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        }
+      },
+      "relationships": {},
+      "indexes": [
+        {
+          "name": "ix_system_settings_key",
+          "columns": [
+            "key"
+          ],
+          "unique": false
+        }
+      ],
+      "constraints": [
+        {
+          "type": "PrimaryKeyConstraint",
+          "name": null,
+          "columns": [
+            "key"
+          ]
+        }
+      ]
+    },
+    "ADUser": {
+      "table": "ad_users",
+      "columns": {
+        "samaccountname": {
+          "type": "VARCHAR(100)",
+          "nullable": false,
+          "primary_key": true,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": true,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "display_name": {
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": true,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "department": {
+          "type": "VARCHAR(255)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "cabinet": {
+          "type": "VARCHAR(100)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "phone": {
+          "type": "VARCHAR(100)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "updated_at": {
+          "type": "DATETIME",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "datetime.utcnow",
+          "onupdate": "datetime.utcnow",
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        }
+      },
+      "relationships": {
+        "cartridges": {
+          "target": "Cartridge",
+          "back_populates": "current_user",
+          "uselist": true,
+          "cascade": [
+            "merge",
+            "save-update"
+          ],
+          "lazy": "select",
+          "passive_deletes": false,
+          "viewonly": false,
+          "join": "ad_users.samaccountname = cartridges.current_user_id",
+          "order_by": [],
+          "foreign_keys": []
+        }
+      },
+      "indexes": [
+        {
+          "name": "ix_ad_users_display_name",
+          "columns": [
+            "display_name"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_ad_users_samaccountname",
+          "columns": [
+            "samaccountname"
+          ],
+          "unique": false
+        }
+      ],
+      "constraints": [
+        {
+          "type": "PrimaryKeyConstraint",
+          "name": null,
+          "columns": [
+            "samaccountname"
+          ]
+        }
+      ]
+    },
+    "Cartridge": {
+      "table": "cartridges",
+      "columns": {
+        "id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": true,
+          "autoincrement": true,
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "marker_label": {
+          "type": "VARCHAR(100)",
+          "nullable": false,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": true,
+          "index": true,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "qr_code": {
+          "type": "VARCHAR(100)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": true,
+          "index": true,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "model": {
+          "type": "VARCHAR(100)",
+          "nullable": false,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "cabinet": {
+          "type": "VARCHAR(100)",
+          "nullable": false,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "status": {
+          "type": "VARCHAR(16)",
+          "nullable": false,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "CartridgeStatus.IN_USE",
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": true,
+          "foreign_keys": [],
+          "enum": {
+            "name": "cartridgestatus",
+            "labels": [
+              "IN_USE",
+              "PENDING_VENDOR",
+              "AT_VENDOR",
+              "READY_FOR_PICKUP"
+            ],
+            "native_enum": true,
+            "create_constraint": false,
+            "validate_strings": false
+          }
+        },
+        "branch_id": {
+          "type": "INTEGER",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": true,
+          "foreign_keys": [
+            {
+              "target": "branches.id",
+              "ondelete": "SET NULL",
+              "onupdate": null
+            }
+          ],
+          "enum": null
+        },
+        "current_user_id": {
+          "type": "VARCHAR(100)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [
+            {
+              "target": "ad_users.samaccountname",
+              "ondelete": "SET NULL",
+              "onupdate": null
+            }
+          ],
+          "enum": null
+        },
+        "condition": {
+          "type": "VARCHAR(20)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "working",
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "notes": {
+          "type": "TEXT",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "updated_at": {
+          "type": "DATETIME",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "datetime.utcnow",
+          "onupdate": "datetime.utcnow",
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        }
+      },
+      "relationships": {
+        "branch": {
+          "target": "Branch",
+          "back_populates": "cartridges",
+          "uselist": false,
+          "cascade": [
+            "merge",
+            "save-update"
+          ],
+          "lazy": "select",
+          "passive_deletes": false,
+          "viewonly": false,
+          "join": "branches.id = cartridges.branch_id",
+          "order_by": [],
+          "foreign_keys": []
+        },
+        "current_user": {
+          "target": "ADUser",
+          "back_populates": "cartridges",
+          "uselist": false,
+          "cascade": [
+            "merge",
+            "save-update"
+          ],
+          "lazy": "select",
+          "passive_deletes": false,
+          "viewonly": false,
+          "join": "ad_users.samaccountname = cartridges.current_user_id",
+          "order_by": [],
+          "foreign_keys": []
+        },
+        "history": {
+          "target": "HistoryLog",
+          "back_populates": "cartridge",
+          "uselist": true,
+          "cascade": [
+            "delete",
+            "delete-orphan",
+            "expunge",
+            "merge",
+            "refresh-expire",
+            "save-update"
+          ],
+          "lazy": "select",
+          "passive_deletes": false,
+          "viewonly": false,
+          "join": "cartridges.id = history_logs.cartridge_id",
+          "order_by": [
+            "history_logs.timestamp DESC"
+          ],
+          "foreign_keys": []
+        },
+        "batch_items": {
+          "target": "BatchItem",
+          "back_populates": "cartridge",
+          "uselist": true,
+          "cascade": [
+            "merge",
+            "save-update"
+          ],
+          "lazy": "select",
+          "passive_deletes": false,
+          "viewonly": false,
+          "join": "cartridges.id = batch_items.cartridge_id",
+          "order_by": [],
+          "foreign_keys": []
+        }
+      },
+      "indexes": [
+        {
+          "name": "ix_cartridges_branch_id",
+          "columns": [
+            "branch_id"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_cartridges_marker_label",
+          "columns": [
+            "marker_label"
+          ],
+          "unique": true
+        },
+        {
+          "name": "ix_cartridges_qr_code",
+          "columns": [
+            "qr_code"
+          ],
+          "unique": true
+        },
+        {
+          "name": "ix_cartridges_status",
+          "columns": [
+            "status"
+          ],
+          "unique": false
+        }
+      ],
+      "constraints": [
+        {
+          "type": "ForeignKeyConstraint",
+          "name": null,
+          "columns": [
+            "branch_id"
+          ]
+        },
+        {
+          "type": "ForeignKeyConstraint",
+          "name": null,
+          "columns": [
+            "current_user_id"
+          ]
+        },
+        {
+          "type": "PrimaryKeyConstraint",
+          "name": null,
+          "columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    "Batch": {
+      "table": "batches",
+      "columns": {
+        "id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": true,
+          "autoincrement": true,
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "act_number": {
+          "type": "VARCHAR(100)",
+          "nullable": false,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": true,
+          "index": true,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "vendor_name": {
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "branch_id": {
+          "type": "INTEGER",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": true,
+          "foreign_keys": [
+            {
+              "target": "branches.id",
+              "ondelete": "SET NULL",
+              "onupdate": null
+            }
+          ],
+          "enum": null
+        },
+        "created_at": {
+          "type": "DATETIME",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "datetime.utcnow",
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "status": {
+          "type": "VARCHAR(50)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "open",
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "notes": {
+          "type": "TEXT",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        }
+      },
+      "relationships": {
+        "branch": {
+          "target": "Branch",
+          "back_populates": "batches",
+          "uselist": false,
+          "cascade": [
+            "merge",
+            "save-update"
+          ],
+          "lazy": "select",
+          "passive_deletes": false,
+          "viewonly": false,
+          "join": "branches.id = batches.branch_id",
+          "order_by": [],
+          "foreign_keys": []
+        },
+        "items": {
+          "target": "BatchItem",
+          "back_populates": "batch",
+          "uselist": true,
+          "cascade": [
+            "delete",
+            "delete-orphan",
+            "expunge",
+            "merge",
+            "refresh-expire",
+            "save-update"
+          ],
+          "lazy": "select",
+          "passive_deletes": false,
+          "viewonly": false,
+          "join": "batches.id = batch_items.batch_id",
+          "order_by": [],
+          "foreign_keys": []
+        }
+      },
+      "indexes": [
+        {
+          "name": "ix_batches_act_number",
+          "columns": [
+            "act_number"
+          ],
+          "unique": true
+        },
+        {
+          "name": "ix_batches_branch_id",
+          "columns": [
+            "branch_id"
+          ],
+          "unique": false
+        }
+      ],
+      "constraints": [
+        {
+          "type": "ForeignKeyConstraint",
+          "name": null,
+          "columns": [
+            "branch_id"
+          ]
+        },
+        {
+          "type": "PrimaryKeyConstraint",
+          "name": null,
+          "columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    "BatchItem": {
+      "table": "batch_items",
+      "columns": {
+        "id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": true,
+          "autoincrement": true,
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "batch_id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [
+            {
+              "target": "batches.id",
+              "ondelete": "CASCADE",
+              "onupdate": null
+            }
+          ],
+          "enum": null
+        },
+        "cartridge_id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [
+            {
+              "target": "cartridges.id",
+              "ondelete": "CASCADE",
+              "onupdate": null
+            }
+          ],
+          "enum": null
+        },
+        "action_required": {
+          "type": "VARCHAR(100)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "Заправка",
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        }
+      },
+      "relationships": {
+        "batch": {
+          "target": "Batch",
+          "back_populates": "items",
+          "uselist": false,
+          "cascade": [
+            "merge",
+            "save-update"
+          ],
+          "lazy": "select",
+          "passive_deletes": false,
+          "viewonly": false,
+          "join": "batches.id = batch_items.batch_id",
+          "order_by": [],
+          "foreign_keys": []
+        },
+        "cartridge": {
+          "target": "Cartridge",
+          "back_populates": "batch_items",
+          "uselist": false,
+          "cascade": [
+            "merge",
+            "save-update"
+          ],
+          "lazy": "select",
+          "passive_deletes": false,
+          "viewonly": false,
+          "join": "cartridges.id = batch_items.cartridge_id",
+          "order_by": [],
+          "foreign_keys": []
+        }
+      },
+      "indexes": [],
+      "constraints": [
+        {
+          "type": "ForeignKeyConstraint",
+          "name": null,
+          "columns": [
+            "batch_id"
+          ]
+        },
+        {
+          "type": "ForeignKeyConstraint",
+          "name": null,
+          "columns": [
+            "cartridge_id"
+          ]
+        },
+        {
+          "type": "PrimaryKeyConstraint",
+          "name": null,
+          "columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    "HistoryLog": {
+      "table": "history_logs",
+      "columns": {
+        "id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": true,
+          "autoincrement": true,
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "cartridge_id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": true,
+          "foreign_keys": [
+            {
+              "target": "cartridges.id",
+              "ondelete": "CASCADE",
+              "onupdate": null
+            }
+          ],
+          "enum": null
+        },
+        "action": {
+          "type": "VARCHAR(100)",
+          "nullable": false,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "user_name": {
+          "type": "VARCHAR(255)",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "timestamp": {
+          "type": "DATETIME",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": "datetime.utcnow",
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": true,
+          "foreign_keys": [],
+          "enum": null
+        },
+        "details": {
+          "type": "TEXT",
+          "nullable": true,
+          "primary_key": false,
+          "autoincrement": "auto",
+          "default": null,
+          "onupdate": null,
+          "server_default": null,
+          "unique": null,
+          "index": null,
+          "foreign_keys": [],
+          "enum": null
+        }
+      },
+      "relationships": {
+        "cartridge": {
+          "target": "Cartridge",
+          "back_populates": "history",
+          "uselist": false,
+          "cascade": [
+            "merge",
+            "save-update"
+          ],
+          "lazy": "select",
+          "passive_deletes": false,
+          "viewonly": false,
+          "join": "cartridges.id = history_logs.cartridge_id",
+          "order_by": [],
+          "foreign_keys": []
+        }
+      },
+      "indexes": [
+        {
+          "name": "ix_history_logs_cartridge_id",
+          "columns": [
+            "cartridge_id"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_history_logs_timestamp",
+          "columns": [
+            "timestamp"
+          ],
+          "unique": false
+        }
+      ],
+      "constraints": [
+        {
+          "type": "ForeignKeyConstraint",
+          "name": null,
+          "columns": [
+            "cartridge_id"
+          ]
+        },
+        {
+          "type": "PrimaryKeyConstraint",
+          "name": null,
+          "columns": [
+            "id"
+          ]
+        }
+      ]
+    }
+  }
+}
