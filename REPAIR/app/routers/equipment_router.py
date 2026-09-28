@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_, desc
 
 from SHARED.database import get_db
+from SHARED.domain_transitions import InvalidTransition, transition_asset
 from SHARED.models import (
     Asset,
     AssetType,
@@ -532,7 +533,10 @@ def update_equipment(
 
     if payload.status and payload.status != asset.status:
         changes.append(f"Статус: {asset.status.value} -> {payload.status.value}")
-        asset.status = payload.status
+        try:
+            transition_asset(asset, payload.status)
+        except InvalidTransition as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
 
     if payload.cabinet is not None:
         asset.cabinet = payload.cabinet.strip() if payload.cabinet else None
@@ -679,7 +683,10 @@ def return_equipment_from_sc(
     cost_formatted = f"{cost_val:,.0f}".replace(",", " ") + " ₸" if cost_val > 0 else "0 ₸"
 
     for a in assets:
-        a.status = AssetStatus.RETURNED_IT
+        try:
+            transition_asset(a, AssetStatus.RETURNED_IT)
+        except InvalidTransition as exc:
+            raise HTTPException(status_code=409, detail=f"{a.inventory_number}: {exc}") from exc
         a.condition = payload.condition or AssetCondition.WORKING
         a.updated_at = now
 
@@ -731,7 +738,10 @@ def install_equipment_at_workplace(
     count = 0
 
     for a in assets:
-        a.status = AssetStatus.AT_WORKPLACE
+        try:
+            transition_asset(a, AssetStatus.AT_WORKPLACE)
+        except InvalidTransition as exc:
+            raise HTTPException(status_code=409, detail=f"{a.inventory_number}: {exc}") from exc
         a.condition = AssetCondition.WORKING
         if payload.cabinet:
             a.cabinet = payload.cabinet.strip()
