@@ -15,7 +15,7 @@ from sqlalchemy import (
     Enum as SQLEnum,
     func
 )
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, synonym
 from sqlalchemy.ext.hybrid import hybrid_property
 from SHARED.credential_crypto import encrypt_secret, decrypt_secret
 from SHARED.database import Base
