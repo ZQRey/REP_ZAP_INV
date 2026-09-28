@@ -11,6 +11,12 @@ async function openAuthenticatedPrint(path, headers) {
 }
 localStorage.removeItem('token');
 localStorage.removeItem('cartridge_token');
+// Route legacy fetch call sites through the shared authenticated API boundary.
+if (window.ApiClient && !window._sharedApiFetchInstalled) {
+    window._sharedApiFetchInstalled = true;
+    window.fetch = (resource, config) => window.ApiClient.request(resource, config);
+}
+
 document.addEventListener('alpine:init', () => {
     Alpine.data('repairApp', () => ({
         // Аутентификация и контекст
