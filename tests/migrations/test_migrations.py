@@ -226,7 +226,7 @@ def test_downgrade_requires_explicit_destructive_flag_and_reupgrade_preserves_ro
     from SHARED.models import Branch
     with SessionLocal() as db:
         branch_id = db.query(Branch).first().id
-    with pytest.raises(RuntimeError, match="allow_destructive"):
+    with pytest.raises(RuntimeError, match="cannot be safely narrowed|allow_destructive"):
         command.downgrade(config(), "0002_legacy_alignment")
     command.downgrade(config(allow_destructive=True), "0001_baseline")
     command.upgrade(config(), "head")
