@@ -17,7 +17,8 @@ if test_url:
         raise RuntimeError("Migration tests require the disposable loopback rep_zap_migration_test database")
 os.environ.update(APP_ENV="test", SECRET_KEY=secrets.token_urlsafe(48),
                   DATABASE_URL=test_url or "sqlite:///" + (Path(_temp.name) / "test.db").as_posix(),
-                  REDIS_URL="", DEMO_ENABLED="false", CORS_ORIGINS="https://allowed.example")
+                  REDIS_URL="", DEMO_ENABLED="false", CORS_ORIGINS="https://allowed.example",
+                  NETWORK_CREDENTIAL_KEY=secrets.token_urlsafe(48))
 for key in ("SECRET_KEY_FILE", "DATABASE_URL_FILE", "REDIS_URL_FILE", "EVOLUTION_API_KEY_FILE", "LDAP_BIND_PASSWORD_FILE"):
     os.environ.pop(key, None)
 
