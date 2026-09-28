@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from SHARED.database import get_db
 from SHARED.models import AppUser
-from app.services.ldap_service import LDAPService
+from CARTRIDGE.app.services.ldap_service import LDAPService
 
 
 
