@@ -1,3 +1,6 @@
+import os
+if os.getenv("APP_ENV") != "test":
+    raise RuntimeError("Legacy verification scripts require an isolated APP_ENV=test database")
 """
 Тестирование изоляции и прав доступа к WhatsApp API:
 - superadmin: полный доступ ко всем инстансам и общему списку /wa/operators-status
@@ -24,7 +27,7 @@ def run_tests():
         SettingsService.update_bulk(db, {"wa_mode": "individual"})
 
         # 1. Создаем или находим пользователей с разными ролями
-        def get_or_create_user(username, role, full_name, password="Password123!"):
+        def get_or_create_user(username, role, full_name, password=os.environ["TEST_USER_PASSWORD"]):
             u = db.query(AppUser).filter(AppUser.username == username).first()
             if not u:
                 u = AppUser(
@@ -100,3 +103,4 @@ def run_tests():
 
 if __name__ == "__main__":
     run_tests()
+

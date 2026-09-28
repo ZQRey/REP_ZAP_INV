@@ -1,4 +1,7 @@
 import os
+if os.getenv("APP_ENV") != "test":
+    raise RuntimeError("Legacy verification scripts require an isolated APP_ENV=test database")
+import os
 import sys
 import unittest
 from fastapi.testclient import TestClient
@@ -53,7 +56,7 @@ class TestUserRequirements(unittest.TestCase):
         superadmin = AppUser(
             username="superadmin_test",
             full_name="Главный Администратор",
-            password_hash=AuthService.hash_password("admin123"),
+            password_hash=AuthService.hash_password(os.environ["TEST_USER_PASSWORD"]),
             role="superadmin",
             is_active=True
         )
@@ -61,7 +64,7 @@ class TestUserRequirements(unittest.TestCase):
         op1 = AppUser(
             username="op_north",
             full_name="Оператор Север",
-            password_hash=AuthService.hash_password("op123"),
+            password_hash=AuthService.hash_password(os.environ["TEST_USER_PASSWORD"]),
             role="operator",
             branch_id=b1.id,
             is_active=True
@@ -70,7 +73,7 @@ class TestUserRequirements(unittest.TestCase):
         op2 = AppUser(
             username="op_south",
             full_name="Оператор Юг",
-            password_hash=AuthService.hash_password("op123"),
+            password_hash=AuthService.hash_password(os.environ["TEST_USER_PASSWORD"]),
             role="operator",
             branch_id=b2.id,
             is_active=True
@@ -280,3 +283,4 @@ class TestUserRequirements(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

@@ -1,4 +1,7 @@
 import os
+if os.getenv("APP_ENV") != "test":
+    raise RuntimeError("Legacy verification scripts require an isolated APP_ENV=test database")
+import os
 import sys
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -48,7 +51,7 @@ def run_tests():
         admin_b1 = AppUser(
             username="admin_b1",
             full_name="Админ Севера",
-            password_hash=AuthService.hash_password("pass123"),
+            password_hash=AuthService.hash_password(os.environ["TEST_USER_PASSWORD"]),
             auth_type="local",
             role="admin",
             branch_id=b1_id,
@@ -58,7 +61,7 @@ def run_tests():
         operator_b1 = AppUser(
             username="op_b1",
             full_name="Оператор Севера",
-            password_hash=AuthService.hash_password("pass123"),
+            password_hash=AuthService.hash_password(os.environ["TEST_USER_PASSWORD"]),
             auth_type="local",
             role="operator",
             branch_id=b1_id,
@@ -331,3 +334,4 @@ def run_tests():
 
 if __name__ == "__main__":
     run_tests()
+
