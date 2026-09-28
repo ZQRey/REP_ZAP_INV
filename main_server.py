@@ -1,3 +1,4 @@
+from SHARED.auth_service import require_business_auth
 from SHARED.security_config import CORS_ORIGINS
 import os
 import sys
@@ -44,6 +45,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
+    dependencies=[Depends(require_business_auth)],
     title="Unified IT Enterprise Platform",
     description="Единая платформа: Учет картриджей, Ремонт техники и Интерактивная карта сети (ITAM)",
     version="2.0.0",

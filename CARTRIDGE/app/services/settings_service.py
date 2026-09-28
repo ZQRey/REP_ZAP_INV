@@ -3,7 +3,7 @@ from SHARED.security_config import PRODUCTION
 from fastapi import HTTPException
 from typing import Dict, Optional
 from sqlalchemy.orm import Session
-from app.models import SystemSetting
+from SHARED.models import SystemSetting
 from app.config import DEFAULT_SETTINGS
 
 

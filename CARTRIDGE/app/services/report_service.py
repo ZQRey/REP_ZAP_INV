@@ -17,7 +17,7 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 
-from app.models import Cartridge, CartridgeStatus, HistoryLog, Branch, AppUser, Batch
+from SHARED.models import Cartridge, CartridgeStatus, HistoryLog, Branch, AppUser, Batch
 from app.services.settings_service import SettingsService
 
 STATUS_NAMES_RU = {
@@ -874,3 +874,4 @@ class ReportService:
         doc.build(elements)
         stream.seek(0)
         return stream
+

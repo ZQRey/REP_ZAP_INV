@@ -1,13 +1,14 @@
+from SHARED.auth_service import require_business_auth
 from SHARED.security_config import CORS_ORIGINS
 import os
 from pathlib import Path
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.database import init_db
+from SHARED.database import init_db
 from app.routers import (
     auth_router,
     branches_router,
@@ -34,6 +35,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
+    dependencies=[Depends(require_business_auth)],
     title="Cartridge Tracker API",
     description="Система учета и контроля оборота картриджей с интеграцией AD и WhatsApp",
     version="1.1.0",

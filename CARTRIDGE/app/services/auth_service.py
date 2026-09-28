@@ -5,8 +5,8 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy import or_, func
 from sqlalchemy.orm import Session
 
-from app.database import get_db
-from app.models import AppUser
+from SHARED.database import get_db
+from SHARED.models import AppUser
 from app.services.ldap_service import LDAPService
 
 
@@ -59,7 +59,7 @@ class AuthService:
                 return None
 
             # Получаем или обновляем данные в ad_users
-            from app.models import ADUser
+            from SHARED.models import ADUser
             ad_info = db.query(ADUser).filter(ADUser.samaccountname.ilike(sam_account)).first()
             if ad_profile:
                 if not ad_info:

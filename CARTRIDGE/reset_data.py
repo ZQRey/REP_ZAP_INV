@@ -8,9 +8,20 @@
 import os
 import sys
 import argparse
-from app.config import DEFAULT_SQLITE_PATH
-from app.database import SessionLocal, init_db, engine
-from app import models
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from SHARED.database import session_scope, init_db, engine
+from SHARED import models
+from SHARED.security_config import ENVIRONMENT
+
+
+def require_test_database():
+    """Reset is allowed only for an explicitly selected, isolated SQLite test DB."""
+    if ENVIRONMENT != "test" or engine.dialect.name != "sqlite":
+        raise RuntimeError("Reset requires an isolated APP_ENV=test SQLite database")
+    if not os.getenv("DATABASE_URL") or os.getenv("DATABASE_URL_FILE"):
+        raise RuntimeError("Reset requires an explicit test DATABASE_URL")
+    return engine.url.database
 
 def reset_test_cartridges(clear_ad_users=False):
     """
@@ -21,40 +32,40 @@ def reset_test_cartridges(clear_ad_users=False):
     - Учетные записи пользователей и их роли
     - Справочник моделей картриджей
     """
-    db = SessionLocal()
+    require_test_database()
     try:
-        count_logs = db.query(models.HistoryLog).delete()
-        count_items = db.query(models.BatchItem).delete()
-        count_batches = db.query(models.Batch).delete()
-        count_carts = db.query(models.Cartridge).delete()
+        with session_scope() as db:
+            count_logs = db.query(models.HistoryLog).delete()
+            count_items = db.query(models.BatchItem).delete()
+            count_batches = db.query(models.Batch).delete()
+            count_carts = db.query(models.Cartridge).delete()
         
-        count_ad = 0
-        if clear_ad_users:
-            count_ad = db.query(models.ADUser).delete()
+            count_ad = 0
+            if clear_ad_users:
+                count_ad = db.query(models.ADUser).delete()
 
-        db.commit()
-        print("=== Очистка тестовых данных успешно завершена ===")
-        print(f"✓ Удалено картриджей: {count_carts}")
-        print(f"✓ Удалено актов передачи/партий: {count_batches} (позиций: {count_items})")
-        print(f"✓ Удалено записей в журнале истории: {count_logs}")
-        if clear_ad_users:
-            print(f"✓ Очищен кэш сотрудников AD: {count_ad}")
-        print("\nСохранены:")
-        print(f"- Учетные записи системы: {db.query(models.AppUser).count()}")
-        print(f"- Филиалы: {db.query(models.Branch).count()}")
-        print(f"- Модели картриджей: {db.query(models.CartridgeModel).count()}")
-        print(f"- Системные настройки: {db.query(models.SystemSetting).count()}")
+            db.commit()
+            print("=== Очистка тестовых данных успешно завершена ===")
+            print(f"✓ Удалено картриджей: {count_carts}")
+            print(f"✓ Удалено актов передачи/партий: {count_batches} (позиций: {count_items})")
+            print(f"✓ Удалено записей в журнале истории: {count_logs}")
+            if clear_ad_users:
+                print(f"✓ Очищен кэш сотрудников AD: {count_ad}")
+            print("\nСохранены:")
+            print(f"- Учетные записи системы: {db.query(models.AppUser).count()}")
+            print(f"- Филиалы: {db.query(models.Branch).count()}")
+            print(f"- Модели картриджей: {db.query(models.CartridgeModel).count()}")
+            print(f"- Системные настройки: {db.query(models.SystemSetting).count()}")
     except Exception as e:
-        db.rollback()
         print(f"Ошибка при очистке: {type(e).__name__}")
-    finally:
-        db.close()
 
 def reset_full_database():
     """
     Полное удаление файла SQLite и повторная инициализация 'с чистого листа'.
     """
-    db_path = DEFAULT_SQLITE_PATH
+    db_path = require_test_database()
+    if not db_path or db_path == ":memory:":
+        raise RuntimeError("Full reset requires an explicit SQLite test file")
     print(f"Полный сброс базы данных: {db_path}")
     
     # Закрываем соединения

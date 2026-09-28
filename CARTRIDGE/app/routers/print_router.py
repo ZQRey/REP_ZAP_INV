@@ -5,8 +5,8 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session, joinedload
 
-from app.database import get_db
-from app.models import Batch, BatchItem, Cartridge
+from SHARED.database import get_db
+from SHARED.models import Batch, BatchItem, Cartridge
 from app.services.settings_service import SettingsService
 
 BASE_DIR = Path(__file__).resolve().parent.parent

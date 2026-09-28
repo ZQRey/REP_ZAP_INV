@@ -2,8 +2,8 @@ from SHARED.settings_security import public_settings
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from app.database import get_db
-from app.models import AppUser
+from SHARED.database import get_db
+from SHARED.models import AppUser
 from app.schemas import SettingsDict, LdapTestRequest, WhatsAppTestRequest
 from app.services.settings_service import SettingsService
 from app.services.ldap_service import LDAPService

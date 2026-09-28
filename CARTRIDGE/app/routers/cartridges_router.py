@@ -4,8 +4,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_
 
-from app.database import get_db
-from app.models import Cartridge, CartridgeStatus, ADUser, HistoryLog, Branch, AppUser
+from SHARED.database import get_db
+from SHARED.models import Cartridge, CartridgeStatus, ADUser, HistoryLog, Branch, AppUser
 from app.schemas import (
     CartridgeResponse,
     CartridgeDetailResponse,
@@ -438,3 +438,4 @@ def return_cartridges_from_vendor(
         "returned_count": count,
         "message": f"Успешно переведено в 'Готов к выдаче': {count} картридж(ей)."
     }
+

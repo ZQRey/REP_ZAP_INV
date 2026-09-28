@@ -10,11 +10,11 @@ def main():
     password = getpass.getpass("New administrator password (at least 16 characters): ")
     if len(password) < 16 or password != getpass.getpass("Confirm password: "):
         parser.error("Password too short or confirmation differs")
-    from SHARED.database import SessionLocal, init_db
+    from SHARED.database import session_scope, init_db
     from SHARED.models import AppUser
     from SHARED.auth_service import AuthService
     init_db()
-    with SessionLocal() as db:
+    with session_scope() as db:
         if db.query(AppUser).filter(AppUser.username == args.username.strip()).first():
             parser.error("Account already exists; use the authorized password reset workflow")
         db.add(AppUser(username=args.username.strip(), full_name=args.username.strip(),

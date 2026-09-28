@@ -4,8 +4,8 @@ if os.getenv("APP_ENV") != "test":
 import sys
 from fastapi.testclient import TestClient
 from app.main import app
-from app.database import get_db, SessionLocal, init_db
-from app.models import AppUser, Branch, Cartridge, CartridgeStatus, HistoryLog
+from SHARED.database import get_db, SessionLocal, init_db
+from SHARED.models import AppUser, Branch, Cartridge, CartridgeStatus, HistoryLog
 from app.services.auth_service import AuthService
 
 client = TestClient(app)

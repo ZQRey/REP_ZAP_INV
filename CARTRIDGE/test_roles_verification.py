@@ -3,9 +3,9 @@ if os.getenv("APP_ENV") != "test":
     raise RuntimeError("Legacy verification scripts require an isolated APP_ENV=test database")
 import os
 import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 
 TEST_DB_PATH = "test_rbac.db"
 if os.path.exists(TEST_DB_PATH):
@@ -16,9 +16,9 @@ if os.path.exists(TEST_DB_PATH):
 
 os.environ["DATABASE_URL"] = f"sqlite:///{TEST_DB_PATH}"
 
-from app.database import Base, get_db, init_db
+from SHARED.database import Base, get_db, init_db
 from app.main import app
-from app.models import AppUser, Branch, Cartridge, ADUser
+from SHARED.models import AppUser, Branch, Cartridge, ADUser
 from app.services.auth_service import AuthService
 
 # Use test client

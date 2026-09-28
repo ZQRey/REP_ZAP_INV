@@ -13,8 +13,8 @@ os.environ["DATABASE_URL"] = "sqlite:///./data/test_cartridges.db"
 
 from fastapi.testclient import TestClient
 from app.main import app
-from app.database import init_db, SessionLocal
-from app.models import Cartridge, CartridgeStatus, SystemSetting, ADUser, Batch, AppUser
+from SHARED.database import init_db, SessionLocal
+from SHARED.models import Cartridge, CartridgeStatus, SystemSetting, ADUser, Batch, AppUser
 from app.services.whatsapp_service import WhatsAppService
 
 

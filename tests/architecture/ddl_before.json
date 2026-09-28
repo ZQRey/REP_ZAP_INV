@@ -1,0 +1,268 @@
+{
+  "sqlite": {
+    "ad_users": {
+      "table": "\nCREATE TABLE ad_users (\n\tsamaccountname VARCHAR(100) NOT NULL, \n\tdisplay_name VARCHAR(255) NOT NULL, \n\tdepartment VARCHAR(255), \n\tcabinet VARCHAR(100), \n\tphone VARCHAR(100), \n\tupdated_at DATETIME, \n\tPRIMARY KEY (samaccountname)\n)\n\n",
+      "indexes": [
+        "CREATE INDEX ix_ad_users_display_name ON ad_users (display_name)",
+        "CREATE INDEX ix_ad_users_samaccountname ON ad_users (samaccountname)"
+      ]
+    },
+    "branches": {
+      "table": "\nCREATE TABLE branches (\n\tid INTEGER NOT NULL, \n\tname VARCHAR(150) NOT NULL, \n\tcode VARCHAR(50), \n\taddress VARCHAR(255), \n\tit_office VARCHAR(255), \n\tnetwork_subnets JSON, \n\twa_message_template TEXT, \n\tnotes TEXT, \n\tcreated_at DATETIME, \n\tPRIMARY KEY (id)\n)\n\n",
+      "indexes": [
+        "CREATE UNIQUE INDEX ix_branches_name ON branches (name)"
+      ]
+    },
+    "cartridge_models": {
+      "table": "\nCREATE TABLE cartridge_models (\n\tid INTEGER NOT NULL, \n\tname VARCHAR(150) NOT NULL, \n\tvendor VARCHAR(100), \n\tresource_pages INTEGER, \n\tcompatible_printers TEXT, \n\tnotes TEXT, \n\tcreated_at DATETIME, \n\tPRIMARY KEY (id)\n)\n\n",
+      "indexes": [
+        "CREATE UNIQUE INDEX ix_cartridge_models_name ON cartridge_models (name)"
+      ]
+    },
+    "equipment_models": {
+      "table": "\nCREATE TABLE equipment_models (\n\tid INTEGER NOT NULL, \n\tname VARCHAR(150) NOT NULL, \n\tcategory VARCHAR(50), \n\tvendor VARCHAR(100), \n\tspecs_template TEXT, \n\tnotes TEXT, \n\tcreated_at DATETIME, \n\tPRIMARY KEY (id)\n)\n\n",
+      "indexes": [
+        "CREATE UNIQUE INDEX ix_equipment_models_name ON equipment_models (name)"
+      ]
+    },
+    "system_settings": {
+      "table": "\nCREATE TABLE system_settings (\n\t\"key\" VARCHAR(100) NOT NULL, \n\tvalue TEXT, \n\tdescription VARCHAR(255), \n\tPRIMARY KEY (\"key\")\n)\n\n",
+      "indexes": [
+        "CREATE INDEX ix_system_settings_key ON system_settings (\"key\")"
+      ]
+    },
+    "app_users": {
+      "table": "\nCREATE TABLE app_users (\n\tid INTEGER NOT NULL, \n\tusername VARCHAR(100) NOT NULL, \n\tfull_name VARCHAR(255) NOT NULL, \n\tpassword_hash VARCHAR(255), \n\tauth_type VARCHAR(20), \n\trole VARCHAR(20), \n\tis_active BOOLEAN, \n\tbranch_id INTEGER, \n\twa_instance_name VARCHAR(100), \n\tcreated_at DATETIME, \n\tPRIMARY KEY (id), \n\tFOREIGN KEY(branch_id) REFERENCES branches (id) ON DELETE SET NULL\n)\n\n",
+      "indexes": [
+        "CREATE UNIQUE INDEX ix_app_users_username ON app_users (username)"
+      ]
+    },
+    "batches": {
+      "table": "\nCREATE TABLE batches (\n\tid INTEGER NOT NULL, \n\tact_number VARCHAR(100) NOT NULL, \n\tvendor_name VARCHAR(255) NOT NULL, \n\tbranch_id INTEGER, \n\tcreated_at DATETIME, \n\tstatus VARCHAR(50), \n\tnotes TEXT, \n\tPRIMARY KEY (id), \n\tFOREIGN KEY(branch_id) REFERENCES branches (id) ON DELETE SET NULL\n)\n\n",
+      "indexes": [
+        "CREATE INDEX ix_batches_branch_id ON batches (branch_id)",
+        "CREATE UNIQUE INDEX ix_batches_act_number ON batches (act_number)"
+      ]
+    },
+    "cartridges": {
+      "table": "\nCREATE TABLE cartridges (\n\tid INTEGER NOT NULL, \n\tmarker_label VARCHAR(100) NOT NULL, \n\tqr_code VARCHAR(100), \n\tmodel VARCHAR(100) NOT NULL, \n\tcabinet VARCHAR(100) NOT NULL, \n\tstatus VARCHAR(16) NOT NULL, \n\tbranch_id INTEGER, \n\tcurrent_user_id VARCHAR(100), \n\tcondition VARCHAR(20), \n\tnotes TEXT, \n\tupdated_at DATETIME, \n\tPRIMARY KEY (id), \n\tFOREIGN KEY(branch_id) REFERENCES branches (id) ON DELETE SET NULL, \n\tFOREIGN KEY(current_user_id) REFERENCES ad_users (samaccountname) ON DELETE SET NULL\n)\n\n",
+      "indexes": [
+        "CREATE INDEX ix_cartridges_branch_id ON cartridges (branch_id)",
+        "CREATE INDEX ix_cartridges_status ON cartridges (status)",
+        "CREATE UNIQUE INDEX ix_cartridges_marker_label ON cartridges (marker_label)",
+        "CREATE UNIQUE INDEX ix_cartridges_qr_code ON cartridges (qr_code)"
+      ]
+    },
+    "floors": {
+      "table": "\nCREATE TABLE floors (\n\tid INTEGER NOT NULL, \n\tbranch_id INTEGER NOT NULL, \n\tfloor_number INTEGER, \n\tname VARCHAR(100) NOT NULL, \n\tmap_image_url VARCHAR(500), \n\tscale_pixels_per_meter FLOAT, \n\tcreated_at DATETIME, \n\tPRIMARY KEY (id), \n\tFOREIGN KEY(branch_id) REFERENCES branches (id) ON DELETE CASCADE\n)\n\n",
+      "indexes": []
+    },
+    "repair_batches": {
+      "table": "\nCREATE TABLE repair_batches (\n\tid INTEGER NOT NULL, \n\tact_number VARCHAR(100) NOT NULL, \n\tvendor_name VARCHAR(255) NOT NULL, \n\tbranch_id INTEGER, \n\tstatus VARCHAR(50), \n\tcreated_at DATETIME, \n\tclosed_at DATETIME, \n\tnotes TEXT, \n\tPRIMARY KEY (id), \n\tFOREIGN KEY(branch_id) REFERENCES branches (id) ON DELETE SET NULL\n)\n\n",
+      "indexes": [
+        "CREATE INDEX ix_repair_batches_branch_id ON repair_batches (branch_id)",
+        "CREATE UNIQUE INDEX ix_repair_batches_act_number ON repair_batches (act_number)"
+      ]
+    },
+    "spare_parts_warehouse": {
+      "table": "\nCREATE TABLE spare_parts_warehouse (\n\tid INTEGER NOT NULL, \n\tbranch_id INTEGER NOT NULL, \n\tcategory VARCHAR(100) NOT NULL, \n\titem_name VARCHAR(200) NOT NULL, \n\tquantity INTEGER, \n\tmin_threshold INTEGER, \n\tunit_price NUMERIC(10, 2), \n\tPRIMARY KEY (id), \n\tFOREIGN KEY(branch_id) REFERENCES branches (id) ON DELETE CASCADE\n)\n\n",
+      "indexes": []
+    },
+    "audit_logs": {
+      "table": "\nCREATE TABLE audit_logs (\n\tid INTEGER NOT NULL, \n\tuser_id INTEGER, \n\tusername VARCHAR(100), \n\taction VARCHAR(100) NOT NULL, \n\ttarget_module VARCHAR(50) NOT NULL, \n\ttarget_entity VARCHAR(100), \n\tentity_id VARCHAR(100), \n\tdetails TEXT, \n\tip_address VARCHAR(50), \n\tcreated_at DATETIME, \n\tPRIMARY KEY (id), \n\tFOREIGN KEY(user_id) REFERENCES app_users (id) ON DELETE SET NULL\n)\n\n",
+      "indexes": [
+        "CREATE INDEX ix_audit_logs_created_at ON audit_logs (created_at)"
+      ]
+    },
+    "batch_items": {
+      "table": "\nCREATE TABLE batch_items (\n\tid INTEGER NOT NULL, \n\tbatch_id INTEGER NOT NULL, \n\tcartridge_id INTEGER NOT NULL, \n\taction_required VARCHAR(100), \n\tPRIMARY KEY (id), \n\tFOREIGN KEY(batch_id) REFERENCES batches (id) ON DELETE CASCADE, \n\tFOREIGN KEY(cartridge_id) REFERENCES cartridges (id) ON DELETE CASCADE\n)\n\n",
+      "indexes": []
+    },
+    "cable_paths": {
+      "table": "\nCREATE TABLE cable_paths (\n\tid INTEGER NOT NULL, \n\tfloor_id INTEGER NOT NULL, \n\tname VARCHAR(150), \n\tpath_vectors JSON NOT NULL, \n\tmax_capacity INTEGER, \n\tPRIMARY KEY (id), \n\tFOREIGN KEY(floor_id) REFERENCES floors (id) ON DELETE CASCADE\n)\n\n",
+      "indexes": []
+    },
+    "history_logs": {
+      "table": "\nCREATE TABLE history_logs (\n\tid INTEGER NOT NULL, \n\tcartridge_id INTEGER NOT NULL, \n\taction VARCHAR(100) NOT NULL, \n\tuser_name VARCHAR(255), \n\ttimestamp DATETIME, \n\tdetails TEXT, \n\tPRIMARY KEY (id), \n\tFOREIGN KEY(cartridge_id) REFERENCES cartridges (id) ON DELETE CASCADE\n)\n\n",
+      "indexes": [
+        "CREATE INDEX ix_history_logs_cartridge_id ON history_logs (cartridge_id)",
+        "CREATE INDEX ix_history_logs_timestamp ON history_logs (timestamp)"
+      ]
+    },
+    "zones": {
+      "table": "\nCREATE TABLE zones (\n\tid INTEGER NOT NULL, \n\tfloor_id INTEGER NOT NULL, \n\tname VARCHAR(150) NOT NULL, \n\tzone_type VARCHAR(50), \n\tpolygon_coords JSON NOT NULL, \n\tfill_color VARCHAR(50), \n\tborder_color VARCHAR(50), \n\tresponsible_person VARCHAR(200), \n\troom_number VARCHAR(50), \n\tPRIMARY KEY (id), \n\tFOREIGN KEY(floor_id) REFERENCES floors (id) ON DELETE CASCADE\n)\n\n",
+      "indexes": []
+    },
+    "assets": {
+      "table": "\nCREATE TABLE assets (\n\tid INTEGER NOT NULL, \n\tinventory_number VARCHAR(100) NOT NULL, \n\tserial_number VARCHAR(100), \n\tname VARCHAR(150) NOT NULL, \n\tasset_type VARCHAR(11) NOT NULL, \n\tstatus VARCHAR(14) NOT NULL, \n\tcondition VARCHAR(7) NOT NULL, \n\tad_guid VARCHAR(100), \n\thostname VARCHAR(150), \n\tos_name VARCHAR(150), \n\tlast_logon DATETIME, \n\tip_address VARCHAR(50), \n\tmac_address VARCHAR(50), \n\tbranch_id INTEGER, \n\tcabinet VARCHAR(100), \n\tcurrent_user_id VARCHAR(100), \n\tfloor_id INTEGER, \n\tzone_id INTEGER, \n\tcoords_x FLOAT, \n\tcoords_y FLOAT, \n\tspecs JSON, \n\tnotes TEXT, \n\tcreated_at DATETIME, \n\tupdated_at DATETIME, \n\tPRIMARY KEY (id), \n\tFOREIGN KEY(branch_id) REFERENCES branches (id) ON DELETE SET NULL, \n\tFOREIGN KEY(current_user_id) REFERENCES ad_users (samaccountname) ON DELETE SET NULL, \n\tFOREIGN KEY(floor_id) REFERENCES floors (id) ON DELETE SET NULL, \n\tFOREIGN KEY(zone_id) REFERENCES zones (id) ON DELETE SET NULL\n)\n\n",
+      "indexes": [
+        "CREATE INDEX ix_assets_ad_guid ON assets (ad_guid)",
+        "CREATE INDEX ix_assets_asset_type ON assets (asset_type)",
+        "CREATE INDEX ix_assets_branch_id ON assets (branch_id)",
+        "CREATE INDEX ix_assets_condition ON assets (condition)",
+        "CREATE INDEX ix_assets_floor_id ON assets (floor_id)",
+        "CREATE INDEX ix_assets_hostname ON assets (hostname)",
+        "CREATE INDEX ix_assets_serial_number ON assets (serial_number)",
+        "CREATE INDEX ix_assets_status ON assets (status)",
+        "CREATE INDEX ix_assets_zone_id ON assets (zone_id)",
+        "CREATE UNIQUE INDEX ix_assets_inventory_number ON assets (inventory_number)"
+      ]
+    },
+    "equipment_history_logs": {
+      "table": "\nCREATE TABLE equipment_history_logs (\n\tid INTEGER NOT NULL, \n\tasset_id INTEGER NOT NULL, \n\taction VARCHAR(100) NOT NULL, \n\tuser_name VARCHAR(255), \n\ttimestamp DATETIME, \n\tdetails TEXT, \n\tPRIMARY KEY (id), \n\tFOREIGN KEY(asset_id) REFERENCES assets (id) ON DELETE CASCADE\n)\n\n",
+      "indexes": [
+        "CREATE INDEX ix_equipment_history_logs_asset_id ON equipment_history_logs (asset_id)",
+        "CREATE INDEX ix_equipment_history_logs_timestamp ON equipment_history_logs (timestamp)"
+      ]
+    },
+    "network_switches": {
+      "table": "\nCREATE TABLE network_switches (\n\tid INTEGER NOT NULL, \n\tasset_id INTEGER NOT NULL, \n\tip_address VARCHAR(50) NOT NULL, \n\tmanagement_type VARCHAR(50), \n\tmgmt_port INTEGER, \n\tusername VARCHAR(100), \n\tpassword VARCHAR(255), \n\tsnmp_community VARCHAR(100), \n\tmodel VARCHAR(150), \n\ttotal_ports INTEGER, \n\textra_params JSON, \n\tlast_poll_status VARCHAR(20), \n\tlast_poll_message VARCHAR(500), \n\tlast_polled_at DATETIME, \n\tPRIMARY KEY (id), \n\tUNIQUE (asset_id), \n\tFOREIGN KEY(asset_id) REFERENCES assets (id) ON DELETE CASCADE\n)\n\n",
+      "indexes": []
+    },
+    "repair_batch_items": {
+      "table": "\nCREATE TABLE repair_batch_items (\n\tid INTEGER NOT NULL, \n\tbatch_id INTEGER NOT NULL, \n\tasset_id INTEGER NOT NULL, \n\treported_issue TEXT, \n\tdiagnostic_result TEXT, \n\twork_performed TEXT, \n\tcost NUMERIC(10, 2), \n\tstatus VARCHAR(50), \n\treturned_at DATETIME, \n\tinstalled_at DATETIME, \n\tPRIMARY KEY (id), \n\tFOREIGN KEY(batch_id) REFERENCES repair_batches (id) ON DELETE CASCADE, \n\tFOREIGN KEY(asset_id) REFERENCES assets (id) ON DELETE CASCADE\n)\n\n",
+      "indexes": []
+    },
+    "repair_parts_used": {
+      "table": "\nCREATE TABLE repair_parts_used (\n\tid INTEGER NOT NULL, \n\trepair_item_id INTEGER NOT NULL, \n\tpart_name VARCHAR(200) NOT NULL, \n\tserial_number VARCHAR(100), \n\tquantity INTEGER, \n\tcost NUMERIC(10, 2), \n\tPRIMARY KEY (id), \n\tFOREIGN KEY(repair_item_id) REFERENCES repair_batch_items (id) ON DELETE CASCADE\n)\n\n",
+      "indexes": []
+    },
+    "switch_ports": {
+      "table": "\nCREATE TABLE switch_ports (\n\tid INTEGER NOT NULL, \n\tswitch_id INTEGER NOT NULL, \n\tport_number INTEGER NOT NULL, \n\tport_speed VARCHAR(50), \n\tvlan_id INTEGER, \n\tstatus VARCHAR(20), \n\tcabinet VARCHAR(100), \n\tsocket_label VARCHAR(100), \n\tzone_id INTEGER, \n\tlast_mac VARCHAR(50), \n\tlast_ip VARCHAR(50), \n\tlast_seen_at DATETIME, \n\tconnected_asset_id INTEGER, \n\tPRIMARY KEY (id), \n\tFOREIGN KEY(switch_id) REFERENCES network_switches (id) ON DELETE CASCADE, \n\tFOREIGN KEY(zone_id) REFERENCES zones (id) ON DELETE SET NULL, \n\tFOREIGN KEY(connected_asset_id) REFERENCES assets (id) ON DELETE SET NULL\n)\n\n",
+      "indexes": []
+    }
+  },
+  "postgresql": {
+    "ad_users": {
+      "table": "\nCREATE TABLE ad_users (\n\tsamaccountname VARCHAR(100) NOT NULL, \n\tdisplay_name VARCHAR(255) NOT NULL, \n\tdepartment VARCHAR(255), \n\tcabinet VARCHAR(100), \n\tphone VARCHAR(100), \n\tupdated_at TIMESTAMP WITHOUT TIME ZONE, \n\tPRIMARY KEY (samaccountname)\n)\n\n",
+      "indexes": [
+        "CREATE INDEX ix_ad_users_display_name ON ad_users (display_name)",
+        "CREATE INDEX ix_ad_users_samaccountname ON ad_users (samaccountname)"
+      ]
+    },
+    "branches": {
+      "table": "\nCREATE TABLE branches (\n\tid SERIAL NOT NULL, \n\tname VARCHAR(150) NOT NULL, \n\tcode VARCHAR(50), \n\taddress VARCHAR(255), \n\tit_office VARCHAR(255), \n\tnetwork_subnets JSON, \n\twa_message_template TEXT, \n\tnotes TEXT, \n\tcreated_at TIMESTAMP WITHOUT TIME ZONE, \n\tPRIMARY KEY (id)\n)\n\n",
+      "indexes": [
+        "CREATE UNIQUE INDEX ix_branches_name ON branches (name)"
+      ]
+    },
+    "cartridge_models": {
+      "table": "\nCREATE TABLE cartridge_models (\n\tid SERIAL NOT NULL, \n\tname VARCHAR(150) NOT NULL, \n\tvendor VARCHAR(100), \n\tresource_pages INTEGER, \n\tcompatible_printers TEXT, \n\tnotes TEXT, \n\tcreated_at TIMESTAMP WITHOUT TIME ZONE, \n\tPRIMARY KEY (id)\n)\n\n",
+      "indexes": [
+        "CREATE UNIQUE INDEX ix_cartridge_models_name ON cartridge_models (name)"
+      ]
+    },
+    "equipment_models": {
+      "table": "\nCREATE TABLE equipment_models (\n\tid SERIAL NOT NULL, \n\tname VARCHAR(150) NOT NULL, \n\tcategory VARCHAR(50), \n\tvendor VARCHAR(100), \n\tspecs_template TEXT, \n\tnotes TEXT, \n\tcreated_at TIMESTAMP WITHOUT TIME ZONE, \n\tPRIMARY KEY (id)\n)\n\n",
+      "indexes": [
+        "CREATE UNIQUE INDEX ix_equipment_models_name ON equipment_models (name)"
+      ]
+    },
+    "system_settings": {
+      "table": "\nCREATE TABLE system_settings (\n\tkey VARCHAR(100) NOT NULL, \n\tvalue TEXT, \n\tdescription VARCHAR(255), \n\tPRIMARY KEY (key)\n)\n\n",
+      "indexes": [
+        "CREATE INDEX ix_system_settings_key ON system_settings (key)"
+      ]
+    },
+    "app_users": {
+      "table": "\nCREATE TABLE app_users (\n\tid SERIAL NOT NULL, \n\tusername VARCHAR(100) NOT NULL, \n\tfull_name VARCHAR(255) NOT NULL, \n\tpassword_hash VARCHAR(255), \n\tauth_type VARCHAR(20), \n\trole VARCHAR(20), \n\tis_active BOOLEAN, \n\tbranch_id INTEGER, \n\twa_instance_name VARCHAR(100), \n\tcreated_at TIMESTAMP WITHOUT TIME ZONE, \n\tPRIMARY KEY (id), \n\tFOREIGN KEY(branch_id) REFERENCES branches (id) ON DELETE SET NULL\n)\n\n",
+      "indexes": [
+        "CREATE UNIQUE INDEX ix_app_users_username ON app_users (username)"
+      ]
+    },
+    "batches": {
+      "table": "\nCREATE TABLE batches (\n\tid SERIAL NOT NULL, \n\tact_number VARCHAR(100) NOT NULL, \n\tvendor_name VARCHAR(255) NOT NULL, \n\tbranch_id INTEGER, \n\tcreated_at TIMESTAMP WITHOUT TIME ZONE, \n\tstatus VARCHAR(50), \n\tnotes TEXT, \n\tPRIMARY KEY (id), \n\tFOREIGN KEY(branch_id) REFERENCES branches (id) ON DELETE SET NULL\n)\n\n",
+      "indexes": [
+        "CREATE INDEX ix_batches_branch_id ON batches (branch_id)",
+        "CREATE UNIQUE INDEX ix_batches_act_number ON batches (act_number)"
+      ]
+    },
+    "cartridges": {
+      "table": "\nCREATE TABLE cartridges (\n\tid SERIAL NOT NULL, \n\tmarker_label VARCHAR(100) NOT NULL, \n\tqr_code VARCHAR(100), \n\tmodel VARCHAR(100) NOT NULL, \n\tcabinet VARCHAR(100) NOT NULL, \n\tstatus cartridgestatus NOT NULL, \n\tbranch_id INTEGER, \n\tcurrent_user_id VARCHAR(100), \n\tcondition VARCHAR(20), \n\tnotes TEXT, \n\tupdated_at TIMESTAMP WITHOUT TIME ZONE, \n\tPRIMARY KEY (id), \n\tFOREIGN KEY(branch_id) REFERENCES branches (id) ON DELETE SET NULL, \n\tFOREIGN KEY(current_user_id) REFERENCES ad_users (samaccountname) ON DELETE SET NULL\n)\n\n",
+      "indexes": [
+        "CREATE INDEX ix_cartridges_branch_id ON cartridges (branch_id)",
+        "CREATE INDEX ix_cartridges_status ON cartridges (status)",
+        "CREATE UNIQUE INDEX ix_cartridges_marker_label ON cartridges (marker_label)",
+        "CREATE UNIQUE INDEX ix_cartridges_qr_code ON cartridges (qr_code)"
+      ]
+    },
+    "floors": {
+      "table": "\nCREATE TABLE floors (\n\tid SERIAL NOT NULL, \n\tbranch_id INTEGER NOT NULL, \n\tfloor_number INTEGER, \n\tname VARCHAR(100) NOT NULL, \n\tmap_image_url VARCHAR(500), \n\tscale_pixels_per_meter FLOAT, \n\tcreated_at TIMESTAMP WITHOUT TIME ZONE, \n\tPRIMARY KEY (id), \n\tFOREIGN KEY(branch_id) REFERENCES branches (id) ON DELETE CASCADE\n)\n\n",
+      "indexes": []
+    },
+    "repair_batches": {
+      "table": "\nCREATE TABLE repair_batches (\n\tid SERIAL NOT NULL, \n\tact_number VARCHAR(100) NOT NULL, \n\tvendor_name VARCHAR(255) NOT NULL, \n\tbranch_id INTEGER, \n\tstatus VARCHAR(50), \n\tcreated_at TIMESTAMP WITHOUT TIME ZONE, \n\tclosed_at TIMESTAMP WITHOUT TIME ZONE, \n\tnotes TEXT, \n\tPRIMARY KEY (id), \n\tFOREIGN KEY(branch_id) REFERENCES branches (id) ON DELETE SET NULL\n)\n\n",
+      "indexes": [
+        "CREATE INDEX ix_repair_batches_branch_id ON repair_batches (branch_id)",
+        "CREATE UNIQUE INDEX ix_repair_batches_act_number ON repair_batches (act_number)"
+      ]
+    },
+    "spare_parts_warehouse": {
+      "table": "\nCREATE TABLE spare_parts_warehouse (\n\tid SERIAL NOT NULL, \n\tbranch_id INTEGER NOT NULL, \n\tcategory VARCHAR(100) NOT NULL, \n\titem_name VARCHAR(200) NOT NULL, \n\tquantity INTEGER, \n\tmin_threshold INTEGER, \n\tunit_price NUMERIC(10, 2), \n\tPRIMARY KEY (id), \n\tFOREIGN KEY(branch_id) REFERENCES branches (id) ON DELETE CASCADE\n)\n\n",
+      "indexes": []
+    },
+    "audit_logs": {
+      "table": "\nCREATE TABLE audit_logs (\n\tid SERIAL NOT NULL, \n\tuser_id INTEGER, \n\tusername VARCHAR(100), \n\taction VARCHAR(100) NOT NULL, \n\ttarget_module VARCHAR(50) NOT NULL, \n\ttarget_entity VARCHAR(100), \n\tentity_id VARCHAR(100), \n\tdetails TEXT, \n\tip_address VARCHAR(50), \n\tcreated_at TIMESTAMP WITHOUT TIME ZONE, \n\tPRIMARY KEY (id), \n\tFOREIGN KEY(user_id) REFERENCES app_users (id) ON DELETE SET NULL\n)\n\n",
+      "indexes": [
+        "CREATE INDEX ix_audit_logs_created_at ON audit_logs (created_at)"
+      ]
+    },
+    "batch_items": {
+      "table": "\nCREATE TABLE batch_items (\n\tid SERIAL NOT NULL, \n\tbatch_id INTEGER NOT NULL, \n\tcartridge_id INTEGER NOT NULL, \n\taction_required VARCHAR(100), \n\tPRIMARY KEY (id), \n\tFOREIGN KEY(batch_id) REFERENCES batches (id) ON DELETE CASCADE, \n\tFOREIGN KEY(cartridge_id) REFERENCES cartridges (id) ON DELETE CASCADE\n)\n\n",
+      "indexes": []
+    },
+    "cable_paths": {
+      "table": "\nCREATE TABLE cable_paths (\n\tid SERIAL NOT NULL, \n\tfloor_id INTEGER NOT NULL, \n\tname VARCHAR(150), \n\tpath_vectors JSON NOT NULL, \n\tmax_capacity INTEGER, \n\tPRIMARY KEY (id), \n\tFOREIGN KEY(floor_id) REFERENCES floors (id) ON DELETE CASCADE\n)\n\n",
+      "indexes": []
+    },
+    "history_logs": {
+      "table": "\nCREATE TABLE history_logs (\n\tid SERIAL NOT NULL, \n\tcartridge_id INTEGER NOT NULL, \n\taction VARCHAR(100) NOT NULL, \n\tuser_name VARCHAR(255), \n\ttimestamp TIMESTAMP WITHOUT TIME ZONE, \n\tdetails TEXT, \n\tPRIMARY KEY (id), \n\tFOREIGN KEY(cartridge_id) REFERENCES cartridges (id) ON DELETE CASCADE\n)\n\n",
+      "indexes": [
+        "CREATE INDEX ix_history_logs_cartridge_id ON history_logs (cartridge_id)",
+        "CREATE INDEX ix_history_logs_timestamp ON history_logs (timestamp)"
+      ]
+    },
+    "zones": {
+      "table": "\nCREATE TABLE zones (\n\tid SERIAL NOT NULL, \n\tfloor_id INTEGER NOT NULL, \n\tname VARCHAR(150) NOT NULL, \n\tzone_type VARCHAR(50), \n\tpolygon_coords JSON NOT NULL, \n\tfill_color VARCHAR(50), \n\tborder_color VARCHAR(50), \n\tresponsible_person VARCHAR(200), \n\troom_number VARCHAR(50), \n\tPRIMARY KEY (id), \n\tFOREIGN KEY(floor_id) REFERENCES floors (id) ON DELETE CASCADE\n)\n\n",
+      "indexes": []
+    },
+    "assets": {
+      "table": "\nCREATE TABLE assets (\n\tid SERIAL NOT NULL, \n\tinventory_number VARCHAR(100) NOT NULL, \n\tserial_number VARCHAR(100), \n\tname VARCHAR(150) NOT NULL, \n\tasset_type assettype NOT NULL, \n\tstatus assetstatus NOT NULL, \n\tcondition assetcondition NOT NULL, \n\tad_guid VARCHAR(100), \n\thostname VARCHAR(150), \n\tos_name VARCHAR(150), \n\tlast_logon TIMESTAMP WITHOUT TIME ZONE, \n\tip_address VARCHAR(50), \n\tmac_address VARCHAR(50), \n\tbranch_id INTEGER, \n\tcabinet VARCHAR(100), \n\tcurrent_user_id VARCHAR(100), \n\tfloor_id INTEGER, \n\tzone_id INTEGER, \n\tcoords_x FLOAT, \n\tcoords_y FLOAT, \n\tspecs JSON, \n\tnotes TEXT, \n\tcreated_at TIMESTAMP WITHOUT TIME ZONE, \n\tupdated_at TIMESTAMP WITHOUT TIME ZONE, \n\tPRIMARY KEY (id), \n\tFOREIGN KEY(branch_id) REFERENCES branches (id) ON DELETE SET NULL, \n\tFOREIGN KEY(current_user_id) REFERENCES ad_users (samaccountname) ON DELETE SET NULL, \n\tFOREIGN KEY(floor_id) REFERENCES floors (id) ON DELETE SET NULL, \n\tFOREIGN KEY(zone_id) REFERENCES zones (id) ON DELETE SET NULL\n)\n\n",
+      "indexes": [
+        "CREATE INDEX ix_assets_ad_guid ON assets (ad_guid)",
+        "CREATE INDEX ix_assets_asset_type ON assets (asset_type)",
+        "CREATE INDEX ix_assets_branch_id ON assets (branch_id)",
+        "CREATE INDEX ix_assets_condition ON assets (condition)",
+        "CREATE INDEX ix_assets_floor_id ON assets (floor_id)",
+        "CREATE INDEX ix_assets_hostname ON assets (hostname)",
+        "CREATE INDEX ix_assets_serial_number ON assets (serial_number)",
+        "CREATE INDEX ix_assets_status ON assets (status)",
+        "CREATE INDEX ix_assets_zone_id ON assets (zone_id)",
+        "CREATE UNIQUE INDEX ix_assets_inventory_number ON assets (inventory_number)"
+      ]
+    },
+    "equipment_history_logs": {
+      "table": "\nCREATE TABLE equipment_history_logs (\n\tid SERIAL NOT NULL, \n\tasset_id INTEGER NOT NULL, \n\taction VARCHAR(100) NOT NULL, \n\tuser_name VARCHAR(255), \n\ttimestamp TIMESTAMP WITHOUT TIME ZONE, \n\tdetails TEXT, \n\tPRIMARY KEY (id), \n\tFOREIGN KEY(asset_id) REFERENCES assets (id) ON DELETE CASCADE\n)\n\n",
+      "indexes": [
+        "CREATE INDEX ix_equipment_history_logs_asset_id ON equipment_history_logs (asset_id)",
+        "CREATE INDEX ix_equipment_history_logs_timestamp ON equipment_history_logs (timestamp)"
+      ]
+    },
+    "network_switches": {
+      "table": "\nCREATE TABLE network_switches (\n\tid SERIAL NOT NULL, \n\tasset_id INTEGER NOT NULL, \n\tip_address VARCHAR(50) NOT NULL, \n\tmanagement_type VARCHAR(50), \n\tmgmt_port INTEGER, \n\tusername VARCHAR(100), \n\tpassword VARCHAR(255), \n\tsnmp_community VARCHAR(100), \n\tmodel VARCHAR(150), \n\ttotal_ports INTEGER, \n\textra_params JSON, \n\tlast_poll_status VARCHAR(20), \n\tlast_poll_message VARCHAR(500), \n\tlast_polled_at TIMESTAMP WITHOUT TIME ZONE, \n\tPRIMARY KEY (id), \n\tUNIQUE (asset_id), \n\tFOREIGN KEY(asset_id) REFERENCES assets (id) ON DELETE CASCADE\n)\n\n",
+      "indexes": []
+    },
+    "repair_batch_items": {
+      "table": "\nCREATE TABLE repair_batch_items (\n\tid SERIAL NOT NULL, \n\tbatch_id INTEGER NOT NULL, \n\tasset_id INTEGER NOT NULL, \n\treported_issue TEXT, \n\tdiagnostic_result TEXT, \n\twork_performed TEXT, \n\tcost NUMERIC(10, 2), \n\tstatus VARCHAR(50), \n\treturned_at TIMESTAMP WITHOUT TIME ZONE, \n\tinstalled_at TIMESTAMP WITHOUT TIME ZONE, \n\tPRIMARY KEY (id), \n\tFOREIGN KEY(batch_id) REFERENCES repair_batches (id) ON DELETE CASCADE, \n\tFOREIGN KEY(asset_id) REFERENCES assets (id) ON DELETE CASCADE\n)\n\n",
+      "indexes": []
+    },
+    "repair_parts_used": {
+      "table": "\nCREATE TABLE repair_parts_used (\n\tid SERIAL NOT NULL, \n\trepair_item_id INTEGER NOT NULL, \n\tpart_name VARCHAR(200) NOT NULL, \n\tserial_number VARCHAR(100), \n\tquantity INTEGER, \n\tcost NUMERIC(10, 2), \n\tPRIMARY KEY (id), \n\tFOREIGN KEY(repair_item_id) REFERENCES repair_batch_items (id) ON DELETE CASCADE\n)\n\n",
+      "indexes": []
+    },
+    "switch_ports": {
+      "table": "\nCREATE TABLE switch_ports (\n\tid SERIAL NOT NULL, \n\tswitch_id INTEGER NOT NULL, \n\tport_number INTEGER NOT NULL, \n\tport_speed VARCHAR(50), \n\tvlan_id INTEGER, \n\tstatus VARCHAR(20), \n\tcabinet VARCHAR(100), \n\tsocket_label VARCHAR(100), \n\tzone_id INTEGER, \n\tlast_mac VARCHAR(50), \n\tlast_ip VARCHAR(50), \n\tlast_seen_at TIMESTAMP WITHOUT TIME ZONE, \n\tconnected_asset_id INTEGER, \n\tPRIMARY KEY (id), \n\tFOREIGN KEY(switch_id) REFERENCES network_switches (id) ON DELETE CASCADE, \n\tFOREIGN KEY(zone_id) REFERENCES zones (id) ON DELETE SET NULL, \n\tFOREIGN KEY(connected_asset_id) REFERENCES assets (id) ON DELETE SET NULL\n)\n\n",
+      "indexes": []
+    }
+  }
+}

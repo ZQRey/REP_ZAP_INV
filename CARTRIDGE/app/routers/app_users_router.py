@@ -2,8 +2,8 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session, joinedload
 
-from app.database import get_db
-from app.models import AppUser, Branch
+from SHARED.database import get_db
+from SHARED.models import AppUser, Branch
 from app.schemas import AppUserCreate, AppUserUpdate, AppUserResponse
 from app.services.auth_service import AuthService, require_superadmin
 
@@ -150,3 +150,4 @@ def toggle_user_active(
         "is_active": user.is_active,
         "message": f"Пользователь '{user.username}' {'разблокирован' if user.is_active else 'заблокирован'}."
     }
+
