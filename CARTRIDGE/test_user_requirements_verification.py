@@ -22,7 +22,9 @@ from SHARED.models import AppUser, Branch, Cartridge, CartridgeStatus, Batch, Ba
 from app.services.auth_service import AuthService
 
 TestingSessionLocal = SessionLocal
-Base.metadata.create_all(bind=engine)
+from alembic import command
+from SHARED.schema_management import alembic_config
+command.upgrade(alembic_config(), "head")
 
 client = TestClient(app)
 

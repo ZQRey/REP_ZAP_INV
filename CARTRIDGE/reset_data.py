@@ -80,6 +80,9 @@ def reset_full_database():
             print("Остановите сервер uvicorn/контейнер перед полным удалением файла.")
             return
 
+    from alembic import command
+    from SHARED.schema_management import alembic_config
+    command.upgrade(alembic_config(), "head")
     init_db()
     print("✓ База данных заново создана и проинициализирована по умолчанию.")
     print("  Создайте администратора явно через SHARED.bootstrap_admin")

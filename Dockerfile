@@ -16,6 +16,8 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Копирование исходного кода
+COPY alembic /app/alembic
+COPY alembic.ini /app/alembic.ini
 COPY SHARED/ /app/SHARED/
 COPY CARTRIDGE/ /app/CARTRIDGE/
 COPY REPAIR/ /app/REPAIR/

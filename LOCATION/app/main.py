@@ -1,4 +1,5 @@
 from SHARED.auth_service import require_business_auth
+from SHARED.schema_management import schema_lifespan
 from SHARED.security_config import CORS_ORIGINS
 from pathlib import Path
 from fastapi import FastAPI, Depends
@@ -18,6 +19,7 @@ BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
 
 app = FastAPI(
+    lifespan=schema_lifespan,
     dependencies=[Depends(require_business_auth)],
     title="NetMap & ITAM API",
     description="Интерактивная 2D-карта сети, трассировка кабелей и IT-активы",

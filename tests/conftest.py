@@ -9,8 +9,14 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "CARTRIDGE"))
 _temp = tempfile.TemporaryDirectory()
+test_url = os.getenv("MIGRATION_TEST_DATABASE_URL")
+if test_url:
+    from sqlalchemy.engine import make_url
+    target = make_url(test_url)
+    if target.host not in {"127.0.0.1", "localhost"} or target.database != "rep_zap_migration_test":
+        raise RuntimeError("Migration tests require the disposable loopback rep_zap_migration_test database")
 os.environ.update(APP_ENV="test", SECRET_KEY=secrets.token_urlsafe(48),
-                  DATABASE_URL="sqlite:///" + (Path(_temp.name) / "test.db").as_posix(),
+                  DATABASE_URL=test_url or "sqlite:///" + (Path(_temp.name) / "test.db").as_posix(),
                   REDIS_URL="", DEMO_ENABLED="false", CORS_ORIGINS="https://allowed.example")
 for key in ("SECRET_KEY_FILE", "DATABASE_URL_FILE", "REDIS_URL_FILE", "EVOLUTION_API_KEY_FILE", "LDAP_BIND_PASSWORD_FILE"):
     os.environ.pop(key, None)
@@ -29,7 +35,13 @@ def client():
     from main_server import app
     from SHARED.database import Base, engine, init_db
     from SHARED.login_security import _attempts
+    from alembic import command
+    from SHARED.schema_management import alembic_config
+    from sqlalchemy import text
     Base.metadata.drop_all(engine)
+    with engine.begin() as connection:
+        connection.execute(text("DROP TABLE IF EXISTS alembic_version"))
+    command.upgrade(alembic_config(), "head")
     init_db()
     _attempts.clear()
     with TestClient(app) as result:

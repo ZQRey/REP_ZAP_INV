@@ -14,6 +14,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+COPY alembic /app/alembic
+COPY alembic.ini /app/alembic.ini
 COPY SHARED /app/SHARED
 COPY CARTRIDGE/app /app/app
 

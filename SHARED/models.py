@@ -2,6 +2,7 @@ import enum
 from datetime import datetime
 from sqlalchemy import (
     Column,
+    BigInteger, CheckConstraint, UniqueConstraint, Index,
     Integer,
     Float,
     String,
@@ -50,6 +51,9 @@ class Branch(Base):
 class AppUser(Base):
     """Пользователь системы (оператор, администратор, техник)."""
     __tablename__ = "app_users"
+    __table_args__ = (
+        Index('ix_app_users_branch_id', 'branch_id'),
+    )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     username = Column(String(100), unique=True, index=True, nullable=False)
@@ -92,6 +96,9 @@ class ADUser(Base):
 class AuditLog(Base):
     """Журнал безопасности и системных действий."""
     __tablename__ = "audit_logs"
+    __table_args__ = (
+        Index('ix_audit_logs_user_id', 'user_id'),
+    )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("app_users.id", ondelete="SET NULL"), nullable=True)
@@ -132,6 +139,9 @@ class CartridgeModel(Base):
 class Cartridge(Base):
     """Единица картриджа с индивидуальной маркировкой."""
     __tablename__ = "cartridges"
+    __table_args__ = (
+        Index('ix_cartridges_current_user_id', 'current_user_id'),
+    )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     marker_label = Column(String(100), unique=True, index=True, nullable=False)
@@ -164,13 +174,16 @@ class Cartridge(Base):
 class Batch(Base):
     """Акт передачи картриджей поставщику услуг заправки."""
     __tablename__ = "batches"
+    __table_args__ = (
+        CheckConstraint("status IN ('open', 'closed')", name='ck_batches_status'),
+    )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     act_number = Column(String(100), unique=True, index=True, nullable=False)
     vendor_name = Column(String(255), nullable=False)
     branch_id = Column(Integer, ForeignKey("branches.id", ondelete="SET NULL"), nullable=True, index=True)
     created_at = Column(DateTime, default=datetime.utcnow)
-    status = Column(String(50), default="open")             # "open" / "closed"
+    status = Column(String(50), default="open", nullable=False)             # "open" / "closed"
     notes = Column(Text, nullable=True)
 
     branch = relationship("Branch", back_populates="cartridge_batches")
@@ -180,6 +193,10 @@ class Batch(Base):
 class BatchItem(Base):
     """Позиция картриджа в акте заправки."""
     __tablename__ = "batch_items"
+    __table_args__ = (
+        UniqueConstraint('batch_id', 'cartridge_id', name='uq_batch_items_batch_cartridge'),
+        Index('ix_batch_items_cartridge_id', 'cartridge_id'),
+    )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     batch_id = Column(Integer, ForeignKey("batches.id", ondelete="CASCADE"), nullable=False)
@@ -252,6 +269,9 @@ class Asset(Base):
     и в модуле LOCATION (для отображения на 2D-карте этажа).
     """
     __tablename__ = "assets"
+    __table_args__ = (
+        Index('ix_assets_current_user_id', 'current_user_id'),
+    )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     inventory_number = Column(String(100), unique=True, index=True, nullable=False) # Инвентарный номер (основной)
@@ -320,12 +340,15 @@ class Asset(Base):
 class RepairBatch(Base):
     """Акт передачи техники в сервисный центр (пакетная отправка)."""
     __tablename__ = "repair_batches"
+    __table_args__ = (
+        CheckConstraint("status IN ('open', 'closed')", name='ck_repair_batches_status'),
+    )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     act_number = Column(String(100), unique=True, index=True, nullable=False)
     vendor_name = Column(String(255), nullable=False)        # Название СЦ (напр. "ООО ТехноРемСервис")
     branch_id = Column(Integer, ForeignKey("branches.id", ondelete="SET NULL"), nullable=True, index=True)
-    status = Column(String(50), default="open")             # "open" (в СЦ), "closed" (все позиции возвращены)
+    status = Column(String(50), default="open", nullable=False)             # "open" (в СЦ), "closed" (все позиции возвращены)
     created_at = Column(DateTime, default=datetime.utcnow)
     closed_at = Column(DateTime, nullable=True)
     notes = Column(Text, nullable=True)
@@ -337,6 +360,11 @@ class RepairBatch(Base):
 class RepairBatchItem(Base):
     """Позиция оборудования в акте передачи в сервисный центр."""
     __tablename__ = "repair_batch_items"
+    __table_args__ = (
+        UniqueConstraint('batch_id', 'asset_id', name='uq_repair_batch_items_batch_asset'),
+        CheckConstraint('cost >= 0', name='ck_repair_batch_items_cost'),
+        Index('ix_repair_batch_items_asset_id', 'asset_id'),
+    )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     batch_id = Column(Integer, ForeignKey("repair_batches.id", ondelete="CASCADE"), nullable=False)
@@ -345,8 +373,8 @@ class RepairBatchItem(Base):
     reported_issue = Column(Text, nullable=True)            # Заявленная неисправность ("Не включается", "Артефакты")
     diagnostic_result = Column(Text, nullable=True)         # Результат диагностики СЦ ("Сгорел блок питания")
     work_performed = Column(Text, nullable=True)            # Выполненные работы ("Замена конденсаторов БП")
-    cost = Column(Numeric(10, 2), default=0.0)              # Стоимость ремонта в тенге (₸)
-    status = Column(String(50), default="in_repair")        # "in_repair", "repaired", "unrepairable"
+    cost = Column(Numeric(10, 2), default=0.0, nullable=False)              # Стоимость ремонта в тенге (₸)
+    status = Column(String(50), default="in_repair", nullable=False)        # "in_repair", "repaired", "unrepairable"
     returned_at = Column(DateTime, nullable=True)           # Дата возврата из СЦ в IT-отдел
     installed_at = Column(DateTime, nullable=True)          # Дата установки на рабочее место
 
@@ -358,13 +386,18 @@ class RepairBatchItem(Base):
 class RepairPartUsed(Base):
     """Запасные части и компоненты, использованные при ремонте."""
     __tablename__ = "repair_parts_used"
+    __table_args__ = (
+        CheckConstraint('quantity > 0', name='ck_repair_parts_quantity'),
+        CheckConstraint('cost >= 0', name='ck_repair_parts_cost'),
+        Index('ix_repair_parts_used_repair_item_id', 'repair_item_id'),
+    )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     repair_item_id = Column(Integer, ForeignKey("repair_batch_items.id", ondelete="CASCADE"), nullable=False)
     part_name = Column(String(200), nullable=False)         # Напр. "Блок питания Chieftec 600W"
     serial_number = Column(String(100), nullable=True)
-    quantity = Column(Integer, default=1)
-    cost = Column(Numeric(10, 2), default=0.0)              # Стоимость в тенге (₸)
+    quantity = Column(Integer, default=1, nullable=False)
+    cost = Column(Numeric(10, 2), default=0.0, nullable=False)              # Стоимость в тенге (₸)
 
     repair_item = relationship("RepairBatchItem", back_populates="parts_used")
 
@@ -372,14 +405,20 @@ class RepairPartUsed(Base):
 class SparePartsWarehouse(Base):
     """Склад запасных частей и расходников филиала."""
     __tablename__ = "spare_parts_warehouse"
+    __table_args__ = (
+        CheckConstraint('quantity >= 0', name='ck_warehouse_quantity'),
+        CheckConstraint('min_threshold >= 0', name='ck_warehouse_threshold'),
+        CheckConstraint('unit_price >= 0', name='ck_warehouse_price'),
+        Index('ix_spare_parts_warehouse_branch_id', 'branch_id'),
+    )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     branch_id = Column(Integer, ForeignKey("branches.id", ondelete="CASCADE"), nullable=False)
     category = Column(String(100), nullable=False)          # Память, Диски, Блоки питания, Кабели
     item_name = Column(String(200), nullable=False)
-    quantity = Column(Integer, default=0)
-    min_threshold = Column(Integer, default=2)              # Порог предупреждения о малом остатке
-    unit_price = Column(Numeric(10, 2), default=0.0)        # Цена за единицу в тенге (₸)
+    quantity = Column(Integer, default=0, nullable=False)
+    min_threshold = Column(Integer, default=2, nullable=False)              # Порог предупреждения о малом остатке
+    unit_price = Column(Numeric(10, 2), default=0.0, nullable=False)        # Цена за единицу в тенге (₸)
 
     branch = relationship("Branch", back_populates="spare_parts")
 
@@ -405,13 +444,17 @@ class EquipmentHistoryLog(Base):
 class Floor(Base):
     """Поэтажный план филиала."""
     __tablename__ = "floors"
+    __table_args__ = (
+        CheckConstraint('scale_pixels_per_meter > 0', name='ck_floors_scale'),
+        Index('ix_floors_branch_id', 'branch_id'),
+    )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     branch_id = Column(Integer, ForeignKey("branches.id", ondelete="CASCADE"), nullable=False)
     floor_number = Column(Integer, default=1)
     name = Column(String(100), nullable=False)              # Напр. "Этаж 1", "Серверная зона"
     map_image_url = Column(String(500), nullable=True)      # URL или путь к загруженному фону SVG/PNG
-    scale_pixels_per_meter = Column(Float, default=20.0)    # Масштаб (пикселей на метр)
+    scale_pixels_per_meter = Column(Float, default=20.0, nullable=False)    # Масштаб (пикселей на метр)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     branch = relationship("Branch", back_populates="floors")
@@ -423,6 +466,9 @@ class Floor(Base):
 class Zone(Base):
     """Зона, кабинет или коридор на этаже (векторный полигон)."""
     __tablename__ = "zones"
+    __table_args__ = (
+        Index('ix_zones_floor_id', 'floor_id'),
+    )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     floor_id = Column(Integer, ForeignKey("floors.id", ondelete="CASCADE"), nullable=False)
@@ -441,12 +487,16 @@ class Zone(Base):
 class CablePath(Base):
     """Кабельные каналы и трассы по коридорам для поиска пути."""
     __tablename__ = "cable_paths"
+    __table_args__ = (
+        CheckConstraint('max_capacity >= 0', name='ck_cable_capacity'),
+        Index('ix_cable_paths_floor_id', 'floor_id'),
+    )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     floor_id = Column(Integer, ForeignKey("floors.id", ondelete="CASCADE"), nullable=False)
     name = Column(String(150), nullable=True)
     path_vectors = Column(JSON, nullable=False, default=list) # [{x: 0.1, y: 0.2}, {x: 0.5, y: 0.2}, ...]
-    max_capacity = Column(Integer, default=48)
+    max_capacity = Column(Integer, default=48, nullable=False)
 
     floor = relationship("Floor", back_populates="cable_paths")
 
@@ -454,17 +504,21 @@ class CablePath(Base):
 class NetworkSwitch(Base):
     """Сетевой коммутатор (расширение над Asset со спецификацией L2/L3 мониторинга)."""
     __tablename__ = "network_switches"
+    __table_args__ = (
+        CheckConstraint('mgmt_port BETWEEN 1 AND 65535', name='ck_switches_mgmt_port'),
+        CheckConstraint('total_ports > 0', name='ck_switches_total_ports'),
+    )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     asset_id = Column(Integer, ForeignKey("assets.id", ondelete="CASCADE"), nullable=False, unique=True)
     ip_address = Column(String(50), nullable=False)
     management_type = Column(String(50), default="snmp")    # "omada", "mikrotik", "hp", "tplink", "snmp", "ssh_cli"
-    mgmt_port = Column(Integer, default=161)
+    mgmt_port = Column(Integer, default=161, nullable=False)
     username = Column(String(100), nullable=True)
     password = Column(String(255), nullable=True)
     snmp_community = Column(String(100), default="")
     model = Column(String(150), nullable=True)
-    total_ports = Column(Integer, default=24)               # 24 или 48 портов
+    total_ports = Column(Integer, default=24, nullable=False)               # 24 или 48 портов
     extra_params = Column(JSON, nullable=True)              # {"site": "Default", "enable_pwd": "..."}
     last_poll_status = Column(String(20), default="never")  # "ok", "error", "never"
     last_poll_message = Column(String(500), nullable=True)
@@ -477,12 +531,19 @@ class NetworkSwitch(Base):
 class SwitchPort(Base):
     """Порт сетевого коммутатора с привязкой к кабинету и трекингом MAC."""
     __tablename__ = "switch_ports"
+    __table_args__ = (
+        UniqueConstraint('switch_id', 'port_number', name='uq_switch_ports_switch_port'),
+        CheckConstraint('port_number > 0', name='ck_switch_ports_number'),
+        CheckConstraint('vlan_id BETWEEN 1 AND 4094', name='ck_switch_ports_vlan'),
+        Index('ix_switch_ports_zone_id', 'zone_id'),
+        Index('ix_switch_ports_connected_asset_id', 'connected_asset_id'),
+    )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     switch_id = Column(Integer, ForeignKey("network_switches.id", ondelete="CASCADE"), nullable=False)
     port_number = Column(Integer, nullable=False)           # 1..48
     port_speed = Column(String(50), default="1Gbps")
-    vlan_id = Column(Integer, default=1)
+    vlan_id = Column(Integer, default=1, nullable=False)
     status = Column(String(20), default="down")             # "up", "down", "disabled"
     cabinet = Column(String(100), nullable=True)            # Привязка порта к кабинету (напр. "Кабинет 302")
     socket_label = Column(String(100), nullable=True)       # Маркировка розетки (напр. "Розетка 302-1")
@@ -496,3 +557,11 @@ class SwitchPort(Base):
     zone = relationship("Zone")
     connected_asset = relationship("Asset", foreign_keys=[connected_asset_id])
 
+
+
+class DocumentCounter(Base):
+    """Transactional numbering, global per document family; never reset on deletion."""
+    __tablename__ = "document_counters"
+    __table_args__ = (CheckConstraint("last_value >= 0", name="ck_document_counters_value"),)
+    scope = Column(String(32), primary_key=True)
+    last_value = Column(BigInteger, nullable=False)
