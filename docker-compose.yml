@@ -23,16 +23,6 @@ services:
       timeout: 5s
       retries: 3
 
-  secret-bootstrap:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    restart: "no"
-    user: "0:0"
-    command: ["sh", "/app/scripts/bootstrap_secrets.sh"]
-    volumes:
-      - app_secrets:/run/app-secrets
-
   # One-shot schema gate. Every normal Compose deployment applies reviewed Alembic
   # migrations before application processes are allowed to start.
   database-migrations:
@@ -44,8 +34,6 @@ services:
     environment:
       - DATABASE_URL=${DATABASE_URL:?Run ./scripts/init-env.sh first}
     depends_on:
-      secret-bootstrap:
-        condition: service_completed_successfully
       postgres-db:
         condition: service_healthy
 
@@ -59,11 +47,12 @@ services:
     volumes:
       - ./BD:/app/BD
       - ./secrets/ssh:/run/ssh:ro
-      - app_secrets:/run/app-secrets:ro
       - ./uploads:/app/LOCATION/app/static/uploads
     environment:
       - DATABASE_URL=${DATABASE_URL:?Run ./scripts/init-env.sh first}
       - REDIS_URL=${REDIS_URL:?Run ./scripts/init-env.sh first}
+      - SECRET_KEY=${SECRET_KEY:?Run ./scripts/init-env.sh first}
+      - NETWORK_CREDENTIAL_KEY=${NETWORK_CREDENTIAL_KEY:?Run ./scripts/init-env.sh first}
       - EVOLUTION_API_URL=http://whatsapp-gateway:8080
       - EVOLUTION_API_KEY=${EVOLUTION_API_KEY:?Run ./scripts/init-env.sh first}
       - PYTHONUNBUFFERED=1
@@ -75,8 +64,6 @@ services:
       - LDAP_BIND_PASSWORD=${LDAP_BIND_PASSWORD:-}
       - SSH_KNOWN_HOSTS=/run/ssh/known_hosts
     depends_on:
-      secret-bootstrap:
-        condition: service_completed_successfully
       database-migrations:
         condition: service_completed_successfully
       redis:
@@ -100,10 +87,11 @@ services:
     command: ["python", "-m", "SHARED.notification_worker"]
     volumes:
       - ./secrets/ssh:/run/ssh:ro
-      - app_secrets:/run/app-secrets:ro
     environment:
       - DATABASE_URL=${DATABASE_URL:?Run ./scripts/init-env.sh first}
       - REDIS_URL=${REDIS_URL:?Run ./scripts/init-env.sh first}
+      - SECRET_KEY=${SECRET_KEY:?Run ./scripts/init-env.sh first}
+      - NETWORK_CREDENTIAL_KEY=${NETWORK_CREDENTIAL_KEY:?Run ./scripts/init-env.sh first}
       - APP_ENV=${APP_ENV:-production}
       - NOTIFICATION_POLL_SECONDS=${NOTIFICATION_POLL_SECONDS:-5}
       - NOTIFICATION_BATCH_SIZE=${NOTIFICATION_BATCH_SIZE:-25}
@@ -175,7 +163,6 @@ services:
 volumes:
   postgres_data:
   redis_data:
-  app_secrets:
 
 
 networks:
