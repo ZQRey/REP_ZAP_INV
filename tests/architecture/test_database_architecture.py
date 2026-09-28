@@ -92,8 +92,8 @@ def test_compatibility_paths_export_identical_objects():
         for symbol in [*CONTRACT["legacy"], "CartridgeStatus"]:
             assert getattr(module, symbol) is getattr(models, symbol)
     assert SHARED.Base is database.Base
-    assert len(database.Base.registry.mappers) == 22
-    assert set(database.Base.metadata.tables) == {m["table"] for m in CONTRACT["shared"].values()}
+    assert len(database.Base.registry.mappers) == 23
+    assert set(database.Base.metadata.tables) == {m["table"] for m in CONTRACT["shared"].values()} | {"document_counters"}
     for mapper in database.Base.registry.mappers:
         assert mapper.class_.__module__ == "SHARED.models"
         for relation in mapper.relationships:
@@ -128,22 +128,34 @@ def describe(cls):
         "constraints": sorted([{"type": type(c).__name__, "name": c.name, "columns": [v.name for v in c.columns]} for c in table.constraints], key=lambda x: (x["type"], str(x["columns"]))) }
 
 
-def test_model_contract_only_documented_python_default_changes():
+def test_original_fields_and_relationships_preserved_by_integrity_migration():
     from SHARED import models
+    spec = json.loads((ROOT / "alembic/integrity_spec.json").read_text(encoding="utf-8"))
     for name, before in CONTRACT["shared"].items():
         expected = json.loads(json.dumps(before))
         if name == "AppUser": expected["columns"]["role"]["default"] = "user"
-        assert describe(getattr(models, name)) == expected, name
+        for col in spec.get(before["table"], {}).get("not_null", []):
+            expected["columns"][col]["nullable"] = False
+        actual = describe(getattr(models, name))
+        assert actual["columns"] == expected["columns"], name
+        assert actual["relationships"] == expected["relationships"], name
+        assert all(c in actual["constraints"] for c in expected["constraints"]), name
+        assert all(i in actual["indexes"] for i in expected["indexes"]), name
 
 
 @pytest.mark.parametrize("dialect_name", ["sqlite", "postgresql"])
-def test_ddl_is_unchanged(dialect_name):
+def test_frozen_baseline_ddl_matches_pre_migration_schema(dialect_name):
     from sqlalchemy.dialects import sqlite, postgresql
     from sqlalchemy.schema import CreateTable, CreateIndex
-    from SHARED.database import Base
+    from SHARED.migration_support import baseline_schema
+    metadata = baseline_schema()
     dialect = {"sqlite": sqlite, "postgresql": postgresql}[dialect_name].dialect()
     before = json.loads(Path(__file__).with_name("ddl_before.json").read_text(encoding="utf-8"))[dialect_name]
-    actual = {t.name: {"table": str(CreateTable(t).compile(dialect=dialect)), "indexes": sorted(str(CreateIndex(i).compile(dialect=dialect)) for i in t.indexes)} for t in Base.metadata.sorted_tables}
+    actual = {t.name: {"table": str(CreateTable(t).compile(dialect=dialect)), "indexes": sorted(str(CreateIndex(i).compile(dialect=dialect)) for i in t.indexes)} for t in metadata.sorted_tables}
+    # Autogenerate may order equivalent FK clauses differently.
+    for name in actual:
+        for value in (actual[name], before[name]):
+            value["table"] = sorted(line.strip().rstrip(",") for line in value["table"].splitlines() if line.strip())
     assert actual == before
 
 
@@ -252,23 +264,7 @@ def test_unified_startup_does_not_issue_schema_changes(client):
     assert not {"CREATE", "ALTER", "DROP", "DELETE", "TRUNCATE"}.intersection(statements)
 
 
-def test_legacy_branch_migration_is_explicit_and_preserves_rows(client):
-    from SHARED.database import Base, engine, init_db
-    from SHARED.models import Branch
-    from SHARED.migrations.add_branch_network_subnets import apply_migration
-    Base.metadata.drop_all(engine)  # isolated test DB only
-    with engine.begin() as conn:
-        conn.execute(text("CREATE TABLE branches (id INTEGER PRIMARY KEY, name VARCHAR(150) NOT NULL, code VARCHAR(50), address VARCHAR(255), it_office VARCHAR(255), wa_message_template TEXT, notes TEXT, created_at DATETIME)"))
-        conn.execute(text("INSERT INTO branches (id, name, notes) VALUES (42, 'Existing branch', 'preserve me')"))
-    with pytest.raises(RuntimeError, match="network_subnets"):
-        init_db()
-    assert inspect(engine).get_table_names() == ["branches"]
-    assert apply_migration(engine) is True
-    assert apply_migration(engine) is False
-    with engine.connect() as conn:
-        row = conn.execute(text("SELECT id, name, notes, network_subnets FROM branches")).one()
-        assert tuple(row) == (42, "Existing branch", "preserve me", None)
-    init_db()
-    from SHARED.database import SessionLocal
-    with SessionLocal() as db:
-        assert db.get(Branch, 42).notes == "preserve me"
+def test_retired_schema_mutator_cannot_change_database():
+    from SHARED.migrations.add_branch_network_subnets import main
+    with pytest.raises(SystemExit, match="Alembic"):
+        main()
