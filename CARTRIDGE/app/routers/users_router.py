@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from SHARED.database import get_db
 from SHARED.models import ADUser, AppUser
-from app.schemas import ADUserResponse
+from CARTRIDGE.app.schemas import ADUserResponse
 
 router = APIRouter(prefix="/api/users", tags=["Users"])
 
