@@ -1,5 +1,7 @@
 from SHARED.authentication import require_authenticated_user
 from typing import Dict, Any
+import os
+import redis
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session, joinedload
 
@@ -104,6 +106,12 @@ def notify_ready_cartridges(
         })
 
     db.commit()
+    if queued_count:
+        try:
+            redis.Redis.from_url(os.environ["REDIS_URL"]).lpush("notifications:wakeup", str(queued_count))
+        except Exception:
+            # PostgreSQL outbox remains authoritative; worker polling will still deliver.
+            pass
     return {
         "success": failed_count == 0,
         "total": len(cartridges),
