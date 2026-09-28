@@ -16,3 +16,5 @@ paramiko>=3.4.0
 redis>=5.0.0,<9
 
 alembic>=1.13,<2
+
+cryptography>=43.0,<47
