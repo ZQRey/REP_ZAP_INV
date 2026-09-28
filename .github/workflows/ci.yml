@@ -81,8 +81,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Validate zero-config Compose interpolation and dependency graph
-        run: env -i PATH="$PATH" HOME="$HOME" docker compose config --quiet
+      - name: Initialize deployment environment
+        run: bash scripts/init-env.sh
+      - name: Validate Compose interpolation and dependency graph
+        run: docker compose config --quiet
       - name: Build production Python services
         run: docker compose build database-migrations unified-server notification-worker
       - name: Verify production imports in built image
