@@ -278,8 +278,29 @@ Constraints: `[{"type": "ForeignKeyConstraint", "name": null, "columns": ["cartr
 
 ## Legacy-only database: единственная условная schema migration
 
-После backup/проверки восстановления: `python -m SHARED.migrations.add_branch_network_subnets --check`. Если отсутствует колонка, `--apply` добавит `branches.network_subnets JSON` с NULL для прежних строк. Повторный запуск — no-op. Никаких rename/drop/rewrite enum/backfill. Для уже актуальной unified schema миграция не требуется. Эта команда не вызывается автоматически startup и не выполнялась над production.
+После backup/проверки восстановления и остановки приложения: `python -m SHARED.migrations.add_branch_network_subnets --check`. Если отсутствует колонка, `--apply` добавит `branches.network_subnets JSON` с NULL для прежних строк. Повторный последовательный запуск — no-op; параллельный запуск не поддерживается. Никаких rename/drop/rewrite enum/backfill. Для уже актуальной unified schema миграция не требуется. Эта команда не вызывается автоматически startup и не выполнялась над production.
 
 ## Замечание об административных scripts
 
-После объединения registry `Base.metadata.drop_all()` охватывает все 22 таблицы: его нельзя применять как Cartridge-only reset. Существующие ручные тесты запускаются только на отдельной временной DB. Reset script не запускается в этой работе; его database target должен происходить из canonical engine, а production reset будет запрещён, чтобы смена imports не расширила опасное поведение.
+После объединения registry `Base.metadata.drop_all()` охватывает все 22 таблицы: его нельзя применять как Cartridge-only reset. Существующие ручные тесты запускаются только на отдельной временной DB. Reset script не запускался в этой работе; его database target берётся из canonical engine. Reset разрешён только при APP_ENV=test и явно заданной SQLite DATABASE_URL; production reset запрещён.
+
+## Реализация и проверки
+
+- 22 модели зарегистрированы в одной registry; compatibility imports возвращают идентичные объекты Base, engine, SessionLocal, get_db, моделей и enum. Новых таблиц или переименований моделей нет.
+- Единственная сессия создаётся в `SHARED.database.session_scope`; FastAPI dependency, startup seeding, provisioning и административные команды используют этот lifecycle. Business commit остаётся явным, при исключении выполняется rollback, при выходе — close. Ручные исторические тесты могут открывать canonical SessionLocal непосредственно.
+- Удаление филиала через Cartridge возвращает 409, если у филиала есть оборудование, этажи, ремонты или запчасти. Это предотвращает новый каскад удаления данных других модулей после объединения registry. Тест проверяет сохранность филиала, этажа, зоны и оборудования.
+- 25 architecture tests плюс 43 security regressions: identity/relationships, AST-защита от второго Base/engine/factory, разные порядки imports в новых процессах, общая request session, rollback, прежняя schema и явная legacy migration без потери строк.
+- SQLite integration tests выполняются в отдельной временной БД. DDL всех 22 моделей и indexes для SQLite и PostgreSQL сравнивается с зафиксированным до изменений contract. Реальный PostgreSQL server и deployed database не использовались; проверка физической схемы перед внедрением остаётся обязательной.
+- Существующий CI запускает весь `tests/`, включая новые architecture tests. Старые ручные verification scripts не запускаются в CI.
+
+Итоговый поиск `declarative_base`, `DeclarativeBase`, `create_engine`, `sessionmaker`, `Base =`:
+
+| Executable initialization | Единственное место |
+|---|---|
+| `create_engine(...)` | `SHARED/database.py:27` |
+| `sessionmaker(...)` | `SHARED/database.py:28` |
+| `Base = declarative_base()` | `SHARED/database.py:30` |
+| FastAPI `get_db` | `SHARED/database.py:46` |
+| Configuration `DATABASE_URL` | `SHARED/security_config.py:28–30` |
+
+Другие совпадения — imports в том же модуле, документация и строковые fixtures/AST-проверки architecture tests. Исполняемых дополнительных Base/engine/session factory нет. Legacy startup ALTER statements остаются только в прежней canonical `SHARED.database.init_db`; их перевод в полноценные versioned migrations — отдельный этап, не выполненный косметически в этом refactor.
