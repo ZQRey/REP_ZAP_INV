@@ -33,7 +33,6 @@ services:
     command: ["alembic", "upgrade", "head"]
     environment:
       - DATABASE_URL=${DATABASE_URL:?Set the application database URL}
-      - APP_ENV=${APP_ENV:-production}
     depends_on:
       postgres-db:
         condition: service_healthy
