@@ -79,21 +79,10 @@ jobs:
   docker:
     name: Production Compose validation
     runs-on: ubuntu-latest
-    env:
-      APP_ENV: production
-      SECRET_KEY: ci-only-secret-key-that-is-long-enough-for-validation
-      DATABASE_URL: postgresql://app_user:ci-db-password@postgres-db:5432/it_management
-      POSTGRES_PASSWORD: ci-db-password
-      REDIS_PASSWORD: ci-redis-password
-      REDIS_URL: redis://:ci-redis-password@redis:6379/0
-      EVOLUTION_API_KEY: ci-evolution-key
-      EVOLUTION_DATABASE_URL: postgresql://app_user:ci-db-password@postgres-db:5432/it_management
-      EVOLUTION_REDIS_URL: redis://:ci-redis-password@redis:6379/1
-      NETWORK_CREDENTIAL_KEY: ci-network-credential-key-change-me
     steps:
       - uses: actions/checkout@v4
-      - name: Validate Compose interpolation and dependency graph
-        run: docker compose config --quiet
+      - name: Validate zero-config Compose interpolation and dependency graph
+        run: env -i PATH="$PATH" HOME="$HOME" docker compose config --quiet
       - name: Build production Python services
         run: docker compose build database-migrations unified-server notification-worker
       - name: Verify production imports in built image
