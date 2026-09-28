@@ -246,5 +246,8 @@ def test_no_schema_mutation_outside_migrations_or_test_fixtures():
             assert "CREATE TABLE" not in source, path
             tree = ast.parse(source)
             assert not any(isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and n.func.attr in {"create_all", "drop_all", "add_column"} for n in ast.walk(tree)), path
-    for path in (ROOT / "Dockerfile", ROOT / "CARTRIDGE/Dockerfile", ROOT / "docker-compose.yml"):
+    for path in (ROOT / "Dockerfile", ROOT / "CARTRIDGE/Dockerfile"):
         assert "alembic upgrade" not in path.read_text(encoding="utf-8")
+    compose = (ROOT / "docker-compose.yml").read_text(encoding="utf-8")
+    assert 'command: ["alembic", "upgrade", "head"]' in compose
+    assert "service_completed_successfully" in compose
