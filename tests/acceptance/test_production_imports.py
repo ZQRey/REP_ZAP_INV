@@ -7,6 +7,11 @@ def test_shared_models_import_cleanly():
     assert hasattr(models.Branch, "batches")
 
 
+def test_settings_service_imports_cleanly():
+    from CARTRIDGE.app.services.settings_service import SettingsService
+    assert callable(SettingsService.get_all)
+
+
 def test_whatsapp_service_imports_cleanly():
     from CARTRIDGE.app.services.whatsapp_service import WhatsAppService
     assert callable(WhatsAppService.clean_phone)
