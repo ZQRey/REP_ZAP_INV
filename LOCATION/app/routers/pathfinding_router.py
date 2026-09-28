@@ -1,10 +1,10 @@
+from SHARED.authentication import require_authenticated_user
 from typing import Optional
 from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
 
 from SHARED.database import get_db
 from SHARED.models import Floor, Zone, Asset, NetworkSwitch, AppUser
-from SHARED.auth_service import get_current_user
 from LOCATION.app.schemas import CableTraceResponse
 from LOCATION.app.services.pathfinding_service import PathfindingService
 
@@ -16,7 +16,7 @@ def trace_cable_path(
     from_switch: int = Query(...),
     to_asset: int = Query(...),
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(get_current_user)
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """
     Трассировка кабельного соединения между коммутатором и конечным устройством.
@@ -39,7 +39,7 @@ def trace_cable_path(
 def get_location_stats(
     branch_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(get_current_user)
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """Сводная статистика интерактивной карты филиала."""
     floors_q = db.query(Floor)
@@ -60,3 +60,4 @@ def get_location_stats(
         "assets_placed": placed_assets,
         "switches": switches_count
     }
+

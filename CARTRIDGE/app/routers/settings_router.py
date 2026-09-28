@@ -1,3 +1,4 @@
+from SHARED.authentication import require_authenticated_user
 from SHARED.settings_security import public_settings
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -8,12 +9,6 @@ from app.schemas import SettingsDict, LdapTestRequest, WhatsAppTestRequest
 from app.services.settings_service import SettingsService
 from app.services.ldap_service import LDAPService
 from app.services.whatsapp_service import WhatsAppService
-from app.services.auth_service import (
-    get_current_user,
-    require_superadmin,
-    require_admin,
-    require_operator
-)
 
 router = APIRouter(prefix="/api/settings", tags=["Settings"])
 
@@ -21,7 +16,7 @@ router = APIRouter(prefix="/api/settings", tags=["Settings"])
 @router.get("")
 def get_settings(
     db: Session = Depends(get_db),
-    current_user: Optional[AppUser] = Depends(get_current_user)
+    current_user: Optional[AppUser] = Depends(require_authenticated_user)
 ):
     """Получить текущие настройки системы (пароль AD и WA API Key скрыты для не-суперадминов)."""
     settings = SettingsService.get_all(db)
@@ -33,7 +28,7 @@ def get_settings(
 def update_settings(
     payload: SettingsDict,
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_superadmin)
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """Обновить настройки системы в БД (доступно только Супер администратору)."""
     cleaned = dict(payload.settings)
@@ -50,7 +45,7 @@ def update_settings(
 def test_ldap_connection(
     payload: LdapTestRequest,
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_superadmin)
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """Проверить подключение к Active Directory / LDAP (только Супер администратор)."""
     result = LDAPService.test_connection(
@@ -67,7 +62,7 @@ def test_ldap_connection(
 @router.post("/ad-sync")
 def sync_ad_users(
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_superadmin)
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """Запустить синхронизацию пользователей из AD (только Супер администратор)."""
     result = LDAPService.sync_users(db)
@@ -79,7 +74,7 @@ async def get_whatsapp_status(
     instance_name: Optional[str] = None,
     user_id: Optional[int] = None,
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_operator)
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """Проверить статус подключения инстанса WhatsApp в Evolution API."""
     settings = SettingsService.get_all(db)
@@ -104,7 +99,7 @@ async def get_whatsapp_status(
 @router.get("/wa/operators-status")
 async def get_operators_wa_status(
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_superadmin)
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """Получить статус подключения WhatsApp для всех активных операторов (только Супер администратор)."""
     return await WhatsAppService.get_all_operators_status(db)
@@ -116,7 +111,7 @@ async def get_whatsapp_qr(
     user_id: Optional[int] = None,
     force_recreate: bool = False,
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_operator)
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """Получить или сгенерировать QR-код для авторизации номера в WhatsApp."""
     if current_user.role != "superadmin":
@@ -152,7 +147,7 @@ async def reset_whatsapp_instance(
     instance_name: Optional[str] = None,
     user_id: Optional[int] = None,
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_operator)
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """Сбросить инстанс WhatsApp в Evolution API и принудительно сгенерировать новый QR-код."""
     if current_user.role != "superadmin":
@@ -186,7 +181,7 @@ async def reset_whatsapp_instance(
 async def send_whatsapp_test(
     payload: WhatsAppTestRequest,
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_operator)
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """Отправить тестовое сообщение в WhatsApp."""
     settings = SettingsService.get_all(db)

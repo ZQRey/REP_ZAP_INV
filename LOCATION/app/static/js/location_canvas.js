@@ -563,8 +563,16 @@ write`,
             // 0. Фоновое изображение поэтажного плана (если загружено)
             if (this.currentFloor.map_image_url) {
                 const mapImg = new Image();
-                mapImg.src = this.currentFloor.map_image_url;
+                const floorId = this.currentFloor.id;
+                fetch(`/api/v1/location/floors/${floorId}/map`, { headers: this.getAuthHeaders() })
+                    .then(response => { if (!response.ok) throw new Error('Map access denied'); return response.blob(); })
+                    .then(blob => {
+                        if (this.currentFloor?.id !== floorId) return;
+                        mapImg.src = URL.createObjectURL(blob);
+                    }).catch(() => { /* Missing or inaccessible maps are not rendered. */ });
                 mapImg.onload = () => {
+                    URL.revokeObjectURL(mapImg.src);
+                    if (this.currentFloor?.id !== floorId) return;
                     const konvaImg = new Konva.Image({
                         image: mapImg,
                         x: 0,

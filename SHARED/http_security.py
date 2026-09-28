@@ -21,6 +21,6 @@ def install(app):
         response.headers["Referrer-Policy"] = "no-referrer"
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
-        if "/api/" in request.url.path:
+        if "/api/" in request.url.path or request.headers.get("authorization"):
             response.headers["Cache-Control"] = "no-store"
         return response

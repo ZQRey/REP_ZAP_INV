@@ -1,3 +1,4 @@
+from SHARED.authentication import require_authenticated_user
 from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, joinedload
@@ -14,7 +15,6 @@ from SHARED.models import (
     SwitchPort,
     NetworkSwitch
 )
-from SHARED.auth_service import get_current_user, require_role
 from LOCATION.app.schemas import (
     PlacedAssetResponse,
     AssetPositionUpdate,
@@ -112,7 +112,7 @@ def enrich_assets_with_network_and_locations(db: Session, assets: List[Asset]) -
 def get_floor_placed_assets(
     floor_id: int,
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(get_current_user)
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """Список оборудования, размещенного на указанном поэтажном плане."""
     assets = db.query(Asset).options(
@@ -132,7 +132,7 @@ def get_all_placed_assets(
     floor_id: Optional[int] = Query(None),
     search: Optional[str] = Query(None),
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(get_current_user)
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """Список всех размещенных на карте объектов для филиала/этажа с информацией о подключении к сети L2."""
     query = db.query(Asset).options(
@@ -170,7 +170,7 @@ def get_unplaced_assets_pool(
     branch_id: Optional[int] = Query(None),
     search: Optional[str] = Query(None),
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(get_current_user)
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """
     Пул неразмещенных активов (компьютеры из AD, принтеры, коммутаторы),
@@ -207,7 +207,7 @@ def update_asset_position(
     asset_id: int,
     payload: AssetPositionUpdate,
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_role(["superadmin", "admin", "technician"]))
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """Обновление нормализованных координат (0.0-1.0) и привязки актива к комнате/этажу."""
     asset = db.query(Asset).filter(Asset.id == asset_id).first()
@@ -234,7 +234,7 @@ def assign_cabinet_and_place(
     asset_id: int,
     payload: AssignCabinetRequest,
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_role(["superadmin", "admin", "technician", "operator"]))
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """Назначение кабинета и автоматическое позиционирование актива в зоне кабинета."""
     asset = db.query(Asset).filter(Asset.id == asset_id).first()
@@ -282,7 +282,7 @@ def assign_cabinet_and_place(
 def unplace_asset(
     asset_id: int,
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_role(["superadmin", "admin", "technician"]))
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """Снять актив с поэтажного плана (переместить в неразмещенные)."""
     asset = db.query(Asset).filter(Asset.id == asset_id).first()
@@ -301,7 +301,7 @@ def unplace_asset(
 def create_and_place_asset(
     payload: AssetCreateAndPlace,
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_role(["superadmin", "admin", "technician", "operator"]))
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """
     Создание нового актива напрямую на интерактивной карте
@@ -363,3 +363,4 @@ def create_and_place_asset(
         ip_address=asset.ip_address,
         mac_address=asset.mac_address
     )
+

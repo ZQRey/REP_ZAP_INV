@@ -1,3 +1,4 @@
+from SHARED.authentication import require_authenticated_user
 from typing import Optional
 from urllib.parse import quote
 from datetime import datetime
@@ -7,7 +8,6 @@ from sqlalchemy.orm import Session
 
 from SHARED.database import get_db
 from SHARED.models import AppUser
-from app.services.auth_service import require_operator
 from app.services.settings_service import SettingsService
 from app.services.report_service import ReportService
 
@@ -23,7 +23,7 @@ def get_report_data(
     date_from: Optional[str] = Query(None, description="Дата начала YYYY-MM-DD для интервала"),
     date_to: Optional[str] = Query(None, description="Дата конца YYYY-MM-DD для интервала"),
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_operator)
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """
     Получить структурированные данные отчета в формате JSON для отображения в веб-интерфейсе.
@@ -56,7 +56,7 @@ def export_report_excel(
     date_from: Optional[str] = Query(None, description="Дата начала"),
     date_to: Optional[str] = Query(None, description="Дата конца"),
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_operator)
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """
     Сформировать и скачать отчет в виде красиво оформленного файла Excel (.xlsx).
@@ -107,7 +107,7 @@ def export_report_pdf(
     date_from: Optional[str] = Query(None, description="Дата начала"),
     date_to: Optional[str] = Query(None, description="Дата конца"),
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_operator)
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """
     Сформировать и скачать отчет в виде красиво оформленного файла PDF (.pdf).

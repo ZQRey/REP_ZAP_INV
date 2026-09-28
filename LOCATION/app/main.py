@@ -1,3 +1,4 @@
+from SHARED.policies.static import LocationStaticFiles
 from SHARED.auth_service import require_business_auth
 from SHARED.schema_management import schema_lifespan
 from SHARED.security_config import CORS_ORIGINS
@@ -40,7 +41,7 @@ app.include_router(assets_placement_router.router)
 app.include_router(switches_router.router)
 app.include_router(pathfinding_router.router)
 
-app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="location-static")
+app.mount("/static", LocationStaticFiles(directory=str(STATIC_DIR)), name="location-static")
 
 
 @app.get("/health")

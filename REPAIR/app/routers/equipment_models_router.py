@@ -1,3 +1,4 @@
+from SHARED.authentication import require_authenticated_user
 from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
@@ -5,7 +6,6 @@ from sqlalchemy import func, or_
 
 from SHARED.database import get_db
 from SHARED.models import EquipmentModel, Asset, AppUser
-from SHARED.auth_service import get_current_user, require_role
 from REPAIR.app.schemas import (
     EquipmentModelResponse,
     EquipmentModelCreate,
@@ -22,7 +22,7 @@ def list_equipment_models(
     category: Optional[str] = Query(None),
     search: Optional[str] = Query(None),
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(get_current_user)
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """
     Справочник моделей компьютерного и сетевого оборудования.
@@ -87,7 +87,7 @@ def list_equipment_models(
 @router.post("/sync-from-ad")
 def sync_models_from_active_directory(
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_role(["superadmin", "admin", "technician"]))
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """
     Автоматическое формирование и пополнение справочника моделей на основе
@@ -102,7 +102,7 @@ def suggest_model_specs(
     category: Optional[str] = Query(None),
     vendor: Optional[str] = Query(None),
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(get_current_user)
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """
     Умный парсинг названия модели:
@@ -138,7 +138,7 @@ def suggest_model_specs(
 def create_equipment_model(
     payload: EquipmentModelCreate,
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_role(["superadmin", "admin", "technician"]))
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """Добавить новую модель в справочник."""
     name_clean = payload.name.strip()
@@ -191,7 +191,7 @@ def update_equipment_model(
     model_id: int,
     payload: EquipmentModelUpdate,
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_role(["superadmin", "admin", "technician"]))
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """Редактировать модель в справочнике."""
     model_obj = db.query(EquipmentModel).filter(EquipmentModel.id == model_id).first()
@@ -243,7 +243,7 @@ def update_equipment_model(
 def delete_equipment_model(
     model_id: int,
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_role(["superadmin", "admin", "technician"]))
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """Удалить модель из справочника."""
     model_obj = db.query(EquipmentModel).filter(EquipmentModel.id == model_id).first()
@@ -253,3 +253,4 @@ def delete_equipment_model(
     db.delete(model_obj)
     db.commit()
     return {"success": True, "message": "Модель успешно удалена"}
+

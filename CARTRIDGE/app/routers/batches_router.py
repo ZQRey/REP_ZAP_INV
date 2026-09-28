@@ -1,3 +1,4 @@
+from SHARED.authentication import require_authenticated_user
 from SHARED.document_numbers import next_document_number
 from datetime import datetime
 from typing import List, Optional
@@ -8,7 +9,6 @@ from SHARED.database import get_db
 from SHARED.models import Batch, BatchItem, Cartridge, CartridgeStatus, HistoryLog, Branch, AppUser
 from app.schemas import BatchResponse, BatchCreateRequest
 from app.services.settings_service import SettingsService
-from app.services.auth_service import require_operator
 
 router = APIRouter(prefix="/api/batches", tags=["Batches"])
 
@@ -19,7 +19,7 @@ def get_batches(
     limit: int = Query(50, le=200),
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_operator)
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """Список актов передачи картриджей поставщикам (только операторы и администраторы)."""
     query = db.query(Batch).options(
@@ -42,7 +42,7 @@ def get_batches(
 def get_batch(
     batch_id: int,
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_operator)
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """Получить подробную информацию об акте передачи."""
     batch = db.query(Batch).options(
@@ -63,7 +63,7 @@ def get_batch(
 def create_batch(
     payload: BatchCreateRequest,
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_operator)
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """
     ЭТАП 2: ПЕРЕДАЧА ПОСТАВЩИКУ (ФОРМИРОВАНИЕ АКТА)

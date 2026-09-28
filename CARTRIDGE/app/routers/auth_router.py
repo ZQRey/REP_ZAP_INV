@@ -1,10 +1,11 @@
+from SHARED.authentication import require_authenticated_user
 from fastapi import APIRouter, Request, Depends, HTTPException, status
 from sqlalchemy.orm import Session, joinedload
 
 from SHARED.database import get_db
 from SHARED.models import AppUser
 from app.schemas import LoginRequest, LoginResponse, AppUserResponse
-from app.services.auth_service import AuthService, get_current_user
+from app.services.auth_service import AuthService
 
 router = APIRouter(prefix="/api/auth", tags=["Auth"])
 
@@ -48,7 +49,7 @@ def login(payload: LoginRequest, request: Request, db: Session = Depends(get_db)
 
 
 @router.get("/me", response_model=AppUserResponse)
-def get_current_user_profile(user: AppUser = Depends(get_current_user), db: Session = Depends(get_db)):
+def get_current_user_profile(user: AppUser = Depends(require_authenticated_user), db: Session = Depends(get_db)):
     """Получить профиль текущего авторизованного пользователя."""
     user_with_branch = db.query(AppUser).options(
         joinedload(AppUser.branch)

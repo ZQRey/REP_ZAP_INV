@@ -1,3 +1,4 @@
+from SHARED.authentication import require_authenticated_user
 from typing import Optional
 from urllib.parse import quote
 from datetime import datetime
@@ -7,7 +8,6 @@ from sqlalchemy.orm import Session
 
 from SHARED.database import get_db
 from SHARED.models import AppUser, SystemSetting
-from SHARED.auth_service import get_current_user, require_role
 from REPAIR.app.services.repair_report_service import RepairReportService
 
 router = APIRouter(prefix="/api/v1/repair/reports", tags=["Repair Reports"])
@@ -25,7 +25,7 @@ def get_repair_report_json(
     branch_id: Optional[int] = Query(None),
     search: Optional[str] = Query(None),
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(get_current_user)
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """
     Получение аналитических данных и сводки по оборудованию в формате JSON.
@@ -63,7 +63,7 @@ def export_repair_report_excel(
     branch_id: Optional[int] = Query(None),
     search: Optional[str] = Query(None),
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(get_current_user)
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """
     Сформировать и скачать стилизованный отчет по технике и ремонтам в формате Excel (.xlsx).

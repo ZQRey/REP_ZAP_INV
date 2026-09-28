@@ -1,3 +1,4 @@
+from SHARED.authentication import require_authenticated_user
 import logging
 from typing import Optional, List
 from datetime import datetime
@@ -20,7 +21,6 @@ from SHARED.models import (
     RepairBatchItem,
     RepairPartUsed
 )
-from SHARED.auth_service import get_current_user, require_role
 
 logger = logging.getLogger("REPAIR.equipment_router")
 from REPAIR.app.schemas import (
@@ -178,24 +178,9 @@ def list_equipment(
     type_filter: Optional[str] = Query(None),
     search: Optional[str] = Query(None),
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(get_current_user)
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """Список оборудования с фильтрацией по филиалам, статусу, типу и состоянию."""
-    # Авто-исправление активов без филиала (если есть филиал по умолчанию)
-    try:
-        orphan_count = db.query(Asset).filter(Asset.branch_id.is_(None)).count()
-        if orphan_count > 0:
-            target_b = branch_id if isinstance(branch_id, int) else (current_user.branch_id if isinstance(current_user.branch_id, int) else None)
-            if not target_b:
-                first_branch = db.query(Branch).first()
-                if first_branch:
-                    target_b = first_branch.id
-            if target_b:
-                db.query(Asset).filter(Asset.branch_id.is_(None)).update({Asset.branch_id: target_b}, synchronize_session=False)
-                db.commit()
-    except Exception as heal_err:
-        logger.warning(f"Branch auto-heal warning: {heal_err}")
-
     query = db.query(Asset).options(
         joinedload(Asset.branch),
         joinedload(Asset.responsible_ad_user),
@@ -255,7 +240,7 @@ def list_equipment(
 def find_by_inv_or_serial(
     query_str: str = Query(..., min_length=1),
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(get_current_user)
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """
     Интеллектуальный поиск оборудования:
@@ -320,34 +305,6 @@ def find_by_inv_or_serial(
             "message": f"Оборудование по запросу '{raw_term}' не найдено в реестре."
         }
 
-    if best_match and not best_match.current_user_id:
-        # Попытка интеллектуально определить ответственного сотрудника AD:
-        detected_user = None
-        if best_match.cabinet:
-            cab_clean = re.sub(r'^(?:Кабинет|Каб\.?|Отдел:?)\s*', '', best_match.cabinet, flags=re.I).strip()
-            if cab_clean:
-                cab_users = db.query(ADUser).filter(ADUser.cabinet.ilike(f"%{cab_clean}%")).all()
-                if len(cab_users) == 1:
-                    detected_user = cab_users[0]
-        if not detected_user and best_match.notes:
-            for u in db.query(ADUser).all():
-                if (u.display_name and len(u.display_name) > 3 and u.display_name.lower() in best_match.notes.lower()) or \
-                   (u.samaccountname and len(u.samaccountname) > 2 and u.samaccountname.lower() in best_match.notes.lower()):
-                    detected_user = u
-                    break
-        if not detected_user and best_match.hostname:
-            for u in db.query(ADUser).all():
-                if u.samaccountname and len(u.samaccountname) > 2 and u.samaccountname.lower() in best_match.hostname.lower():
-                    detected_user = u
-                    break
-        if detected_user:
-            best_match.current_user_id = detected_user.samaccountname
-            best_match.responsible_ad_user = detected_user
-            try:
-                db.commit()
-            except Exception:
-                db.rollback()
-
     # Формируем список вариантов/подсказок
     suggestions = []
     seen_ids = set()
@@ -385,7 +342,7 @@ def get_repair_ad_users(
     q: Optional[str] = Query(None),
     limit: int = Query(1000, le=10000),
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(get_current_user)
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """Список синхронизированных пользователей Active Directory."""
     query = db.query(ADUser)
@@ -417,7 +374,7 @@ def get_repair_ad_users(
 def get_equipment_detail(
     asset_id: int,
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(get_current_user)
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """Детальная карточка оборудования с историей операций."""
     asset = db.query(Asset).options(
@@ -470,7 +427,7 @@ def get_equipment_detail(
 def accept_broken_equipment(
     payload: EquipmentAcceptanceRequest,
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_role(["superadmin", "admin", "technician", "operator"]))
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """
     ЭТАП 1: Приемка неисправной техники в IT-отдел.
@@ -498,7 +455,7 @@ def accept_broken_equipment(
 def create_manual_equipment(
     payload: EquipmentCreate,
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_role(["superadmin", "admin", "technician", "operator"]))
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """Ручной ввод техники (мониторы, принтеры, ИБП и сетевое оборудование)."""
     inv = payload.inventory_number.strip()
@@ -546,7 +503,7 @@ def update_equipment(
     asset_id: int,
     payload: EquipmentUpdate,
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_role(["superadmin", "admin", "technician", "operator"]))
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """Обновление параметров и состояния оборудования."""
     asset = db.query(Asset).filter(Asset.id == asset_id).first()
@@ -612,7 +569,7 @@ def update_equipment(
 @router.post("/test-switch-connection", response_model=SwitchTestResponse)
 def test_switch_connection(
     payload: SwitchConfigSchema,
-    current_user: AppUser = Depends(require_role(["superadmin", "admin", "technician"]))
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     result = SwitchIntegrationService.test_connection(
         ip_address=payload.ip_address, management_type=payload.management_type,
@@ -628,7 +585,7 @@ def test_switch_connection(
 def sync_switch_equipment(
     asset_id: int,
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_role(["superadmin", "admin", "technician"]))
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """Принудительный опрос коммутатора: считывание таблицы MAC и роуминга устройств на портах."""
     asset = db.query(Asset).options(joinedload(Asset.switch_device)).filter(Asset.id == asset_id).first()
@@ -658,7 +615,7 @@ def sync_switch_equipment(
 def delete_equipment(
     asset_id: int,
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_role(["superadmin", "admin", "technician"]))
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """Списание или удаление единицы техники с предварительной очисткой зависимостей."""
     try:
@@ -668,29 +625,12 @@ def delete_equipment(
 
         inv_num = asset.inventory_number
 
-        # 1. Отвязать порт сетевого коммутатора, если этот актив был подключен к порту
-        try:
-            from sqlalchemy import text
-            db.execute(
-                text("UPDATE switch_ports SET connected_asset_id = NULL WHERE connected_asset_id = :aid"),
-                {"aid": asset_id}
-            )
-        except Exception as p_err:
-            logger.warning(f"switch_ports unbind skipped: {p_err}")
-
-        # 2. Если этот актив сам является коммутатором, удалить его порты и запись в network_switches
-        try:
-            from sqlalchemy import text
-            db.execute(
-                text("DELETE FROM switch_ports WHERE switch_id IN (SELECT id FROM network_switches WHERE asset_id = :aid)"),
-                {"aid": asset_id}
-            )
-            db.execute(
-                text("DELETE FROM network_switches WHERE asset_id = :aid"),
-                {"aid": asset_id}
-            )
-        except Exception as sw_err:
-            logger.warning(f"network_switches delete skipped: {sw_err}")
+        db.query(SwitchPort).filter(SwitchPort.connected_asset_id == asset_id).update(
+            {SwitchPort.connected_asset_id: None}, synchronize_session=False)
+        switches = db.query(NetworkSwitch).filter(NetworkSwitch.asset_id == asset_id).all()
+        for switch in switches:
+            db.query(SwitchPort).filter(SwitchPort.switch_id == switch.id).delete(synchronize_session=False)
+            db.delete(switch)
 
         # 3. Удалить связанные записи в актах ремонта
         batch_items = db.query(RepairBatchItem).filter(RepairBatchItem.asset_id == asset_id).all()
@@ -721,7 +661,7 @@ def delete_equipment(
 def return_equipment_from_sc(
     payload: ReturnFromSCRequest,
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_role(["superadmin", "admin", "technician", "operator"]))
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """
     ЭТАП 3: Принятие техники из СЦ в IT-отдел.
@@ -776,7 +716,7 @@ def return_equipment_from_sc(
 def install_equipment_at_workplace(
     payload: InstallAtWorkplaceRequest,
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_role(["superadmin", "admin", "technician", "operator"]))
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """
     ЭТАП 4: Установка техники на рабочее место.

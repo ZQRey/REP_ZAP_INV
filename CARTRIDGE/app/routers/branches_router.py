@@ -1,3 +1,4 @@
+from SHARED.authentication import require_authenticated_user
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -5,7 +6,6 @@ from sqlalchemy.orm import Session
 from SHARED.database import get_db
 from SHARED.models import Branch, Cartridge, AppUser, Asset, Floor, RepairBatch, SparePartsWarehouse
 from app.schemas import BranchCreate, BranchUpdate, BranchResponse
-from app.services.auth_service import require_admin
 
 router = APIRouter(prefix="/api/branches", tags=["Branches"])
 
@@ -20,7 +20,7 @@ def get_branches(db: Session = Depends(get_db)):
 def create_branch(
     payload: BranchCreate,
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_admin)
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """Создать новый филиал (Администратор или Супер администратор)."""
     name = payload.name.strip()
@@ -47,7 +47,7 @@ def update_branch(
     branch_id: int,
     payload: BranchUpdate,
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_admin)
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """Обновить параметры филиала."""
     branch = db.query(Branch).filter(Branch.id == branch_id).first()
@@ -81,7 +81,7 @@ def update_branch(
 def delete_branch(
     branch_id: int,
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_admin)
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """Удалить филиал."""
     branch = db.query(Branch).filter(Branch.id == branch_id).first()

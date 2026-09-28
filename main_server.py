@@ -1,3 +1,4 @@
+from SHARED.policies.static import LocationStaticFiles
 from SHARED.auth_service import require_business_auth
 from SHARED.security_config import CORS_ORIGINS
 import os
@@ -191,7 +192,7 @@ LOCATION_STATIC_DIR = BASE_DIR / "LOCATION" / "app" / "static"
 # Статика модулей
 app.mount("/cartridges/static", StaticFiles(directory=str(CARTRIDGE_STATIC_DIR)), name="cartridges_static")
 app.mount("/repair/static", StaticFiles(directory=str(REPAIR_STATIC_DIR)), name="repair_static")
-app.mount("/location/static", StaticFiles(directory=str(LOCATION_STATIC_DIR)), name="location_static")
+app.mount("/location/static", LocationStaticFiles(directory=str(LOCATION_STATIC_DIR)), name="location_static")
 
 # Прямые маршруты для обратной совместимости со старыми абсолютными путями браузера
 @app.get("/static/js/app.js")

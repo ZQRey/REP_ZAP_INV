@@ -1,3 +1,4 @@
+from SHARED.authentication import require_authenticated_user
 from typing import Optional
 from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
@@ -5,7 +6,6 @@ from sqlalchemy import func
 
 from SHARED.database import get_db
 from SHARED.models import Asset, AppUser
-from SHARED.auth_service import get_current_user, require_role
 from SHARED.ldap_service import LDAPService
 from REPAIR.app.schemas import ADComputerSyncResponse
 
@@ -16,7 +16,7 @@ router = APIRouter(prefix="/api/v1/repair/ad", tags=["AD Computer Sync"])
 def sync_computers_from_active_directory(
     branch_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_role(["superadmin", "admin", "technician"]))
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """
     Автоматический сбор информации о компьютерах из Active Directory:
@@ -39,7 +39,7 @@ def sync_computers_from_active_directory(
 @router.get("/stats")
 def get_ad_computer_stats(
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(get_current_user)
+    current_user: AppUser = Depends(require_authenticated_user)
 ):
     """Статистика собранных компьютеров из Active Directory."""
     total_ad_pcs = db.query(Asset).filter(Asset.ad_guid != None).count()
@@ -49,3 +49,4 @@ def get_ad_computer_stats(
         "manual_equipment_count": total_manual,
         "total_assets": total_ad_pcs + total_manual
     }
+

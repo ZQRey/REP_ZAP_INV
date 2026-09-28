@@ -386,6 +386,7 @@ class SwitchIntegrationService:
             # Проверяем поле mac_address, а также specs/notes
             term_clean = mac.replace(":", "").lower()
             asset = db.query(Asset).filter(
+                Asset.branch_id == switch.asset.branch_id,
                 or_(
                     func.lower(Asset.mac_address) == mac.lower(),
                     func.lower(Asset.mac_address) == term_clean,
