@@ -1,3 +1,4 @@
+from SHARED.auth_service import get_current_user
 from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
@@ -29,7 +30,7 @@ def format_russian_date(dt) -> str:
 
 
 @router.get("/act/{batch_id}", response_class=HTMLResponse)
-def print_act(request: Request, batch_id: int, db: Session = Depends(get_db)):
+def print_act(request: Request, batch_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     """Печатная страница А4 для акта передачи картриджей поставщику."""
     batch = db.query(Batch).options(
         joinedload(Batch.items).joinedload(BatchItem.cartridge),
@@ -38,6 +39,9 @@ def print_act(request: Request, batch_id: int, db: Session = Depends(get_db)):
 
     if not batch:
         raise HTTPException(status_code=404, detail="Акт не найден.")
+
+    if current_user.role != "superadmin" and (current_user.branch_id is None or batch.branch_id != current_user.branch_id):
+        raise HTTPException(status_code=404, detail="Document not found")
 
     settings = SettingsService.get_all(db)
     org_name = settings.get("org_name", "ООО «ТехноПром»")
@@ -55,3 +59,4 @@ def print_act(request: Request, batch_id: int, db: Session = Depends(get_db)):
             "created_date_ru": format_russian_date(batch.created_at)
         }
     )
+

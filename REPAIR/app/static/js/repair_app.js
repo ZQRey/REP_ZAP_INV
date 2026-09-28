@@ -1,7 +1,20 @@
+async function openAuthenticatedPrint(path, headers) {
+    const popup = window.open('about:blank', '_blank');
+    if (!popup) throw new Error('Разрешите открытие окна печати');
+    try {
+        const response = await fetch(path, {headers});
+        if (!response.ok) throw new Error('Нет доступа к документу');
+        const blobUrl = URL.createObjectURL(await response.blob());
+        popup.location.replace(blobUrl);
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+    } catch (error) { popup.close(); throw error; }
+}
+localStorage.removeItem('token');
+localStorage.removeItem('cartridge_token');
 document.addEventListener('alpine:init', () => {
     Alpine.data('repairApp', () => ({
         // Аутентификация и контекст
-        token: localStorage.getItem('token') || '',
+        token: sessionStorage.getItem('token') || '',
         currentUser: null,
         branches: [],
         selectedBranchId: '',
@@ -80,18 +93,18 @@ document.addEventListener('alpine:init', () => {
             ip_address: '',
             management_type: 'omada',
             management_port: 8043,
-            username: 'admin',
+            username: '',
             password: '',
-            snmp_community: 'public',
+            snmp_community: '',
             total_ports: 24
         },
         editSwitchConfig: {
             ip_address: '',
             management_type: 'omada',
             management_port: 8043,
-            username: 'admin',
+            username: '',
             password: '',
-            snmp_community: 'public',
+            snmp_community: '',
             total_ports: 24
         },
 
@@ -175,13 +188,6 @@ document.addEventListener('alpine:init', () => {
 
         async init() {
             // Если токена нет, проверим URL-параметры или перенаправим на Portal
-            const urlParams = new URLSearchParams(window.location.search);
-            const tokenParam = urlParams.get('token');
-            if (tokenParam) {
-                this.token = tokenParam;
-                localStorage.setItem('token', tokenParam);
-                window.history.replaceState({}, document.title, window.location.pathname);
-            }
 
             if (!this.token) {
                 // Переадресация на общий портал
@@ -209,7 +215,7 @@ document.addEventListener('alpine:init', () => {
                 const res = await fetch('/api/v1/auth/me', { headers: this.getAuthHeaders() });
                 if (!res.ok) {
                     if (res.status === 401) {
-                        localStorage.removeItem('token');
+                        sessionStorage.removeItem('token');
                         window.location.href = '/';
                     }
                     return;
@@ -557,9 +563,9 @@ document.addEventListener('alpine:init', () => {
                 ip_address: '',
                 management_type: 'omada',
                 management_port: 8043,
-                username: 'admin',
+                username: '',
                 password: '',
-                snmp_community: 'public',
+                snmp_community: '',
                 total_ports: 24
             };
             this.switchTestResult = null;
@@ -626,7 +632,7 @@ document.addEventListener('alpine:init', () => {
                 await this.loadEquipment();
                 await this.loadBatches();
                 // Открываем печатную форму в новом окне
-                window.open(`/print/repair-act/${newBatch.id}`, '_blank');
+                openAuthenticatedPrint(`/print/repair-act/${newBatch.id}`, this.getAuthHeaders());
             } catch (e) {
                 this.showToast(e.message, 'error');
             }
@@ -773,9 +779,9 @@ document.addEventListener('alpine:init', () => {
                     ip_address: item.switch_config.ip_address || '',
                     management_type: item.switch_config.management_type || 'omada',
                     management_port: item.switch_config.management_port || 8043,
-                    username: item.switch_config.username || 'admin',
+                    username: item.switch_config.username || '',
                     password: item.switch_config.password || '',
-                    snmp_community: item.switch_config.snmp_community || 'public',
+                    snmp_community: item.switch_config.snmp_community || '',
                     total_ports: item.switch_config.total_ports || 24
                 };
             } else {
@@ -783,9 +789,9 @@ document.addEventListener('alpine:init', () => {
                     ip_address: '',
                     management_type: 'omada',
                     management_port: 8043,
-                    username: 'admin',
+                    username: '',
                     password: '',
-                    snmp_community: 'public',
+                    snmp_community: '',
                     total_ports: 24
                 };
             }
@@ -1170,7 +1176,7 @@ document.addEventListener('alpine:init', () => {
 
         // Выход из системы
         logout() {
-            localStorage.removeItem('token');
+            sessionStorage.removeItem('token');
             window.location.href = '/';
         },
 
@@ -1221,3 +1227,4 @@ document.addEventListener('alpine:init', () => {
         }
     }));
 });
+

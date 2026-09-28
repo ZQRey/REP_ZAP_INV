@@ -1269,7 +1269,7 @@
 
                     <div class="flex items-center justify-between gap-2 pt-1">
                         <div class="flex-1">
-                            <input type="text" x-model="addSwitchConfig.snmp_community" placeholder="SNMP Community (public)" class="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs">
+                            <input type="text" x-model="addSwitchConfig.snmp_community" placeholder="SNMP Community" class="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs">
                         </div>
                         <button type="button" @click="testSwitchConnection('add')" :disabled="isTestingSwitch" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-sky-600 hover:bg-sky-700 text-white shadow-sm flex items-center gap-1.5 transition disabled:opacity-50 shrink-0">
                             <svg class="w-3.5 h-3.5" :class="isTestingSwitch ? 'animate-spin' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
@@ -1511,7 +1511,7 @@
 
                     <div class="flex items-center justify-between gap-2 pt-1">
                         <div class="flex-1">
-                            <input type="text" x-model="editSwitchConfig.snmp_community" placeholder="SNMP Community (public)" class="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs">
+                            <input type="text" x-model="editSwitchConfig.snmp_community" placeholder="SNMP Community" class="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs">
                         </div>
                         <button type="button" @click="testSwitchConnection('edit')" :disabled="isTestingSwitch" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-sky-600 hover:bg-sky-700 text-white shadow-sm flex items-center gap-1.5 transition disabled:opacity-50 shrink-0">
                             <svg class="w-3.5 h-3.5" :class="isTestingSwitch ? 'animate-spin' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
@@ -1632,3 +1632,4 @@
 
 </body>
 </html>
+

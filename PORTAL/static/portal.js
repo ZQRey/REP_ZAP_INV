@@ -1,6 +1,8 @@
+localStorage.removeItem('token');
+localStorage.removeItem('cartridge_token');
 document.addEventListener('alpine:init', () => {
     Alpine.data('portalApp', () => ({
-        token: localStorage.getItem('token') || '',
+        token: sessionStorage.getItem('token') || '',
         currentUser: null,
         branches: [],
         selectedBranchId: '',
@@ -84,7 +86,7 @@ document.addEventListener('alpine:init', () => {
             try {
                 const res = await fetch('/api/v1/auth/me', { headers: this.getAuthHeaders() });
                 if (!res.ok) {
-                    localStorage.removeItem('token');
+                    sessionStorage.removeItem('token');
                     this.token = '';
                     return false;
                 }
@@ -94,7 +96,7 @@ document.addEventListener('alpine:init', () => {
                 }
                 return true;
             } catch (e) {
-                localStorage.removeItem('token');
+                sessionStorage.removeItem('token');
                 this.token = '';
                 return false;
             }
@@ -173,7 +175,7 @@ document.addEventListener('alpine:init', () => {
                     throw new Error(data.detail || 'Неверный логин или пароль');
                 }
                 this.token = data.access_token;
-                localStorage.setItem('token', this.token);
+                sessionStorage.setItem('token', this.token);
                 this.showLoginModal = false;
                 await this.loadCurrentUser();
                 await this.loadBranches();
@@ -187,15 +189,15 @@ document.addEventListener('alpine:init', () => {
         },
 
         logout() {
-            localStorage.removeItem('token');
+            sessionStorage.removeItem('token');
             this.token = '';
             this.currentUser = null;
             this.showLoginModal = true;
         },
 
         openModule(path) {
-            // Переход в модуль с передачей токена в URL для мгновенной сессии
-            window.location.href = `${path}?token=${encodeURIComponent(this.token)}`;
+            // Same-origin session is shared without credentials in navigation URLs.
+            window.location.href = path;
         },
 
         async openSettings() {
@@ -673,3 +675,4 @@ document.addEventListener('alpine:init', () => {
         }
     }));
 });
+

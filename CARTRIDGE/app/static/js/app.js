@@ -1,3 +1,16 @@
+async function openAuthenticatedPrint(path, headers) {
+    const popup = window.open('about:blank', '_blank');
+    if (!popup) throw new Error('Разрешите открытие окна печати');
+    try {
+        const response = await fetch(path, {headers});
+        if (!response.ok) throw new Error('Нет доступа к документу');
+        const blobUrl = URL.createObjectURL(await response.blob());
+        popup.location.replace(blobUrl);
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+    } catch (error) { popup.close(); throw error; }
+}
+localStorage.removeItem('token');
+localStorage.removeItem('cartridge_token');
 /**
  * Основное приложение Alpine.js для управления оборотом картриджей
  * Поддержка: Авторизация (локальная/AD), Филиалы, Управление пользователями, WhatsApp и ручная выдача.
@@ -6,17 +19,7 @@
 function cartridgeApp() {
     return {
         // Авторизация и текущий пользователь
-        authToken: (() => {
-            try {
-                const urlToken = (new URLSearchParams(window.location.search)).get('token');
-                if (urlToken) {
-                    localStorage.setItem('cartridge_token', urlToken);
-                    localStorage.setItem('token', urlToken);
-                    return urlToken;
-                }
-            } catch (e) {}
-            return localStorage.getItem('cartridge_token') || localStorage.getItem('token') || '';
-        })(),
+        authToken: sessionStorage.getItem('token') || '',
         currentUser: null,
         isAuthChecking: true,
         authHeaders(extra = {}) {
@@ -75,7 +78,7 @@ function cartridgeApp() {
                     let [resource, config] = args;
                     config = config || {};
                     config.headers = config.headers || {};
-                    const token = localStorage.getItem('cartridge_token');
+                    const token = sessionStorage.getItem('token');
                     if (token) {
                         if (config.headers instanceof Headers) {
                             if (!config.headers.has('Authorization')) {
@@ -169,7 +172,7 @@ function cartridgeApp() {
                 if (res.ok) {
                     const data = await res.json();
                     this.authToken = data.access_token;
-                    localStorage.setItem('cartridge_token', this.authToken);
+                    sessionStorage.setItem('token', this.authToken);
                     this.currentUser = data.user;
                     this.loginForm.password = '';
                     this.applyRoleTabConstraints();
@@ -213,7 +216,7 @@ function cartridgeApp() {
         logout(notify = true) {
             this.authToken = '';
             this.currentUser = null;
-            localStorage.removeItem('cartridge_token');
+            sessionStorage.removeItem('token');
             if (notify) {
                 this.showToast('Вы вышли из системы.', 'info');
             }
@@ -901,7 +904,7 @@ function cartridgeApp() {
                 if (res.ok) {
                     const batchData = await res.json();
                     this.showToast(`Акт № ${batchData.act_number} сформирован! Открываем печатную форму...`, 'success');
-                    window.open(`/print/act/${batchData.id}`, '_blank');
+                    openAuthenticatedPrint(`/print/act/${batchData.id}`, this.authHeaders());
                     await this.refreshStats();
                     await this.loadPendingCartridges();
                     this.loadBatchesHistory();
@@ -938,7 +941,7 @@ function cartridgeApp() {
         },
 
         printBatch(batchId) {
-            window.open(`/print/act/${batchId}`, '_blank');
+            openAuthenticatedPrint(`/print/act/${batchId}`, this.authHeaders());
         },
 
         // ==========================================
@@ -2060,3 +2063,4 @@ function cartridgeApp() {
         }
     };
 }
+
