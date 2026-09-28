@@ -1,6 +1,8 @@
 (function () {
     'use strict';
 
+    const nativeFetch = window.fetch.bind(window);
+
     class ApiError extends Error {
         constructor(status, message, body) {
             super(message || ('HTTP ' + status));
@@ -31,7 +33,7 @@
         }
         config.headers = headers;
 
-        const response = await window.fetch(url, config);
+        const response = await nativeFetch(url, config);
         if (response.status === 401) {
             logout();
         }
