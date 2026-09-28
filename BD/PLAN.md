@@ -229,7 +229,7 @@ CREATE TABLE network_switches (
     id SERIAL PRIMARY KEY,
     asset_id INTEGER NOT NULL UNIQUE REFERENCES assets(id) ON DELETE CASCADE,
     ip_address VARCHAR(45) NOT NULL,
-    snmp_community VARCHAR(100) DEFAULT 'public',
+    snmp_community VARCHAR(100) DEFAULT '',
     snmp_version VARCHAR(10) DEFAULT 'v2c',
     model VARCHAR(150),                              -- "Cisco Catalyst 2960-X", "Eltex MES2324"
     total_ports INTEGER NOT NULL DEFAULT 24,
@@ -423,3 +423,4 @@ CREATE TABLE cartridge_history_logs (
 - [ ] Развернут файл `BD/app_unified.db` (или PostgreSQL в Docker Compose).
 - [ ] Существующие картриджи, пользователи и филиалы успешно перенесены в `BD/`.
 - [ ] Созданы индексы по `inventory_number`, `mac_address`, `status`, `condition`.
+

@@ -3,7 +3,7 @@
 
 Использование:
   python reset_data.py             # Очистка только тестового оборота (картриджи, акты, история), сохраняя настройки и пользователей
-  python reset_data.py --full      # Полный сброс всей базы данных до заводского состояния (чистый admin/admin123)
+  python reset_data.py --full      # Полный сброс всей базы данных до заводского состояния (без автоматически созданных пользователей)
 """
 import os
 import sys
@@ -46,7 +46,7 @@ def reset_test_cartridges(clear_ad_users=False):
         print(f"- Системные настройки: {db.query(models.SystemSetting).count()}")
     except Exception as e:
         db.rollback()
-        print(f"Ошибка при очистке: {e}")
+        print(f"Ошибка при очистке: {type(e).__name__}")
     finally:
         db.close()
 
@@ -65,13 +65,13 @@ def reset_full_database():
             os.remove(db_path)
             print("✓ Старый файл базы данных удален.")
         except Exception as e:
-            print(f"Не удалось удалить файл (возможно, сервер запущен): {e}")
+            print(f"Не удалось удалить файл (возможно, сервер запущен): {type(e).__name__}")
             print("Остановите сервер uvicorn/контейнер перед полным удалением файла.")
             return
 
     init_db()
     print("✓ База данных заново создана и проинициализирована по умолчанию.")
-    print("  Суперпользователь: admin / admin123")
+    print("  Создайте администратора явно через SHARED.bootstrap_admin")
     print("  Филиал по умолчанию: Главный офис")
     print("  Справочник моделей: базовый набор HP, Canon, Pantum, Kyocera, Samsung")
 
@@ -85,3 +85,4 @@ if __name__ == "__main__":
         reset_full_database()
     else:
         reset_test_cartridges(clear_ad_users=args.clear_ad_users)
+

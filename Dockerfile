@@ -21,12 +21,15 @@ COPY CARTRIDGE/ /app/CARTRIDGE/
 COPY REPAIR/ /app/REPAIR/
 COPY LOCATION/ /app/LOCATION/
 COPY PORTAL/ /app/PORTAL/
-COPY BD/ /app/BD/
 COPY main_server.py /app/main_server.py
 
 # Создание папок для БД
-RUN mkdir -p /app/BD
+RUN groupadd --gid 10001 app && useradd --uid 10001 --gid app --no-create-home app \
+    && mkdir -p /app/BD /app/LOCATION/app/static/uploads \
+    && chown -R app:app /app
+USER app
 
 EXPOSE 8000
 
-CMD ["uvicorn", "main_server:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "main_server:app", "--host", "0.0.0.0", "--port", "8000", "--no-access-log", "--proxy-headers", "--forwarded-allow-ips", "172.30.88.10"]
+
