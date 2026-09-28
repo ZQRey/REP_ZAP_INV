@@ -313,3 +313,28 @@ def test_standalone_cartridge_entrypoint():
                             cwd=ROOT / "CARTRIDGE", env=env, capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
     assert "Cartridge Tracker" in result.stdout
+
+
+def test_network_credentials_are_encrypted_at_rest(client):
+    from SHARED.database import SessionLocal
+    from SHARED.models import Asset, NetworkSwitch, Branch
+    secret = secrets.token_urlsafe(24)
+    with SessionLocal() as db:
+        branch = db.query(Branch).first()
+        asset = Asset(inventory_number="ENC-SW", name="Encrypted switch", branch_id=branch.id)
+        db.add(asset); db.flush()
+        switch = NetworkSwitch(asset_id=asset.id, ip_address="10.20.30.8", password=secret, snmp_community=secret)
+        db.add(switch); db.commit()
+        switch_id = switch.id
+    from sqlalchemy import text
+    from SHARED.database import engine
+    with engine.connect() as connection:
+        row = connection.execute(text("SELECT password, snmp_community FROM network_switches WHERE id=:id"), {"id": switch_id}).one()
+        assert secret not in row.password
+        assert secret not in row.snmp_community
+        assert row.password.startswith("enc:v1:")
+        assert row.snmp_community.startswith("enc:v1:")
+    with SessionLocal() as db:
+        switch = db.get(NetworkSwitch, switch_id)
+        assert switch.password == secret
+        assert switch.snmp_community == secret
