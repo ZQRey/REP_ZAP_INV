@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import desc
 
 from SHARED.database import get_db
+from SHARED.domain_transitions import InvalidTransition, transition_asset
 from SHARED.models import (
     RepairBatch,
     RepairBatchItem,
@@ -214,9 +215,11 @@ def create_repair_batch(
         )
         db.add(item)
 
-        # Переводим статус оборудования
-        a.status = AssetStatus.AT_SC
-        a.condition = AssetCondition.BROKEN
+        # Передача в СЦ разрешена только из ожидающего ремонта состояния.
+        try:
+            transition_asset(a, AssetStatus.AT_SC)
+        except InvalidTransition as exc:
+            raise HTTPException(status_code=409, detail=f"{a.inventory_number}: {exc}") from exc
         a.updated_at = now
 
         EquipmentService.log_history(
