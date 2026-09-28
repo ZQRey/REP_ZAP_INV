@@ -1,0 +1,267 @@
+{
+  "batch_items": {
+    "unique": [
+      [
+        "uq_batch_items_batch_cartridge",
+        [
+          "batch_id",
+          "cartridge_id"
+        ]
+      ]
+    ],
+    "indexes": [
+      [
+        "ix_batch_items_cartridge_id",
+        [
+          "cartridge_id"
+        ]
+      ]
+    ]
+  },
+  "repair_batch_items": {
+    "unique": [
+      [
+        "uq_repair_batch_items_batch_asset",
+        [
+          "batch_id",
+          "asset_id"
+        ]
+      ]
+    ],
+    "checks": [
+      [
+        "ck_repair_batch_items_cost",
+        "cost >= 0"
+      ]
+    ],
+    "not_null": [
+      "cost",
+      "status"
+    ],
+    "indexes": [
+      [
+        "ix_repair_batch_items_asset_id",
+        [
+          "asset_id"
+        ]
+      ]
+    ]
+  },
+  "switch_ports": {
+    "unique": [
+      [
+        "uq_switch_ports_switch_port",
+        [
+          "switch_id",
+          "port_number"
+        ]
+      ]
+    ],
+    "checks": [
+      [
+        "ck_switch_ports_number",
+        "port_number > 0"
+      ],
+      [
+        "ck_switch_ports_vlan",
+        "vlan_id BETWEEN 1 AND 4094"
+      ]
+    ],
+    "not_null": [
+      "vlan_id"
+    ],
+    "indexes": [
+      [
+        "ix_switch_ports_zone_id",
+        [
+          "zone_id"
+        ]
+      ],
+      [
+        "ix_switch_ports_connected_asset_id",
+        [
+          "connected_asset_id"
+        ]
+      ]
+    ]
+  },
+  "repair_parts_used": {
+    "checks": [
+      [
+        "ck_repair_parts_quantity",
+        "quantity > 0"
+      ],
+      [
+        "ck_repair_parts_cost",
+        "cost >= 0"
+      ]
+    ],
+    "not_null": [
+      "quantity",
+      "cost"
+    ],
+    "indexes": [
+      [
+        "ix_repair_parts_used_repair_item_id",
+        [
+          "repair_item_id"
+        ]
+      ]
+    ]
+  },
+  "spare_parts_warehouse": {
+    "checks": [
+      [
+        "ck_warehouse_quantity",
+        "quantity >= 0"
+      ],
+      [
+        "ck_warehouse_threshold",
+        "min_threshold >= 0"
+      ],
+      [
+        "ck_warehouse_price",
+        "unit_price >= 0"
+      ]
+    ],
+    "not_null": [
+      "quantity",
+      "min_threshold",
+      "unit_price"
+    ],
+    "indexes": [
+      [
+        "ix_spare_parts_warehouse_branch_id",
+        [
+          "branch_id"
+        ]
+      ]
+    ]
+  },
+  "network_switches": {
+    "checks": [
+      [
+        "ck_switches_mgmt_port",
+        "mgmt_port BETWEEN 1 AND 65535"
+      ],
+      [
+        "ck_switches_total_ports",
+        "total_ports > 0"
+      ]
+    ],
+    "not_null": [
+      "mgmt_port",
+      "total_ports"
+    ]
+  },
+  "floors": {
+    "checks": [
+      [
+        "ck_floors_scale",
+        "scale_pixels_per_meter > 0"
+      ]
+    ],
+    "not_null": [
+      "scale_pixels_per_meter"
+    ],
+    "indexes": [
+      [
+        "ix_floors_branch_id",
+        [
+          "branch_id"
+        ]
+      ]
+    ]
+  },
+  "cable_paths": {
+    "checks": [
+      [
+        "ck_cable_capacity",
+        "max_capacity >= 0"
+      ]
+    ],
+    "not_null": [
+      "max_capacity"
+    ],
+    "indexes": [
+      [
+        "ix_cable_paths_floor_id",
+        [
+          "floor_id"
+        ]
+      ]
+    ]
+  },
+  "batches": {
+    "checks": [
+      [
+        "ck_batches_status",
+        "status IN ('open', 'closed')"
+      ]
+    ],
+    "not_null": [
+      "status"
+    ]
+  },
+  "repair_batches": {
+    "checks": [
+      [
+        "ck_repair_batches_status",
+        "status IN ('open', 'closed')"
+      ]
+    ],
+    "not_null": [
+      "status"
+    ]
+  },
+  "app_users": {
+    "indexes": [
+      [
+        "ix_app_users_branch_id",
+        [
+          "branch_id"
+        ]
+      ]
+    ]
+  },
+  "cartridges": {
+    "indexes": [
+      [
+        "ix_cartridges_current_user_id",
+        [
+          "current_user_id"
+        ]
+      ]
+    ]
+  },
+  "audit_logs": {
+    "indexes": [
+      [
+        "ix_audit_logs_user_id",
+        [
+          "user_id"
+        ]
+      ]
+    ]
+  },
+  "zones": {
+    "indexes": [
+      [
+        "ix_zones_floor_id",
+        [
+          "floor_id"
+        ]
+      ]
+    ]
+  },
+  "assets": {
+    "indexes": [
+      [
+        "ix_assets_current_user_id",
+        [
+          "current_user_id"
+        ]
+      ]
+    ]
+  }
+}
