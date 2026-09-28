@@ -8,8 +8,8 @@ from sqlalchemy.orm import Session, joinedload
 from SHARED.database import get_db
 from SHARED.domain_transitions import InvalidTransition, transition_cartridge
 from SHARED.models import Batch, BatchItem, Cartridge, CartridgeStatus, HistoryLog, Branch, AppUser
-from app.schemas import BatchResponse, BatchCreateRequest
-from app.services.settings_service import SettingsService
+from CARTRIDGE.app.schemas import BatchResponse, BatchCreateRequest
+from CARTRIDGE.app.services.settings_service import SettingsService
 
 router = APIRouter(prefix="/api/batches", tags=["Batches"])
 
