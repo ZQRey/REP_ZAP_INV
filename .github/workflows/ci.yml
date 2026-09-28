@@ -89,3 +89,12 @@ jobs:
         run: docker compose build database-migrations unified-server notification-worker
       - name: Verify production imports in built image
         run: docker compose run --rm --no-deps unified-server python -c "import main_server; import SHARED.notification_worker; print('production imports ok')"
+      - name: Run production database migration gate
+        run: |
+          docker compose up -d postgres-db
+          docker compose run --rm database-migrations
+          docker compose run --rm database-migrations
+      - name: Verify Alembic reached head
+        run: docker compose run --rm database-migrations alembic current
+      - if: always()
+        run: docker compose down --remove-orphans

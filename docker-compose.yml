@@ -8,8 +8,8 @@ services:
     container_name: it_nginx_proxy
     restart: unless-stopped
     ports:
-      - "80:80"
-      - "443:443"
+      - "${REP_HTTP_PORT:-8082}:80"
+      - "${REP_HTTPS_PORT:-8443}:443"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/ssl:/etc/nginx/ssl:ro
@@ -33,6 +33,9 @@ services:
     command: ["alembic", "upgrade", "head"]
     environment:
       - DATABASE_URL=${DATABASE_URL:?Run ./scripts/init-env.sh first}
+      - SECRET_KEY=${SECRET_KEY:?Run ./scripts/init-env.sh first}
+      - NETWORK_CREDENTIAL_KEY=${NETWORK_CREDENTIAL_KEY:?Run ./scripts/init-env.sh first}
+      - APP_ENV=${APP_ENV:-production}
     depends_on:
       postgres-db:
         condition: service_healthy
