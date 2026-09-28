@@ -24,9 +24,9 @@ if os.path.exists(TEST_DB_PATH):
 
 os.environ["DATABASE_URL"] = f"sqlite:///{TEST_DB_PATH}"
 
-from app.database import Base, get_db, init_db
+from SHARED.database import Base, get_db, init_db
 from app.main import app
-from app.models import AppUser, Branch, Cartridge, CartridgeStatus, ADUser, Batch, BatchItem
+from SHARED.models import AppUser, Branch, Cartridge, CartridgeStatus, ADUser, Batch, BatchItem
 from app.services.auth_service import AuthService
 from app.services.settings_service import SettingsService
 

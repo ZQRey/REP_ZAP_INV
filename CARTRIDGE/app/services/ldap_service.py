@@ -10,7 +10,7 @@ import ldap3
 from ldap3 import Server, Connection, ALL, SUBTREE
 from ldap3.core.exceptions import LDAPException
 
-from app.models import ADUser
+from SHARED.models import ADUser
 from app.services.settings_service import SettingsService
 
 

@@ -2,8 +2,8 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.database import get_db
-from app.models import Branch, Cartridge, AppUser
+from SHARED.database import get_db
+from SHARED.models import Branch, Cartridge, AppUser, Asset, Floor, RepairBatch, SparePartsWarehouse
 from app.schemas import BranchCreate, BranchUpdate, BranchResponse
 from app.services.auth_service import require_admin
 
@@ -96,9 +96,15 @@ def delete_branch(
             detail=f"Невозможно удалить филиал: к нему привязано {cart_count} картридж(ей). Сначала отвяжите их."
         )
 
+    # Canonical relationships include other modules; never cascade-delete their data here.
+    for model in (Asset, Floor, RepairBatch, SparePartsWarehouse):
+        if db.query(model.id).filter(model.branch_id == branch_id).first() is not None:
+            raise HTTPException(status_code=409, detail="Нельзя удалить филиал, содержащий оборудование, этажи, ремонты или запчасти.")
+
     # Отвязываем пользователей
     db.query(AppUser).filter(AppUser.branch_id == branch_id).update({"branch_id": None})
 
     db.delete(branch)
     db.commit()
     return {"success": True, "message": f"Филиал '{branch.name}' успешно удален."}
+

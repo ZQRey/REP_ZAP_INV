@@ -3,8 +3,8 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
-from app.database import get_db
-from app.models import CartridgeModel, Cartridge, AppUser
+from SHARED.database import get_db
+from SHARED.models import CartridgeModel, Cartridge, AppUser
 from app.schemas import CartridgeModelCreate, CartridgeModelUpdate, CartridgeModelResponse
 from app.services.auth_service import require_operator, require_admin
 
@@ -143,3 +143,4 @@ def delete_cartridge_model(
     db.delete(model)
     db.commit()
     return {"success": True, "message": f"Модель '{model.name}' удалена из справочника."}
+

@@ -2,8 +2,8 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
-from app.database import get_db
-from app.models import ADUser, AppUser
+from SHARED.database import get_db
+from SHARED.models import ADUser, AppUser
 from app.schemas import ADUserResponse
 from app.services.auth_service import require_operator
 
@@ -31,3 +31,4 @@ def search_users(
             )
         )
     return query.order_by(ADUser.display_name.asc()).limit(limit).all()
+

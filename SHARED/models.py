@@ -14,7 +14,7 @@ from sqlalchemy import (
     Enum as SQLEnum,
     func
 )
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, synonym
 from SHARED.database import Base
 
 
@@ -40,6 +40,7 @@ class Branch(Base):
     users = relationship("AppUser", back_populates="branch")
     cartridges = relationship("Cartridge", back_populates="branch")
     cartridge_batches = relationship("Batch", back_populates="branch")
+    batches = synonym("cartridge_batches")  # Legacy spelling, same relationship/collection.
     assets = relationship("Asset", back_populates="branch")
     floors = relationship("Floor", back_populates="branch", cascade="all, delete-orphan")
     repair_batches = relationship("RepairBatch", back_populates="branch")
@@ -55,7 +56,7 @@ class AppUser(Base):
     full_name = Column(String(255), nullable=False)
     password_hash = Column(String(255), nullable=True)
     auth_type = Column(String(20), default="local")          # "local" или "ad"
-    role = Column(String(20), default="operator")            # "superadmin", "admin", "technician", "operator", "viewer"
+    role = Column(String(20), default="user")            # "superadmin", "admin", "technician", "operator", "viewer"
     is_active = Column(Boolean, default=True)
     branch_id = Column(Integer, ForeignKey("branches.id", ondelete="SET NULL"), nullable=True)
     wa_instance_name = Column(String(100), nullable=True)    # Только для картриджей

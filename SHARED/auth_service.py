@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
@@ -88,6 +88,19 @@ def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
     return user
+
+
+def require_business_auth(
+    request: Request,
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+    db: Session = Depends(get_db),
+):
+    """Global API/print guard using the same request session as router dependencies."""
+    path = request.url.path
+    login_paths = {"/api/auth/login", "/api/v1/auth/login", "/cartridges/api/auth/login"}
+    if request.method != "OPTIONS" and path not in login_paths and ("/api/" in path or "/print/" in path):
+        return get_current_user(credentials, db)
+    return None
 
 
 def require_role(allowed_roles: List[str]):

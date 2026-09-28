@@ -1,6 +1,7 @@
+from SHARED.auth_service import require_business_auth
 from SHARED.security_config import CORS_ORIGINS
 from pathlib import Path
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -17,6 +18,7 @@ BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
 
 app = FastAPI(
+    dependencies=[Depends(require_business_auth)],
     title="NetMap & ITAM API",
     description="Интерактивная 2D-карта сети, трассировка кабелей и IT-активы",
     version="1.0.0"

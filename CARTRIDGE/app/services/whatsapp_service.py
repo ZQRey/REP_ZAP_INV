@@ -118,7 +118,7 @@ class WhatsAppService:
     @classmethod
     async def get_all_operators_status(cls, db: Session) -> List[Dict[str, Any]]:
         """Возвращает статус подключения WhatsApp для всех зарегистрированных операторов."""
-        from app.models import AppUser
+        from SHARED.models import AppUser
         users = db.query(AppUser).filter(AppUser.is_active == True).order_by(AppUser.full_name.asc()).all()
         results = []
         for u in users:

@@ -13,8 +13,8 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from app.main import app
-from app.database import get_db, SessionLocal
-from app.models import AppUser, SystemSetting
+from SHARED.database import get_db, SessionLocal
+from SHARED.models import AppUser, SystemSetting
 from app.services.auth_service import AuthService
 from app.services.settings_service import SettingsService
 

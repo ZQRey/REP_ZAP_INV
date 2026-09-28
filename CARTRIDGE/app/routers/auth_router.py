@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Request, Depends, HTTPException, status
 from sqlalchemy.orm import Session, joinedload
 
-from app.database import get_db
-from app.models import AppUser
+from SHARED.database import get_db
+from SHARED.models import AppUser
 from app.schemas import LoginRequest, LoginResponse, AppUserResponse
 from app.services.auth_service import AuthService, get_current_user
 

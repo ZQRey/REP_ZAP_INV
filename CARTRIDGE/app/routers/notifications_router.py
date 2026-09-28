@@ -3,8 +3,8 @@ from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, joinedload
 
-from app.database import get_db
-from app.models import Cartridge, CartridgeStatus, HistoryLog, AppUser
+from SHARED.database import get_db
+from SHARED.models import Cartridge, CartridgeStatus, HistoryLog, AppUser
 from app.schemas import NotifyWhatsAppRequest
 from app.services.settings_service import SettingsService
 from app.services.whatsapp_service import WhatsAppService
@@ -171,3 +171,4 @@ async def notify_ready_cartridges(
         ),
         "results": results
     }
+

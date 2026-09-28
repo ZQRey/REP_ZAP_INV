@@ -3,8 +3,8 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, joinedload
 
-from app.database import get_db
-from app.models import Batch, BatchItem, Cartridge, CartridgeStatus, HistoryLog, Branch, AppUser
+from SHARED.database import get_db
+from SHARED.models import Batch, BatchItem, Cartridge, CartridgeStatus, HistoryLog, Branch, AppUser
 from app.schemas import BatchResponse, BatchCreateRequest
 from app.services.settings_service import SettingsService
 from app.services.auth_service import require_operator
@@ -158,3 +158,4 @@ def create_batch(
     ).filter(Batch.id == batch.id).first()
 
     return full_batch
+

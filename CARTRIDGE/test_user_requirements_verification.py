@@ -5,8 +5,6 @@ import os
 import sys
 import unittest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 
 # Setup test database
 TEST_DB_FILE = "test_user_requirements.db"
@@ -19,22 +17,13 @@ if os.path.exists(TEST_DB_FILE):
 os.environ["DATABASE_URL"] = f"sqlite:///{TEST_DB_FILE}"
 
 from app.main import app
-from app.database import Base, get_db
-from app.models import AppUser, Branch, Cartridge, CartridgeStatus, Batch, BatchItem
+from SHARED.database import Base, get_db, engine, SessionLocal
+from SHARED.models import AppUser, Branch, Cartridge, CartridgeStatus, Batch, BatchItem
 from app.services.auth_service import AuthService
 
-engine = create_engine(f"sqlite:///{TEST_DB_FILE}", connect_args={"check_same_thread": False})
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+TestingSessionLocal = SessionLocal
 Base.metadata.create_all(bind=engine)
 
-def override_get_db():
-    db = TestingSessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-app.dependency_overrides[get_db] = override_get_db
 client = TestClient(app)
 
 class TestUserRequirements(unittest.TestCase):

@@ -3,9 +3,8 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Database URL from env or unified BD folder
-DEFAULT_SQLITE_PATH = BASE_DIR.parent / "BD" / "app_unified.db"
-DEFAULT_SQLITE_PATH.parent.mkdir(parents=True, exist_ok=True)
+# Compatibility constant; database URL and path are owned by SHARED.
+from SHARED.config import DEFAULT_SQLITE_PATH
 
 from SHARED.security_config import DATABASE_URL, SECRET_KEY, DEBUG, JWT_ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
 
