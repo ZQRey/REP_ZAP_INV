@@ -16,7 +16,6 @@ from pydantic import BaseModel, Field
 # Добавляем корень проекта и подпапки в путь поиска модулей
 BASE_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(BASE_DIR))
-sys.path.insert(0, str(BASE_DIR / "CARTRIDGE"))
 
 from SHARED.database import init_db, get_db
 from SHARED.models import AppUser, Branch, SystemSetting, ADUser
@@ -77,7 +76,7 @@ class LoginRequest(BaseModel):
 def login(payload: LoginRequest, request: Request, db: Session = Depends(get_db)):
     """Единая точка аутентификации (Single Sign-On) для всех трех приложений."""
     from SHARED.login_security import check_login
-    from app.services.auth_service import AuthService as LoginService
+    from CARTRIDGE.app.services.auth_service import AuthService as LoginService
     check_login(request, payload.username)
     user = LoginService.authenticate_user(db, payload.username, payload.password, payload.auth_type)
 
