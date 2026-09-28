@@ -11,7 +11,7 @@ from ldap3 import Server, Connection, ALL, SUBTREE
 from ldap3.core.exceptions import LDAPException
 
 from SHARED.models import ADUser
-from app.services.settings_service import SettingsService
+from CARTRIDGE.app.services.settings_service import SettingsService
 
 
 class LDAPService:
