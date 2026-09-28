@@ -4,7 +4,7 @@ from fastapi import HTTPException
 from typing import Dict, Optional
 from sqlalchemy.orm import Session
 from SHARED.models import SystemSetting
-from app.config import DEFAULT_SETTINGS
+from CARTRIDGE.app.config import DEFAULT_SETTINGS
 
 
 class SettingsService:
