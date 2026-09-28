@@ -304,3 +304,12 @@ def test_network_exception_does_not_leak_credentials(monkeypatch):
     result = SwitchIntegrationService.test_connection("10.20.30.1", "ssh_cli", username="user", password=secret)
     assert not result["success"]
     assert secret not in str(result)
+
+
+def test_standalone_cartridge_entrypoint():
+    env = dict(os.environ)
+    env.pop("PYTHONPATH", None)
+    result = subprocess.run([sys.executable, "-c", "import app.main; print(app.main.app.title)"],
+                            cwd=ROOT / "CARTRIDGE", env=env, capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+    assert "Cartridge Tracker" in result.stdout

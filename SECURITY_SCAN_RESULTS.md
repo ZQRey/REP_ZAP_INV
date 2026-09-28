@@ -14,7 +14,7 @@
 | `admin123` | 0 | No default password provisioning or frontend hint. |
 | `public` | 5 | public_settings is a sanitized allowlist helper; no default SNMP public community. |
 
-Проверки: 42 security tests passed (изолированная SQLite, mocks); синтаксис 4 JS файлов — passed; custom regression scanner — 0 findings. Docker daemon unavailable: runtime контейнеров/nginx и реальные внешние интеграции не подтверждены.
+Проверки: 43 security tests passed (изолированная SQLite, mocks); синтаксис 4 JS файлов — passed; custom regression scanner — 0 findings. Docker daemon unavailable: runtime контейнеров/nginx и реальные внешние интеграции не подтверждены.
 
 История: 46 main commits, 295 unique blobs, без ошибок чтения. Ключ и прежние secrets подтверждены; rewrite и ротация действующей инфраструктуры не выполнялись. Полнота относительно иных refs/клонов/внешних логов не утверждается.
 
