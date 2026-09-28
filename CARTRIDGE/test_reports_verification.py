@@ -1,3 +1,6 @@
+import os
+if os.getenv("APP_ENV") != "test":
+    raise RuntimeError("Legacy verification scripts require an isolated APP_ENV=test database")
 import sys
 from fastapi.testclient import TestClient
 from app.main import app
@@ -32,7 +35,7 @@ def run_tests():
                 u = AppUser(
                     username=username,
                     full_name=f"Test {username}",
-                    password_hash=AuthService.hash_password("pass123"),
+                    password_hash=AuthService.hash_password(os.environ["TEST_USER_PASSWORD"]),
                     auth_type="local",
                     role=role,
                     is_active=True,
@@ -158,3 +161,4 @@ def run_tests():
 
 if __name__ == "__main__":
     run_tests()
+

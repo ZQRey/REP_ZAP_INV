@@ -1,3 +1,4 @@
+from SHARED.security_config import DEMO_ENABLED
 from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from sqlalchemy.orm import Session, joinedload
@@ -20,7 +21,7 @@ def get_branch_floors(
     floors = db.query(Floor).options(joinedload(Floor.zones)).filter(Floor.branch_id == branch_id).all()
     
     # Если этажей еще нет, создадим дефолтный 1-й этаж
-    if not floors:
+    if DEMO_ENABLED and not floors:
         default_floor = Floor(
             branch_id=branch_id,
             floor_number=1,
@@ -225,3 +226,4 @@ async def upload_floor_map(
         "map_image_url": map_url,
         "message": "План этажа успешно загружен и сохранен."
     }
+

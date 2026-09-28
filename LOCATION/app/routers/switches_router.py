@@ -60,19 +60,18 @@ def _format_switch_response(sw: NetworkSwitch) -> NetworkSwitchResponse:
         ip_address=sw.ip_address,
         management_type=sw.management_type or "snmp",
         mgmt_port=sw.mgmt_port or 161,
-        username=sw.username,
-        snmp_community=sw.snmp_community,
         model=sw.model,
         total_ports=sw.total_ports,
+        site=(sw.extra_params or {}).get("site", "Default"),
+        credentials_configured=bool(sw.password or sw.snmp_community),
         name=sw.asset.name if sw.asset else "Коммутатор",
         cabinet=sw.asset.cabinet if sw.asset else None,
         last_poll_status=sw.last_poll_status or "never",
-        last_poll_message=sw.last_poll_message,
+        last_poll_message="Poll failed" if sw.last_poll_status == "error" else None,
         last_polled_at=sw.last_polled_at,
         floor_id=sw.asset.floor_id if sw.asset else None,
         coords_x=sw.asset.coords_x if sw.asset else None,
         coords_y=sw.asset.coords_y if sw.asset else None,
-        extra_params=sw.extra_params,
         ports=ports_out
     )
 
@@ -139,10 +138,10 @@ def create_switch(
         mgmt_port=payload.mgmt_port,
         username=payload.username.strip() if payload.username else None,
         password=payload.password.strip() if payload.password else None,
-        snmp_community=payload.snmp_community.strip() if payload.snmp_community else "public",
+        snmp_community=payload.snmp_community.strip() if payload.snmp_community else "",
         model=payload.model.strip() if payload.model else "L2 Managed Switch",
         total_ports=total_ports,
-        extra_params=payload.extra_params or {"allow_demo_fallback": True}
+        extra_params=payload.extra_params or {"allow_demo_fallback": False}
     )
     db.add(sw)
     db.flush()
@@ -193,11 +192,11 @@ def update_switch(
         sw.management_type = payload.management_type
     if payload.mgmt_port is not None:
         sw.mgmt_port = payload.mgmt_port
-    if payload.username is not None:
+    if payload.username:
         sw.username = payload.username.strip() if payload.username else None
     if payload.password is not None and payload.password.strip():
         sw.password = payload.password.strip()
-    if payload.snmp_community is not None:
+    if payload.snmp_community:
         sw.snmp_community = payload.snmp_community.strip()
     if payload.extra_params is not None:
         sw.extra_params = payload.extra_params
@@ -264,7 +263,7 @@ def delete_switch(
         raise
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Ошибка удаления коммутатора: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Ошибка удаления коммутатора: {type(e).__name__}")
 
 
 @router.put("/switches/{switch_id}/ports/{port_number}", response_model=SwitchPortResponse)
@@ -373,7 +372,7 @@ def poll_switch_mac_table(
         result = SwitchIntegrationService.poll_switch(db=db, switch_id=switch_id)
         return result
     except Exception as ex:
-        raise HTTPException(status_code=400, detail=str(ex))
+        raise HTTPException(status_code=400, detail="Network operation failed")
 
 
 @router.post("/switches/{switch_id}/simulate-event")
@@ -397,4 +396,5 @@ def simulate_switch_event(
         )
         return res
     except Exception as ex:
-        raise HTTPException(status_code=400, detail=str(ex))
+        raise HTTPException(status_code=400, detail="Network operation failed")
+

@@ -1,3 +1,6 @@
+from ldap3.utils.conv import escape_filter_chars
+from SHARED.transport_security import ldap_connection
+from SHARED.security_config import DEMO_ENABLED
 import re
 import socket
 from datetime import datetime
@@ -93,24 +96,8 @@ class LDAPService:
         """Создает и возвращает объект Connection библиотеки ldap3."""
         server_address, port, use_ssl = cls.parse_ldap_server(host)
 
-        server = Server(
-            host=server_address,
-            port=port,
-            use_ssl=use_ssl,
-            get_info=ALL,
-            connect_timeout=connect_timeout
-        )
-
         effective_user = cls.normalize_bind_user(bind_user, base_dn)
-
-        conn = Connection(
-            server,
-            user=effective_user,
-            password=bind_password,
-            auto_bind=True,
-            read_only=True
-        )
-        return conn
+        return ldap_connection(server_address, port, use_ssl, effective_user, bind_password, connect_timeout)
 
     @classmethod
     def test_connection(
@@ -166,7 +153,7 @@ class LDAPService:
                     "success": False,
                     "message": (
                         f"Сетевая ошибка: Сервер {server_address} ({resolved_ip}) найден, но порт {port} "
-                        f"недоступен или заблокирован брандмауэром ({sock_err})."
+                        f"недоступен или заблокирован брандмауэром ({type(sock_err).__name__})."
                     )
                 }
 
@@ -187,7 +174,7 @@ class LDAPService:
                 "message": f"Подключение к {normalized_target}{ip_info} успешно установлено! Учетная запись авторизована и доступ к Base DN подтвержден."
             }
         except LDAPException as e:
-            err_str = str(e)
+            err_str = type(e).__name__
             if "52e" in err_str:
                 return {
                     "success": False,
@@ -210,7 +197,7 @@ class LDAPService:
         except Exception as e:
             return {
                 "success": False,
-                "message": f"Ошибка при обращении к {normalized_target}: {str(e)}"
+                "message": f"Ошибка при обращении к {normalized_target}: {type(e).__name__}"
             }
 
     @classmethod
@@ -246,7 +233,7 @@ class LDAPService:
             return {
                 "success": False,
                 "synced_count": 0,
-                "message": f"Не удалось подключиться к LDAP: {str(e)}"
+                "message": f"Не удалось подключиться к LDAP: {type(e).__name__}"
             }
 
         # Все запрашиваемые атрибуты
@@ -265,7 +252,7 @@ class LDAPService:
             return {
                 "success": False,
                 "synced_count": 0,
-                "message": f"Ошибка выполнения поиска в каталоге: {str(e)}"
+                "message": f"Ошибка выполнения поиска в каталоге: {type(e).__name__}"
             }
 
         synced_count = 0
@@ -339,7 +326,7 @@ class LDAPService:
             return {
                 "success": False,
                 "synced_count": synced_count,
-                "message": f"Ошибка сохранения в базу данных: {str(e)}"
+                "message": f"Ошибка сохранения в базу данных: {type(e).__name__}"
             }
 
     @classmethod
@@ -387,6 +374,10 @@ class LDAPService:
         if not domain and bind_user and "@" in bind_user:
             domain = bind_user.split("@")[-1].strip()
 
+        if "@" in clean and clean.rsplit("@", 1)[1].casefold() != domain.casefold():
+            return False, None, None
+        if "\\" in clean and clean.split("\\", 1)[0].casefold() != domain.split(".")[0].casefold():
+            return False, None, None
         attr_name = settings.get("ad_attr_name", "displayName").strip()
         attr_cabinet = settings.get("ad_attr_cabinet", "physicalDeliveryOfficeName").strip()
         attr_dept = settings.get("ad_attr_department", "department").strip()
@@ -399,7 +390,7 @@ class LDAPService:
         if bind_user and bind_password and base_dn:
             try:
                 conn = cls._create_connection(host, bind_user, bind_password, connect_timeout=5)
-                search_filter = f"(|(sAMAccountName={sam_account})(userPrincipalName={clean}))"
+                search_filter = f"(|(sAMAccountName={escape_filter_chars(sam_account)})(userPrincipalName={escape_filter_chars(clean)}))"
                 req_attrs = ["sAMAccountName", "userPrincipalName", attr_name, attr_cabinet, attr_dept] + phone_attrs
                 conn.search(
                     search_base=base_dn,
@@ -458,30 +449,5 @@ class LDAPService:
                     conn.unbind()
             except Exception:
                 pass
-
-        # Стратегия 2: Прямой Bind с перебором форматов (UPN, NetBIOS, sAMAccountName)
-        candidates = []
-        if "@" in clean or "\\" in clean:
-            candidates.append(clean)
-        if domain:
-            candidates.append(f"{sam_account}@{domain}")
-            short_domain = domain.split(".")[0]
-            candidates.append(f"{short_domain}\\{sam_account}")
-        candidates.append(sam_account)
-
-        seen = set()
-        unique_candidates = []
-        for c in candidates:
-            if c and c.lower() not in seen:
-                seen.add(c.lower())
-                unique_candidates.append(c)
-
-        for candidate in unique_candidates:
-            try:
-                u_conn = cls._create_connection(host, candidate, password, connect_timeout=5)
-                u_conn.unbind()
-                return True, sam_account, user_info
-            except Exception:
-                continue
 
         return False, None, None

@@ -1,13 +1,9 @@
-import hashlib
-import secrets
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
-import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
-from SHARED.config import SECRET_KEY, JWT_ALGORITHM, ACCESS_TOKEN_EXPIRE_HOURS
 from SHARED.database import get_db
 from SHARED.models import AppUser, Branch
 
@@ -23,58 +19,20 @@ ROLE_HIERARCHY = {
 
 
 class AuthService:
-    @staticmethod
-    def hash_password(password: str) -> str:
-        """Хэширует пароль с солью (PBKDF2-HMAC-SHA256)."""
-        salt = secrets.token_hex(16)
-        key = hashlib.pbkdf2_hmac(
-            "sha256",
-            password.encode("utf-8"),
-            salt.encode("utf-8"),
-            iterations=100000
-        )
-        return f"{salt}${key.hex()}"
+    from SHARED.passwords import hash_password as _hash, verify_password as _verify
+    hash_password = staticmethod(_hash)
+    verify_password = staticmethod(_verify)
 
-    @staticmethod
-    def verify_password(password: str, hashed: str) -> bool:
-        """Сверяет открытый пароль с сохраненным хэшем."""
-        if not hashed or "$" not in hashed:
-            return False
-        try:
-            salt, stored_key = hashed.split("$", 1)
-            key = hashlib.pbkdf2_hmac(
-                "sha256",
-                password.encode("utf-8"),
-                salt.encode("utf-8"),
-                iterations=100000
-            )
-            return secrets.compare_digest(key.hex(), stored_key)
-        except Exception:
-            return False
-
-    @staticmethod
-    def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
-        """Создает подписанный JWT токен доступа для SSO."""
-        to_encode = data.copy()
-        expire = datetime.utcnow() + (expires_delta or timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS))
-        to_encode.update({"exp": expire})
-        return jwt.encode(to_encode, SECRET_KEY, algorithm=JWT_ALGORITHM)
-
-    @staticmethod
-    def decode_access_token(token: str) -> Optional[Dict[str, Any]]:
-        """Декодирует и проверяет валидность JWT токена."""
-        try:
-            payload = jwt.decode(token, SECRET_KEY, algorithms=[JWT_ALGORITHM])
-            return payload
-        except (jwt.PyJWTError, Exception):
-            return None
+    from SHARED.tokens import create_access_token as _create, decode_access_token as _decode
+    create_access_token = staticmethod(_create)
+    decode_access_token = staticmethod(_decode)
 
     @staticmethod
     def authenticate_local_user(db: Session, username: str, password: str) -> Optional[AppUser]:
         """Локальная аутентификация пользователя."""
         user = db.query(AppUser).filter(
             AppUser.username == username.strip(),
-            AppUser.is_active == True
+            AppUser.is_active == True, AppUser.auth_type == "local"
         ).first()
         if not user or not user.password_hash:
             return None
@@ -87,10 +45,10 @@ class AuthService:
         """
         Проверка прав доступа к филиалу:
         - superadmin имеет доступ ко всем филиалам (target_branch_id любой)
-        - пользователь с branch_id = None имеет доступ ко всем филиалам
+        - пользователь без филиала не получает глобальный доступ
         - иначе target_branch_id должен совпадать с user.branch_id
         """
-        if user.role == "superadmin" or user.branch_id is None:
+        if user.role == "superadmin":
             return True
         if target_branch_id is None:
             return False
@@ -154,3 +112,4 @@ def require_superadmin(current_user: AppUser = Depends(get_current_user)) -> App
             detail="Данное действие доступно только Главному Администратору (SuperAdmin)"
         )
     return current_user
+

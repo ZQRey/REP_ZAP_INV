@@ -1,15 +1,24 @@
 services:
   web-app:
-    build: .
+    build:
+      context: ..
+      dockerfile: CARTRIDGE/Dockerfile
     container_name: cartridge_tracker_web
     restart: unless-stopped
-    ports:
-      - "8080:8000"
     volumes:
       - ./data:/data
     environment:
-      - DATABASE_URL=sqlite:////data/cartridges.db
+      - DATABASE_URL=${DATABASE_URL:?Set the database URL}
+      - SECRET_KEY=${SECRET_KEY:?Set a random JWT secret}
+      - EVOLUTION_API_KEY=${EVOLUTION_API_KEY:?Set the Evolution key}
+      - REDIS_URL=${REDIS_URL:?Set an authenticated Redis URL}
       - PYTHONUNBUFFERED=1
+      - APP_ENV=${APP_ENV:-production}
+      - CORS_ORIGINS=${CORS_ORIGINS:-}
+      - WHATSAPP_ENABLED=true
+      - LDAP_ENABLED=${LDAP_ENABLED:-false}
+      - LDAP_BIND_PASSWORD=${LDAP_BIND_PASSWORD:-}
+      - SSH_KNOWN_HOSTS=/run/ssh/known_hosts
     depends_on:
       - whatsapp-gateway
 
@@ -17,21 +26,19 @@ services:
     image: evoapicloud/evolution-api
     container_name: cartridge_tracker_whatsapp
     restart: unless-stopped
-    ports:
-      - "8081:8080"
     volumes:
       - ./evolution_instances:/evolution/instances
     environment:
       - SERVER_PORT=8080
       - SERVER_TYPE=http
-      - SERVER_URL=http://localhost:8081
-      - AUTHENTICATION_API_KEY=cartridge_secret_key_2026
+      - SERVER_URL=http://whatsapp-gateway:8080
+      - AUTHENTICATION_API_KEY=${EVOLUTION_API_KEY:?Set a new Evolution key}
       - AUTHENTICATION_TYPE=apikey
       - LOG_LEVEL=ERROR,WARN,INFO
       - DEL_INSTANCE=false
       - DATABASE_ENABLED=true
       - DATABASE_PROVIDER=postgresql
-      - DATABASE_CONNECTION_URI=postgresql://evolution:evolution_pass@evolution-db:5432/evolution?schema=public
+      - DATABASE_CONNECTION_URI=${EVOLUTION_DATABASE_URL:?Set the Evolution database URL}
       - DATABASE_CLIENT_NAME=evolution_exchange
       - CACHE_REDIS_ENABLED=false
     depends_on:
@@ -44,6 +51,7 @@ services:
     environment:
       - POSTGRES_DB=evolution
       - POSTGRES_USER=evolution
-      - POSTGRES_PASSWORD=evolution_pass
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?Set a new database password}
     volumes:
       - ./data/evolution_pg:/var/lib/postgresql/data
+

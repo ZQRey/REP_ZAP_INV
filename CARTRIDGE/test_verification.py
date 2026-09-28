@@ -1,3 +1,6 @@
+import os
+if os.getenv("APP_ENV") != "test":
+    raise RuntimeError("Legacy verification scripts require an isolated APP_ENV=test database")
 """
 Автоматизированный верификационный тест для системы Cartridge Tracker.
 Проверяет базу данных, все 4 этапа жизненного цикла картриджа, генерацию акта передачи и печатной формы.
@@ -161,7 +164,7 @@ def run_tests():
     print("\n[7/8] Тестирование Авторизации, Филиалов и Пользователей...")
     
     # Авторизация локального админа
-    login_res = client.post("/api/auth/login", json={"username": "admin", "password": "admin123", "auth_type": "local"})
+    login_res = client.post("/api/auth/login", json={"username": "admin", "password": os.environ["TEST_USER_PASSWORD"], "auth_type": "local"})
     assert login_res.status_code == 200, login_res.text
     auth_data = login_res.json()
     assert "access_token" in auth_data
@@ -194,7 +197,7 @@ def run_tests():
     user_res = client.post("/api/app-users", json={
         "username": "operator1",
         "full_name": "Оператор Северный",
-        "password": "password123",
+        "password": os.environ["TEST_USER_PASSWORD"],
         "role": "operator",
         "branch_id": branch_id,
         "is_active": True
@@ -267,5 +270,6 @@ def run_tests():
 
 if __name__ == "__main__":
     run_tests()
+
 
 

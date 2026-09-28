@@ -1,3 +1,6 @@
+import os
+if os.getenv("APP_ENV") != "test":
+    raise RuntimeError("Legacy verification scripts require an isolated APP_ENV=test database")
 """
 Тестирование формирования местоположения ИТ-отдела и шаблона WhatsApp на основе филиала:
 1. Создание и редактирование филиалов с индивидуальным кабинетом IT (it_office) и персональным шаблоном (wa_message_template).
@@ -45,7 +48,7 @@ def run_tests():
             username="admin_test_branch",
             full_name="Админ Филиалов",
             role="superadmin",
-            password_hash=AuthService.hash_password("admin123"),
+            password_hash=AuthService.hash_password(os.environ["TEST_USER_PASSWORD"]),
             is_active=True,
             auth_type="local"
         )
@@ -205,3 +208,4 @@ def run_tests():
 
 if __name__ == "__main__":
     run_tests()
+

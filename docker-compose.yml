@@ -2,6 +2,9 @@ services:
   # Nginx Reverse Proxy (HTTP: 80, HTTPS: 443)
   nginx-proxy:
     image: nginx:alpine
+    networks:
+      default:
+        ipv4_address: 172.30.88.10
     container_name: it_nginx_proxy
     restart: unless-stopped
     ports:
@@ -26,21 +29,24 @@ services:
       dockerfile: Dockerfile
     container_name: it_unified_portal
     restart: unless-stopped
-    ports:
-      - "8080:8000"  # Прямой порт приложения для отладки
     volumes:
       - ./BD:/app/BD
-      - ./CARTRIDGE:/app/CARTRIDGE
-      - ./REPAIR:/app/REPAIR
-      - ./LOCATION:/app/LOCATION
-      - ./PORTAL:/app/PORTAL
+      - ./secrets/ssh:/run/ssh:ro
+      - ./uploads:/app/LOCATION/app/static/uploads
     environment:
-      - DATABASE_URL=postgresql+psycopg2://app_user:app_password@postgres-db:5432/it_management
-      - SECRET_KEY=unified-it-enterprise-secret-key-2026
-      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=${DATABASE_URL:?Set the application database URL}
+      - SECRET_KEY=${SECRET_KEY:?Set a random JWT secret}
+      - REDIS_URL=${REDIS_URL:?Set an authenticated Redis URL}
       - EVOLUTION_API_URL=http://whatsapp-gateway:8080
-      - EVOLUTION_API_KEY=cartridge_secret_key_2026
+      - EVOLUTION_API_KEY=${EVOLUTION_API_KEY:?Set a new Evolution key}
       - PYTHONUNBUFFERED=1
+      - APP_ENV=${APP_ENV:-production}
+      - NETWORK_ALLOWED_CIDRS=${NETWORK_ALLOWED_CIDRS:-}
+      - CORS_ORIGINS=${CORS_ORIGINS:-}
+      - WHATSAPP_ENABLED=true
+      - LDAP_ENABLED=${LDAP_ENABLED:-false}
+      - LDAP_BIND_PASSWORD=${LDAP_BIND_PASSWORD:-}
+      - SSH_KNOWN_HOSTS=/run/ssh/known_hosts
     depends_on:
       postgres-db:
         condition: service_healthy
@@ -54,12 +60,10 @@ services:
     image: postgis/postgis:15-3.3-alpine
     container_name: it_unified_postgres
     restart: unless-stopped
-    ports:
-      - "5432:5432"
     environment:
       - POSTGRES_DB=it_management
       - POSTGRES_USER=app_user
-      - POSTGRES_PASSWORD=app_password
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?Set a new database password}
     volumes:
       - ./BD/postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -71,10 +75,11 @@ services:
   # Redis для очередей задач (AD/SNMP воркеры) и WebSocket Pub/Sub карты
   redis:
     image: redis:7-alpine
+    command: ["sh", "-c", 'exec redis-server --requirepass "$$REDIS_PASSWORD"']
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD:?Set a Redis password}
     container_name: it_unified_redis
     restart: unless-stopped
-    ports:
-      - "6379:6379"
     volumes:
       - ./BD/redis_data:/data
 
@@ -83,24 +88,22 @@ services:
     image: evoapicloud/evolution-api
     container_name: it_cartridge_whatsapp
     restart: unless-stopped
-    ports:
-      - "8081:8080"
     volumes:
       - ./evolution_instances:/evolution/instances
     environment:
       - SERVER_PORT=8080
       - SERVER_TYPE=http
-      - SERVER_URL=http://localhost:8081
-      - AUTHENTICATION_API_KEY=cartridge_secret_key_2026
+      - SERVER_URL=http://whatsapp-gateway:8080
+      - AUTHENTICATION_API_KEY=${EVOLUTION_API_KEY:?Set a new Evolution key}
       - AUTHENTICATION_TYPE=apikey
       - LOG_LEVEL=ERROR,WARN,INFO
       - DEL_INSTANCE=false
       - DATABASE_ENABLED=true
       - DATABASE_PROVIDER=postgresql
-      - DATABASE_CONNECTION_URI=postgresql://app_user:app_password@postgres-db:5432/it_management?schema=evolution
+      - DATABASE_CONNECTION_URI=${EVOLUTION_DATABASE_URL:?Set the Evolution database URL}
       - DATABASE_CLIENT_NAME=evolution_cartridge
       - CACHE_REDIS_ENABLED=true
-      - CACHE_REDIS_URI=redis://redis:6379/1
+      - CACHE_REDIS_URI=${EVOLUTION_REDIS_URL:?Set an authenticated Redis URL}
     depends_on:
       postgres-db:
         condition: service_healthy
@@ -110,3 +113,10 @@ services:
 volumes:
   postgres_data:
   redis_data:
+
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.30.88.0/24

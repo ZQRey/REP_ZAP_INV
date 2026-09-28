@@ -15,28 +15,13 @@ BD_DIR.mkdir(parents=True, exist_ok=True)
 DEFAULT_SQLITE_PATH = BD_DIR / "app_unified.db"
 
 # URL подключения к БД (SQLite локально или PostgreSQL из переменной окружения)
-DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{DEFAULT_SQLITE_PATH.as_posix()}")
+from SHARED.security_config import DATABASE_URL, SECRET_KEY, DEBUG, JWT_ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
 
-# Секретный ключ JWT и настройки безопасности
-_DEFAULT_SECRET = "unified-it-enterprise-secret-key-2026"
-SECRET_KEY = os.getenv("SECRET_KEY", _DEFAULT_SECRET)
-if SECRET_KEY == _DEFAULT_SECRET:
-    _config_logger.warning(
-        "[SECURITY] SECRET_KEY не задан через переменную окружения! "
-        "Используется ключ по умолчанию — НЕБЕЗОПАСНО для продакшена. "
-        "Задайте переменную окружения SECRET_KEY (минимум 32 символа)."
-    )
-
-JWT_ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_HOURS = int(os.getenv("ACCESS_TOKEN_EXPIRE_HOURS", "24"))
-DEBUG = os.getenv("DEBUG", "False").lower() in ("true", "1", "yes")
-
-# Глобальные дефолтные системные настройки
 DEFAULT_SETTINGS = {
     # Active Directory / LDAP
-    "ad_host": "ldap://192.168.1.10:389",
-    "ad_base_dn": "DC=gp1,DC=loc",
-    "ad_bind_user": "svc_ldap@gp1.loc",
+    "ad_host": "",
+    "ad_base_dn": "",
+    "ad_bind_user": "",
     "ad_bind_password": "",
     "ad_attr_name": "displayName",
     "ad_attr_cabinet": "physicalDeliveryOfficeName",
@@ -48,7 +33,7 @@ DEFAULT_SETTINGS = {
     # WhatsApp (Evolution API) — ИСКЛЮЧИТЕЛЬНО для модуля картриджей
     "wa_mode": "shared",
     "wa_api_url": "http://whatsapp-gateway:8080",
-    "wa_api_key": "cartridge_secret_key_2026",
+    "wa_api_key": "",
     "wa_instance_name": "cartridge_bot",
     "wa_message_template": "Здравствуйте, {name}! Ваш картридж {marker} ({model}) для кабинета {cabinet} успешно заправлен и ожидает выдачи в {it_office}.",
     
@@ -85,3 +70,4 @@ SETTING_DESCRIPTIONS = {
     "cartridge_act_prefix": "Префикс номеров актов передачи картриджей",
     "repair_act_prefix": "Префикс номеров актов передачи техники в ремонт",
 }
+

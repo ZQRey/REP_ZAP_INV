@@ -1,6 +1,8 @@
+localStorage.removeItem('token');
+localStorage.removeItem('cartridge_token');
 document.addEventListener('alpine:init', () => {
     Alpine.data('locationApp', () => ({
-        token: localStorage.getItem('token') || '',
+        token: sessionStorage.getItem('token') || '',
         currentUser: null,
         branches: [],
         selectedBranchId: '',
@@ -108,7 +110,7 @@ document.addEventListener('alpine:init', () => {
             mgmt_port: 161,
             username: '',
             password: '',
-            snmp_community: 'public',
+            snmp_community: '',
             total_ports: 24,
             cabinet: '',
             site: 'Default'
@@ -127,9 +129,9 @@ document.addEventListener('alpine:init', () => {
             model: 'Cisco Catalyst 2960X / 9200',
             management_type: 'ssh_cli',
             mgmt_port: 22,
-            username: 'admin',
+            username: '',
             password: '',
-            snmp_community: 'public',
+            snmp_community: '',
             total_ports: 24,
             cabinet: 'Серверная',
             site: 'Default',
@@ -144,9 +146,9 @@ document.addEventListener('alpine:init', () => {
                 model: 'Cisco Catalyst 2960X / 9200',
                 management_type: 'ssh_cli',
                 mgmt_port: 22,
-                username: 'admin',
+                username: '',
                 total_ports: 24,
-                snmp_community: 'public',
+                snmp_community: '',
                 description: 'Опрос таблицы MAC-адресов по протоколу SSH (show mac address-table) или по SNMP v2c.',
                 cli_guide: `enable
 configure terminal
@@ -154,12 +156,12 @@ hostname SW-CORE
 ip domain-name company.local
 crypto key generate rsa modulus 2048
 ip ssh version 2
-username admin privilege 15 secret YourPassword
+username <DEVICE_USER> privilege 15 secret <GENERATE_DEVICE_PASSWORD>
 line vty 0 15
  transport input ssh
  login local
  exit
-snmp-server community public RO
+snmp-server community <UNIQUE_READONLY_COMMUNITY> RO
 write memory`,
                 notes: 'Для SSH убедитесь, что учетная запись имеет privilege 15 или права на команду show mac address-table.'
             },
@@ -170,15 +172,15 @@ write memory`,
                 model: 'MikroTik Cloud Router Switch CRS328 / CRS326',
                 management_type: 'mikrotik',
                 mgmt_port: 22,
-                username: 'admin',
+                username: '',
                 total_ports: 24,
-                snmp_community: 'public',
+                snmp_community: '',
                 description: 'Чтение таблицы хостов сетевого моста через SSH CLI (/interface bridge host print) или SNMP v2c.',
-                cli_guide: `/user add name=it_monitor group=read password=YourPassword
+                cli_guide: `/user add name=it_monitor group=read password=<GENERATE_DEVICE_PASSWORD>
 /ip service enable ssh
 /ip service set ssh port=22
 /snmp set enabled=yes
-/snmp community set [ find default=yes ] addresses=0.0.0.0/0 name=public read-access=yes`,
+/snmp community set [ find default=yes ] addresses=<MONITORING_SERVER_IP>/32 name=<UNIQUE_READONLY_COMMUNITY> read-access=yes`,
                 notes: 'Для работы через SSH достаточно создать пользователя в группе "read". Система автоматически сопоставляет ether-интерфейсы с портами.'
             },
             tplink_omada: {
@@ -188,10 +190,10 @@ write memory`,
                 model: 'TP-Link Omada TL-SG3428X / SG3210',
                 management_type: 'omada',
                 mgmt_port: 8043,
-                username: 'admin',
+                username: '',
                 total_ports: 24,
                 site: 'Default',
-                snmp_community: 'public',
+                snmp_community: '',
                 description: 'Прямая интеграция с контроллером Omada SDN (аппаратный OC200/OC300 или программный контроллер) через REST API.',
                 cli_guide: `1. Откройте веб-интерфейс контроллера Omada: https://<IP_КОНТРОЛЛЕРА>:8043
 2. Перейдите в Settings -> Global Settings / Administrators.
@@ -207,14 +209,14 @@ write memory`,
                 model: 'TP-Link JetStream T2600G-28TS / TL-SG3428',
                 management_type: 'tplink',
                 mgmt_port: 22,
-                username: 'admin',
+                username: '',
                 total_ports: 24,
-                snmp_community: 'public',
+                snmp_community: '',
                 description: 'Опрос управляемых коммутаторов TP-Link в автономном режиме через SSH CLI или SNMP v2c.',
                 cli_guide: `enable
 configure
 service ssh
-snmp-server community public ro
+snmp-server community <UNIQUE_READONLY_COMMUNITY> ro
 copy running-config startup-config`,
                 notes: 'Через веб-интерфейс: Security -> Access Security -> SSH Config (Enable SSH) и Management -> SNMP -> SNMP Config (Enable SNMP Agent).'
             },
@@ -227,13 +229,13 @@ copy running-config startup-config`,
                 mgmt_port: 22,
                 username: 'manager',
                 total_ports: 24,
-                snmp_community: 'public',
+                snmp_community: '',
                 description: 'Чтение таблицы FDB через команду "show mac-address" по SSH либо по протоколу SNMP v2c.',
                 cli_guide: `configure
 crypto key generate ssh rsa
 ip ssh
 password manager user-name manager
-snmp-server community "public" unrestricted
+snmp-server community "<UNIQUE_READONLY_COMMUNITY>" restricted
 write memory`,
                 notes: 'В HP ProCurve порт указывается в формате "1", "2" или "A1", "B2". Система автоматически распознает цифровой номер порта.'
             },
@@ -244,9 +246,9 @@ write memory`,
                 model: 'Huawei S5720 / S5735 / CloudEngine',
                 management_type: 'ssh_cli',
                 mgmt_port: 22,
-                username: 'admin',
+                username: '',
                 total_ports: 24,
-                snmp_community: 'public',
+                snmp_community: '',
                 description: 'Опрос таблицы MAC-адресов через Stelnet (SSH CLI) с командой "display mac-address" или SNMP v2c.',
                 cli_guide: `system-view
 rsa local-key-pair create
@@ -255,7 +257,7 @@ ssh user admin authentication-type password
 ssh user admin service-type stelnet
 snmp-agent
 snmp-agent sys-info version v2c
-snmp-agent community read public
+snmp-agent community read <UNIQUE_READONLY_COMMUNITY>
 save`,
                 notes: 'Убедитесь, что для пользователя admin включена служба stelnet и задан пароль.'
             },
@@ -266,15 +268,15 @@ save`,
                 model: 'D-Link DGS-1210 / DGS-1510 / DES-3200',
                 management_type: 'snmp',
                 mgmt_port: 161,
-                username: 'admin',
+                username: '',
                 total_ports: 24,
-                snmp_community: 'public',
+                snmp_community: '',
                 description: 'Стандартный опрос FDB-таблицы по SNMP v2c Bridge-MIB (OID 1.3.6.1.2.1.17.4.3.1.2) либо через SSH/Telnet.',
                 cli_guide: `enable snmp
-create snmp community public view restricted read_only
+create snmp community <UNIQUE_READONLY_COMMUNITY> view restricted read_only
 enable ssh
 save`,
-                notes: 'В веб-интерфейсе D-Link: Management -> SNMP Settings -> включить SNMP v2c и создать Community "public" с правами Read-Only.'
+                notes: 'В веб-интерфейсе D-Link: Management -> SNMP Settings -> включить SNMP v2c и создать Community "<UNIQUE_READONLY_COMMUNITY>" с правами Read-Only.'
             },
             eltex: {
                 title: 'Eltex MES',
@@ -283,16 +285,16 @@ save`,
                 model: 'Eltex MES2428 / MES2324 / MES3324',
                 management_type: 'ssh_cli',
                 mgmt_port: 22,
-                username: 'admin',
+                username: '',
                 total_ports: 24,
-                snmp_community: 'public',
+                snmp_community: '',
                 description: 'Чтение таблицы коммутации по протоколу SSH (show mac address-table) или SNMP v2c.',
                 cli_guide: `configure
 crypto key generate rsa
 ip ssh server
-username admin privilege 15 password YourPassword
+username <DEVICE_USER> privilege 15 password <GENERATE_DEVICE_PASSWORD>
 snmp-server server
-snmp-server community public ro
+snmp-server community <UNIQUE_READONLY_COMMUNITY> ro
 end
 write`,
                 notes: 'Отечественные коммутаторы Eltex MES поддерживают стандартный синтаксис Cisco-like CLI.'
@@ -306,12 +308,12 @@ write`,
                 mgmt_port: 161,
                 username: '',
                 total_ports: 24,
-                snmp_community: 'public',
+                snmp_community: '',
                 description: 'Подходит для любых управляемых коммутаторов с поддержкой отраслевого стандарта SNMP v2c Bridge-MIB dot1dTpFdbTable.',
                 cli_guide: `1. Войдите в веб-интерфейс коммутатора.
 2. Найдите раздел "SNMP Configuration" / "Управление по SNMP".
 3. Включите SNMP Agent (версия v2c).
-4. Задайте имя сообщества (Community Name): "public" (только чтение - RO).
+4. Задайте имя сообщества (Community Name): "<UNIQUE_READONLY_COMMUNITY>" (только чтение - RO).
 5. Разрешите входящие UDP пакеты на порт 161 от IP-адреса сервера системы учета.`,
                 notes: 'Стандарт Bridge-MIB поддерживается 99% всех управляемых L2/L3 коммутаторов в мире.'
             }
@@ -361,13 +363,6 @@ write`,
         },
 
         async init() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const tokenParam = urlParams.get('token');
-            if (tokenParam) {
-                this.token = tokenParam;
-                localStorage.setItem('token', tokenParam);
-                window.history.replaceState({}, document.title, window.location.pathname);
-            }
 
             if (!this.token) {
                 window.location.href = '/?return_to=' + encodeURIComponent(window.location.pathname);
@@ -400,7 +395,7 @@ write`,
             try {
                 const res = await fetch('/api/v1/auth/me', { headers: this.getAuthHeaders() });
                 if (!res.ok) {
-                    localStorage.removeItem('token');
+                    sessionStorage.removeItem('token');
                     window.location.href = '/';
                     return;
                 }
@@ -1226,10 +1221,10 @@ write`,
                 mgmt_port: sw.mgmt_port || 161,
                 username: sw.username || '',
                 password: '',
-                snmp_community: sw.snmp_community || 'public',
+                snmp_community: sw.snmp_community || '',
                 total_ports: sw.total_ports || 24,
                 cabinet: sw.cabinet || '',
-                site: (sw.extra_params && sw.extra_params.site) || 'Default'
+                site: sw.site || 'Default'
             };
             this.showSwitchSettingsModal = true;
         },
@@ -1249,7 +1244,7 @@ write`,
                     cabinet: this.switchForm.cabinet,
                     extra_params: {
                         site: this.switchForm.site,
-                        allow_demo_fallback: true
+                        allow_demo_fallback: false
                     }
                 };
                 if (this.switchForm.password) {
@@ -1336,7 +1331,7 @@ write`,
                 this.newSwitchForm.management_type = profile.management_type;
                 this.newSwitchForm.mgmt_port = profile.mgmt_port;
                 this.newSwitchForm.username = profile.username;
-                this.newSwitchForm.snmp_community = profile.snmp_community || 'public';
+                this.newSwitchForm.snmp_community = profile.snmp_community || '';
                 this.newSwitchForm.total_ports = profile.total_ports || 24;
                 if (profile.site) this.newSwitchForm.site = profile.site;
             }
@@ -1369,7 +1364,7 @@ write`,
                     mgmt_port: parseInt(form.mgmt_port) || null,
                     username: form.username || null,
                     password: form.password || null,
-                    snmp_community: form.snmp_community || 'public',
+                    snmp_community: form.snmp_community || '',
                     extra_params: {
                         site: form.site || 'Default'
                     }
@@ -1424,7 +1419,7 @@ write`,
                     mgmt_port: parseInt(this.newSwitchForm.mgmt_port) || 161,
                     username: this.newSwitchForm.username ? this.newSwitchForm.username.trim() : null,
                     password: this.newSwitchForm.password ? this.newSwitchForm.password.trim() : null,
-                    snmp_community: this.newSwitchForm.snmp_community ? this.newSwitchForm.snmp_community.trim() : 'public',
+                    snmp_community: this.newSwitchForm.snmp_community ? this.newSwitchForm.snmp_community.trim() : '',
                     total_ports: parseInt(this.newSwitchForm.total_ports) || 24,
                     cabinet: this.newSwitchForm.cabinet ? this.newSwitchForm.cabinet.trim() : 'Серверная',
                     coords_x: this.newSwitchForm.coords_x || 0.25,
@@ -1581,8 +1576,9 @@ write`,
         },
 
         logout() {
-            localStorage.removeItem('token');
+            sessionStorage.removeItem('token');
             window.location.href = '/';
         }
     }));
 });
+

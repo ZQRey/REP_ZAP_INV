@@ -1,3 +1,6 @@
+import os
+if os.getenv("APP_ENV") != "test":
+    raise RuntimeError("Legacy verification scripts require an isolated APP_ENV=test database")
 import sys
 from pathlib import Path
 
@@ -24,7 +27,7 @@ def test_full_unified_platform():
     # 2. Логин администратора через Единый SSO
     res = client.post("/api/v1/auth/login", json={
         "username": "admin",
-        "password": "admin123",
+        "password": os.environ["TEST_USER_PASSWORD"],
         "auth_type": "local"
     })
     assert res.status_code == 200, f"Login failed: {res.text}"
@@ -160,3 +163,4 @@ def test_full_unified_platform():
 
 if __name__ == "__main__":
     test_full_unified_platform()
+

@@ -44,7 +44,7 @@ def get_report_data(
     except PermissionError as pe:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(pe))
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Ошибка формирования отчета: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Ошибка формирования отчета: {type(e).__name__}")
 
 
 @router.get("/export/excel")
@@ -95,7 +95,7 @@ def export_report_excel(
     except PermissionError as pe:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(pe))
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Ошибка выгрузки Excel: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Ошибка выгрузки Excel: {type(e).__name__}")
 
 
 @router.get("/export/pdf")
@@ -146,5 +146,6 @@ def export_report_pdf(
     except PermissionError as pe:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(pe))
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Ошибка выгрузки PDF: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Ошибка выгрузки PDF: {type(e).__name__}")
+
 

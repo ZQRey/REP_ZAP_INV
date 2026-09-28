@@ -52,13 +52,25 @@ class SwitchConfigSchema(BaseModel):
     management_port: Optional[int] = 161
     username: Optional[str] = None
     password: Optional[str] = None
-    snmp_community: Optional[str] = "public"
+    snmp_community: Optional[str] = None
     model: Optional[str] = None
     total_ports: int = 24
     site: Optional[str] = "Default"
     is_online: Optional[bool] = False
     last_sync_at: Optional[datetime] = None
 
+
+class SwitchConfigResponse(BaseModel):
+    credentials_configured: bool = False
+    ip_address: str = "192.168.1.1"
+    management_type: str = "snmp"
+    mgmt_port: Optional[int] = 161
+    management_port: Optional[int] = 161
+    model: Optional[str] = None
+    total_ports: int = 24
+    site: Optional[str] = "Default"
+    is_online: Optional[bool] = False
+    last_sync_at: Optional[datetime] = None
 
 class SwitchTestResponse(BaseModel):
     success: bool
@@ -149,7 +161,7 @@ class EquipmentResponse(BaseModel):
     ad_guid: Optional[str] = None
     specs: Optional[Dict[str, Any]] = None
     notes: Optional[str] = None
-    switch_config: Optional[SwitchConfigSchema] = None
+    switch_config: Optional[SwitchConfigResponse] = None
     updated_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
@@ -232,3 +244,4 @@ class ADComputerSyncResponse(BaseModel):
     message: str
     added: int = 0
     updated: int = 0
+

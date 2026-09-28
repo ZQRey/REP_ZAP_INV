@@ -14,14 +14,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+COPY SHARED /app/SHARED
+COPY CARTRIDGE/app /app/app
 
 # Создание директории для монтирования тома базы данных
-RUN mkdir -p /data
+RUN groupadd --gid 10001 app && useradd --uid 10001 --gid app --no-create-home app \
+    && mkdir -p /data /app/BD && chown -R app:app /data /app
+USER app
 
 EXPOSE 8000
 
-ENV DATABASE_URL="sqlite:////data/cartridges.db"
+
 ENV PYTHONUNBUFFERED=1
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-access-log", "--no-proxy-headers"]
+

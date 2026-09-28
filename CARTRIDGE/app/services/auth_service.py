@@ -1,72 +1,26 @@
-import hashlib
-import os
-import secrets
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
-import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from sqlalchemy import or_
+from sqlalchemy import or_, func
 from sqlalchemy.orm import Session
 
-from app.config import SECRET_KEY
 from app.database import get_db
 from app.models import AppUser
 from app.services.ldap_service import LDAPService
 
-JWT_ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_HOURS = 24
 
 security = HTTPBearer(auto_error=False)
 
 
 class AuthService:
-    @staticmethod
-    def hash_password(password: str) -> str:
-        """Хэширует пароль с использованием PBKDF2-HMAC-SHA256 и криптографической соли."""
-        salt = secrets.token_hex(16)
-        key = hashlib.pbkdf2_hmac(
-            "sha256",
-            password.encode("utf-8"),
-            salt.encode("utf-8"),
-            iterations=100000
-        )
-        return f"{salt}${key.hex()}"
+    from SHARED.passwords import hash_password as _hash, verify_password as _verify
+    hash_password = staticmethod(_hash)
+    verify_password = staticmethod(_verify)
 
-    @staticmethod
-    def verify_password(password: str, hashed: str) -> bool:
-        """Сверяет пароль с сохраненным хэшем."""
-        if not hashed or "$" not in hashed:
-            return False
-        try:
-            salt, stored_key = hashed.split("$", 1)
-            key = hashlib.pbkdf2_hmac(
-                "sha256",
-                password.encode("utf-8"),
-                salt.encode("utf-8"),
-                iterations=100000
-            )
-            return secrets.compare_digest(key.hex(), stored_key)
-        except Exception:
-            return False
-
-    @staticmethod
-    def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
-        """Создает подписанный JWT токен доступа."""
-        to_encode = data.copy()
-        expire = datetime.utcnow() + (expires_delta or timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS))
-        to_encode.update({"exp": expire})
-        encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=JWT_ALGORITHM)
-        return encoded_jwt
-
-    @staticmethod
-    def decode_access_token(token: str) -> Optional[Dict[str, Any]]:
-        """Декодирует и валидирует JWT токен."""
-        try:
-            payload = jwt.decode(token, SECRET_KEY, algorithms=[JWT_ALGORITHM])
-            return payload
-        except jwt.PyJWTError:
-            return None
+    from SHARED.tokens import create_access_token as _create, decode_access_token as _decode
+    create_access_token = staticmethod(_create)
+    decode_access_token = staticmethod(_decode)
 
     @classmethod
     def authenticate_user(
@@ -79,6 +33,8 @@ class AuthService:
         """
         Аутентифицирует пользователя локально или через Active Directory.
         """
+        if auth_type not in ("local", "ad") or not username.strip() or not password:
+            return None
         clean_user = username.strip()
 
         if auth_type == "ad":
@@ -94,10 +50,13 @@ class AuthService:
             # Если вход через AD успешен — ищем или создаем профиль AppUser по чистому sAMAccountName
             user = db.query(AppUser).filter(
                 or_(
-                    AppUser.username.ilike(sam_account),
-                    AppUser.username.ilike(clean_user)
+                    func.lower(AppUser.username) == sam_account.lower(),
+                    func.lower(AppUser.username) == clean_user.lower()
                 )
             ).first()
+
+            if not user or user.auth_type != "ad" or not user.is_active:
+                return None
 
             # Получаем или обновляем данные в ad_users
             from app.models import ADUser
@@ -130,39 +89,19 @@ class AuthService:
                 or sam_account
             )
 
-            if not user:
-                # Первый вход доменного пользователя — по умолчанию выдаются права "Пользователь"
-                user = AppUser(
-                    username=sam_account,
-                    full_name=display_name,
-                    auth_type="ad",
-                    role="user",
-                    is_active=True,
-                    branch_id=None
-                )
-                db.add(user)
-                db.commit()
-                db.refresh(user)
-            else:
-                # Нормализуем логин до чистого sAMAccountName, если он был записан с @домен
-                if user.username != sam_account:
-                    user.username = sam_account
-                    db.commit()
-
             if not user.is_active:
-                raise HTTPException(status_code=403, detail="Учетная запись заблокирована администратором.")
+                return None
 
             return user
 
         # Локальный вход
-        user = db.query(AppUser).filter(AppUser.username.ilike(clean_user)).first()
-        if not user or not user.password_hash:
+        user = db.query(AppUser).filter(func.lower(AppUser.username) == clean_user.lower()).first()
+        if not user or user.auth_type != "local" or not user.password_hash:
+            from SHARED.passwords import consume_dummy_check
+            consume_dummy_check(password)
             return None
 
-        if not user.is_active:
-            raise HTTPException(status_code=403, detail="Учетная запись заблокирована.")
-
-        if not cls.verify_password(password, user.password_hash):
+        if not cls.verify_password(password, user.password_hash) or not user.is_active:
             return None
 
         return user
@@ -226,3 +165,4 @@ def require_operator(user: AppUser = Depends(get_current_user)) -> AppUser:
             detail="Недостаточно прав. Доступно только операторам и администраторам."
         )
     return user
+

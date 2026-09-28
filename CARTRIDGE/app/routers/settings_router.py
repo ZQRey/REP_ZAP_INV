@@ -1,3 +1,4 @@
+from SHARED.settings_security import public_settings
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -8,7 +9,7 @@ from app.services.settings_service import SettingsService
 from app.services.ldap_service import LDAPService
 from app.services.whatsapp_service import WhatsAppService
 from app.services.auth_service import (
-    get_current_user_optional,
+    get_current_user,
     require_superadmin,
     require_admin,
     require_operator
@@ -20,16 +21,11 @@ router = APIRouter(prefix="/api/settings", tags=["Settings"])
 @router.get("")
 def get_settings(
     db: Session = Depends(get_db),
-    current_user: Optional[AppUser] = Depends(get_current_user_optional)
+    current_user: Optional[AppUser] = Depends(get_current_user)
 ):
     """Получить текущие настройки системы (пароль AD и WA API Key скрыты для не-суперадминов)."""
     settings = SettingsService.get_all(db)
-    if not current_user or current_user.role != "superadmin":
-        if "ad_bind_password" in settings and settings["ad_bind_password"]:
-            settings["ad_bind_password"] = "******"
-        if "wa_api_key" in settings and settings["wa_api_key"]:
-            settings["wa_api_key"] = "******"
-    return settings
+    return public_settings(settings)
 
 
 @router.post("")
@@ -41,13 +37,13 @@ def update_settings(
 ):
     """Обновить настройки системы в БД (доступно только Супер администратору)."""
     cleaned = dict(payload.settings)
-    if cleaned.get("ad_bind_password") == "******":
+    if cleaned.get("ad_bind_password") in ("******", ""):
         cleaned.pop("ad_bind_password", None)
-    if cleaned.get("wa_api_key") == "******":
+    if cleaned.get("wa_api_key") in ("******", ""):
         cleaned.pop("wa_api_key", None)
 
     updated = SettingsService.update_bulk(db, cleaned)
-    return {"success": True, "settings": updated}
+    return {"success": True, "settings": public_settings(updated)}
 
 
 @router.post("/ldap/test")
@@ -208,3 +204,4 @@ async def send_whatsapp_test(
     )
     result = await WhatsAppService.send_text_message(db, payload.phone, text, instance_name=inst)
     return result
+

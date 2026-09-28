@@ -155,10 +155,10 @@ class NetworkSwitchResponse(BaseModel):
     ip_address: str
     management_type: str = "snmp"
     mgmt_port: int = 161
-    username: Optional[str] = None
-    snmp_community: str
     model: Optional[str] = None
     total_ports: int
+    site: str = "Default"
+    credentials_configured: bool = False
     name: str
     cabinet: Optional[str] = None
     last_poll_status: Optional[str] = "never"
@@ -167,10 +167,10 @@ class NetworkSwitchResponse(BaseModel):
     floor_id: Optional[int] = None
     coords_x: Optional[float] = None
     coords_y: Optional[float] = None
-    extra_params: Optional[Dict[str, Any]] = None
     ports: List[SwitchPortResponse] = []
 
     model_config = ConfigDict(from_attributes=True)
+
 
 
 class NetworkSwitchCreate(BaseModel):
@@ -184,7 +184,7 @@ class NetworkSwitchCreate(BaseModel):
     mgmt_port: int = 161
     username: Optional[str] = None
     password: Optional[str] = None
-    snmp_community: str = "public"
+    snmp_community: str = ""
     total_ports: int = 24
     cabinet: Optional[str] = "Серверная"
     coords_x: float = 0.5
@@ -218,7 +218,7 @@ class SwitchConnectionTestRequest(BaseModel):
     mgmt_port: Optional[int] = None
     username: Optional[str] = None
     password: Optional[str] = None
-    snmp_community: Optional[str] = "public"
+    snmp_community: Optional[str] = None
     extra_params: Optional[Dict[str, Any]] = None
 
 
@@ -241,3 +241,4 @@ class CableTraceResponse(BaseModel):
     path_points: List[Dict[str, float]] = []  # [{x, y}, {x, y}, ...]
     distance_meters: float = 0.0
     message: str = ""
+

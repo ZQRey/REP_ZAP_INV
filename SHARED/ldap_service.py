@@ -1,3 +1,6 @@
+from SHARED.settings_security import effective_settings
+from SHARED.transport_security import ldap_connection
+from SHARED.security_config import DEMO_ENABLED
 import re
 import socket
 import logging
@@ -58,7 +61,7 @@ class LDAPService:
     def get_ldap_settings(db: Session) -> Dict[str, str]:
         """Получает текущие настройки подключения к Active Directory из базы данных."""
         settings = db.query(SystemSetting).all()
-        return {s.key: (s.value or "") for s in settings}
+        return effective_settings({s.key: (s.value or "") for s in settings})
 
     @staticmethod
     def normalize_bind_user(bind_user: str, base_dn: str = "") -> str:
@@ -104,9 +107,8 @@ class LDAPService:
         try:
             from ldap3 import Server, Connection, ALL, SUBTREE
             server_address, port, use_ssl = LDAPService.parse_ldap_server(host)
-            server = Server(server_address, port=port, use_ssl=use_ssl, get_info=ALL, connect_timeout=5)
             effective_user = LDAPService.normalize_bind_user(bind_user, base_dn)
-            conn = Connection(server, user=effective_user, password=bind_pwd, auto_bind=True)
+            conn = ldap_connection(server_address, port, use_ssl, effective_user, bind_pwd)
 
             attrs = ["sAMAccountName", "displayName", "department", "physicalDeliveryOfficeName", "telephoneNumber", "mobile"]
             conn.search(
@@ -155,8 +157,8 @@ class LDAPService:
 
         except Exception as e:
             db.rollback()
-            logger.error(f"[AD SYNC ERROR] Failed to sync users from AD: {e}")
-            return {"status": "error", "message": f"Ошибка связи с Active Directory: {str(e)}", "count": 0}
+            logger.error(f"[AD SYNC ERROR] Failed to sync users from AD: {type(e).__name__}")
+            return {"status": "error", "message": f"Ошибка связи с Active Directory: {type(e).__name__}", "count": 0}
 
     @staticmethod
     def sync_ad_computers(db: Session, default_branch_id: Optional[int] = None) -> Dict[str, Any]:
@@ -189,9 +191,8 @@ class LDAPService:
         try:
             from ldap3 import Server, Connection, ALL, SUBTREE
             server_address, port, use_ssl = LDAPService.parse_ldap_server(host)
-            server = Server(server_address, port=port, use_ssl=use_ssl, get_info=ALL, connect_timeout=5)
             effective_user = LDAPService.normalize_bind_user(bind_user, base_dn)
-            conn = Connection(server, user=effective_user, password=bind_pwd, auto_bind=True)
+            conn = ldap_connection(server_address, port, use_ssl, effective_user, bind_pwd)
 
             attrs = [
                 "sAMAccountName",
@@ -343,7 +344,7 @@ class LDAPService:
                 from REPAIR.app.services.model_parser_service import ModelParserService
                 ModelParserService.sync_models_from_ad_computers(db)
             except Exception as m_err:
-                logger.warning(f"Auto-sync models from AD skipped: {m_err}")
+                logger.warning(f"Auto-sync models from AD skipped: {type(m_err).__name__}")
 
             return {
                 "status": "success",
@@ -354,15 +355,15 @@ class LDAPService:
 
         except Exception as e:
             db.rollback()
-            logger.error(f"[AD COMPUTERS SYNC ERROR] Failed to sync computers from AD: {e}")
+            logger.error(f"[AD COMPUTERS SYNC ERROR] Failed to sync computers from AD: {type(e).__name__}")
             existing_pc_count = db.query(Asset).count()
-            if existing_pc_count == 0:
+            if DEMO_ENABLED and existing_pc_count == 0:
                 mock_res = LDAPService._seed_mock_computers(db, default_branch_id)
-                mock_res["message"] = f"Сервер AD недоступен ({str(e)}). Загружен стартовый демонстрационный пул компьютеров AD."
+                mock_res["message"] = f"Сервер AD недоступен ({type(e).__name__}). Загружен стартовый демонстрационный пул компьютеров AD."
                 return mock_res
             return {
                 "status": "error",
-                "message": f"Не удалось подключиться к серверу AD ({str(e)}). Проверьте настройки LDAP.",
+                "message": f"Не удалось подключиться к серверу AD ({type(e).__name__}). Проверьте настройки LDAP.",
                 "added": 0,
                 "updated": 0
             }
@@ -370,6 +371,8 @@ class LDAPService:
     @staticmethod
     def _seed_mock_computers(db: Session, branch_id: Optional[int]) -> Dict[str, Any]:
         """Создает тестовый набор компьютеров AD для автономной демонстрации, если в базе пусто."""
+        if not DEMO_ENABLED:
+            return {"status": "error", "message": "AD unavailable or unconfigured; demo is disabled", "added": 0, "updated": 0}
         existing_pc_count = db.query(Asset).filter(Asset.ad_guid != None).count()
         if existing_pc_count > 0:
             return {"status": "info", "message": f"В базе уже имеется {existing_pc_count} компьютеров из AD.", "added": 0, "updated": 0}
@@ -421,7 +424,7 @@ class LDAPService:
         try:
             ModelParserService.sync_models_from_ad_computers(db)
         except Exception as m_err:
-            logger.warning(f"Auto-sync demo models failed: {m_err}")
+            logger.warning(f"Auto-sync demo models failed: {type(m_err).__name__}")
 
         return {
             "status": "success",
@@ -429,3 +432,4 @@ class LDAPService:
             "added": added,
             "updated": 0
         }
+

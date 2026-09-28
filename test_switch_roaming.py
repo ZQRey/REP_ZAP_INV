@@ -1,3 +1,6 @@
+import os
+if os.getenv("APP_ENV") != "test":
+    raise RuntimeError("Legacy verification scripts require an isolated APP_ENV=test database")
 import sys
 from pathlib import Path
 from fastapi.testclient import TestClient
@@ -15,7 +18,7 @@ def run_tests():
     client = TestClient(app)
 
     # 1. Login as admin
-    login_res = client.post('/api/v1/auth/login', json={'username': 'admin', 'password': 'admin123', 'auth_type': 'local'})
+    login_res = client.post('/api/v1/auth/login', json={'username': 'admin', 'password': os.environ["TEST_USER_PASSWORD"], 'auth_type': 'local'})
     assert login_res.status_code == 200, f'Login failed: {login_res.text}'
     token = login_res.json()['access_token']
     headers = {'Authorization': f'Bearer {token}'}
@@ -118,3 +121,4 @@ def run_tests():
 
 if __name__ == '__main__':
     run_tests()
+
