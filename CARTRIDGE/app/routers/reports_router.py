@@ -8,8 +8,8 @@ from sqlalchemy.orm import Session
 
 from SHARED.database import get_db
 from SHARED.models import AppUser
-from app.services.settings_service import SettingsService
-from app.services.report_service import ReportService
+from CARTRIDGE.app.services.settings_service import SettingsService
+from CARTRIDGE.app.services.report_service import ReportService
 
 router = APIRouter(prefix="/api/reports", tags=["Reports"])
 
