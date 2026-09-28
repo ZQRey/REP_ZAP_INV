@@ -36,3 +36,28 @@ def test_mark_sent_clears_retry_state():
     assert item.sent_at is not None
     assert item.last_error is None
     assert item.next_attempt_at is None
+
+
+def test_worker_reclaims_stale_processing_lease(monkeypatch):
+    from datetime import timedelta
+    from SHARED.database import SessionLocal
+    import SHARED.notification_worker as worker
+
+    with SessionLocal() as db:
+        item = Notification(
+            recipient="7702", channel="whatsapp", payload={"message": "x"},
+            idempotency_key="stale-worker-test", status=NotificationStatus.PROCESSING,
+            attempts=1, next_attempt_at=datetime.utcnow() - timedelta(minutes=10),
+        )
+        db.add(item)
+        db.commit()
+        item_id = item.id
+
+    monkeypatch.setattr(worker, "PROCESSING_LEASE_SECONDS", 60)
+    with SessionLocal() as db:
+        claimed = worker._claim_batch(db)
+        assert [item.id for item in claimed if item.id == item_id] == [item_id]
+        reclaimed = db.get(Notification, item_id)
+        assert reclaimed.status == NotificationStatus.PROCESSING
+        assert reclaimed.attempts == 2
+        assert reclaimed.next_attempt_at is not None
