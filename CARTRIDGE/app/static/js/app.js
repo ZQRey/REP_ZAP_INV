@@ -70,34 +70,11 @@ function cartridgeApp() {
 
         // Инициализация
         async init() {
-            // Глобальный перехватчик fetch для автоматической подстановки токена авторизации
+            // Shared ApiClient owns authentication/error transport. Keep legacy fetch call sites
+            // temporarily, but route them through the same authenticated request boundary.
             if (!window._cartridgeFetchIntercepted) {
                 window._cartridgeFetchIntercepted = true;
-                const originalFetch = window.fetch;
-                window.fetch = async (...args) => {
-                    let [resource, config] = args;
-                    config = config || {};
-                    config.headers = config.headers || {};
-                    const token = sessionStorage.getItem('token');
-                    if (token) {
-                        if (config.headers instanceof Headers) {
-                            if (!config.headers.has('Authorization')) {
-                                config.headers.set('Authorization', `Bearer ${token}`);
-                            }
-                        } else if (Array.isArray(config.headers)) {
-                            const hasAuth = config.headers.some(([k]) => k.toLowerCase() === 'authorization');
-                            if (!hasAuth) {
-                                config.headers.push(['Authorization', `Bearer ${token}`]);
-                            }
-                        } else {
-                            if (!config.headers['Authorization'] && !config.headers['authorization']) {
-                                config.headers['Authorization'] = `Bearer ${token}`;
-                            }
-                        }
-                    }
-                    const response = await originalFetch(resource, config);
-                    return response;
-                };
+                window.fetch = (resource, config) => window.ApiClient.request(resource, config);
             }
 
             if (this.authToken) {

@@ -675,4 +675,10 @@ document.addEventListener('alpine:init', () => {
         }
     }));
 });
+// Route legacy fetch call sites through the shared authenticated API boundary.
+if (window.ApiClient && !window._sharedApiFetchInstalled) {
+    window._sharedApiFetchInstalled = true;
+    window.fetch = (resource, config) => window.ApiClient.request(resource, config);
+}
+
 
