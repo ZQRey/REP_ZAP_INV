@@ -23,6 +23,16 @@ services:
       timeout: 5s
       retries: 3
 
+  secret-bootstrap:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: "no"
+    user: "0:0"
+    command: ["sh", "/app/scripts/bootstrap_secrets.sh"]
+    volumes:
+      - app_secrets:/run/app-secrets
+
   # One-shot schema gate. Every normal Compose deployment applies reviewed Alembic
   # migrations before application processes are allowed to start.
   database-migrations:
@@ -32,14 +42,10 @@ services:
     restart: "no"
     command: ["alembic", "upgrade", "head"]
     environment:
-      - DATABASE_URL=${DATABASE_URL:?Set the application database URL}
-      - SECRET_KEY=${SECRET_KEY:?Set a random JWT secret}
-      - REDIS_URL=${REDIS_URL:?Set an authenticated Redis URL}
-      - NETWORK_CREDENTIAL_KEY=${NETWORK_CREDENTIAL_KEY:?Set a random network credential encryption key}
-      - APP_ENV=${APP_ENV:-production}
-      - WHATSAPP_ENABLED=false
-      - LDAP_ENABLED=false
+      - DATABASE_URL=${DATABASE_URL:-postgresql://app_user:rep_zap_internal_db@postgres-db:5432/it_management}
     depends_on:
+      secret-bootstrap:
+        condition: service_completed_successfully
       postgres-db:
         condition: service_healthy
 
@@ -53,23 +59,24 @@ services:
     volumes:
       - ./BD:/app/BD
       - ./secrets/ssh:/run/ssh:ro
+      - app_secrets:/run/app-secrets:ro
       - ./uploads:/app/LOCATION/app/static/uploads
     environment:
-      - DATABASE_URL=${DATABASE_URL:?Set the application database URL}
-      - SECRET_KEY=${SECRET_KEY:?Set a random JWT secret}
-      - REDIS_URL=${REDIS_URL:?Set an authenticated Redis URL}
+      - DATABASE_URL=${DATABASE_URL:-postgresql://app_user:rep_zap_internal_db@postgres-db:5432/it_management}
+      - REDIS_URL=${REDIS_URL:-redis://:rep_zap_internal_redis@redis:6379/0}
       - EVOLUTION_API_URL=http://whatsapp-gateway:8080
-      - EVOLUTION_API_KEY=${EVOLUTION_API_KEY:?Set a new Evolution key}
+      - EVOLUTION_API_KEY=${EVOLUTION_API_KEY:-rep_zap_internal_evolution}
       - PYTHONUNBUFFERED=1
       - APP_ENV=${APP_ENV:-production}
       - NETWORK_ALLOWED_CIDRS=${NETWORK_ALLOWED_CIDRS:-}
-      - NETWORK_CREDENTIAL_KEY=${NETWORK_CREDENTIAL_KEY:?Set a random network credential encryption key}
       - CORS_ORIGINS=${CORS_ORIGINS:-}
       - WHATSAPP_ENABLED=true
       - LDAP_ENABLED=${LDAP_ENABLED:-false}
       - LDAP_BIND_PASSWORD=${LDAP_BIND_PASSWORD:-}
       - SSH_KNOWN_HOSTS=/run/ssh/known_hosts
     depends_on:
+      secret-bootstrap:
+        condition: service_completed_successfully
       database-migrations:
         condition: service_completed_successfully
       redis:
@@ -93,12 +100,11 @@ services:
     command: ["python", "-m", "SHARED.notification_worker"]
     volumes:
       - ./secrets/ssh:/run/ssh:ro
+      - app_secrets:/run/app-secrets:ro
     environment:
-      - DATABASE_URL=${DATABASE_URL:?Set the application database URL}
-      - SECRET_KEY=${SECRET_KEY:?Set a random JWT secret}
-      - REDIS_URL=${REDIS_URL:?Set an authenticated Redis URL}
+      - DATABASE_URL=${DATABASE_URL:-postgresql://app_user:rep_zap_internal_db@postgres-db:5432/it_management}
+      - REDIS_URL=${REDIS_URL:-redis://:rep_zap_internal_redis@redis:6379/0}
       - APP_ENV=${APP_ENV:-production}
-      - NETWORK_CREDENTIAL_KEY=${NETWORK_CREDENTIAL_KEY:?Set a random network credential encryption key}
       - NOTIFICATION_POLL_SECONDS=${NOTIFICATION_POLL_SECONDS:-5}
       - NOTIFICATION_BATCH_SIZE=${NOTIFICATION_BATCH_SIZE:-25}
       - NOTIFICATION_PROCESSING_LEASE_SECONDS=${NOTIFICATION_PROCESSING_LEASE_SECONDS:-120}
@@ -118,9 +124,10 @@ services:
     environment:
       - POSTGRES_DB=it_management
       - POSTGRES_USER=app_user
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?Set a new database password}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-rep_zap_internal_db}
     volumes:
       - ./BD/postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U app_user -d it_management"]
       interval: 5s
@@ -132,7 +139,7 @@ services:
     image: redis:7-alpine
     command: ["sh", "-c", 'exec redis-server --requirepass "$$REDIS_PASSWORD"']
     environment:
-      - REDIS_PASSWORD=${REDIS_PASSWORD:?Set a Redis password}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-rep_zap_internal_redis}
     container_name: it_unified_redis
     restart: unless-stopped
     volumes:
@@ -149,16 +156,16 @@ services:
       - SERVER_PORT=8080
       - SERVER_TYPE=http
       - SERVER_URL=http://whatsapp-gateway:8080
-      - AUTHENTICATION_API_KEY=${EVOLUTION_API_KEY:?Set a new Evolution key}
+      - AUTHENTICATION_API_KEY=${EVOLUTION_API_KEY:-rep_zap_internal_evolution}
       - AUTHENTICATION_TYPE=apikey
       - LOG_LEVEL=ERROR,WARN,INFO
       - DEL_INSTANCE=false
       - DATABASE_ENABLED=true
       - DATABASE_PROVIDER=postgresql
-      - DATABASE_CONNECTION_URI=${EVOLUTION_DATABASE_URL:?Set the Evolution database URL}
+      - DATABASE_CONNECTION_URI=${EVOLUTION_DATABASE_URL:-postgresql://app_user:rep_zap_internal_db@postgres-db:5432/evolution}
       - DATABASE_CLIENT_NAME=evolution_cartridge
       - CACHE_REDIS_ENABLED=true
-      - CACHE_REDIS_URI=${EVOLUTION_REDIS_URL:?Set an authenticated Redis URL}
+      - CACHE_REDIS_URI=${EVOLUTION_REDIS_URL:-redis://:rep_zap_internal_redis@redis:6379/1}
     depends_on:
       postgres-db:
         condition: service_healthy
@@ -168,6 +175,7 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  app_secrets:
 
 
 networks:
