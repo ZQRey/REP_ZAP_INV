@@ -233,7 +233,8 @@ def portal_index():
 def unified_health():
     from sqlalchemy import text
     try:
-        with next(get_db()) as db:
+        from SHARED.database import SessionLocal
+        with SessionLocal() as db:
             db.execute(text("SELECT 1"))
         database = "ok"
     except Exception:
