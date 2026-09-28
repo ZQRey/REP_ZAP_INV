@@ -5,7 +5,7 @@ short wake-up/backoff primitive so a Redis restart cannot lose queued notificati
 """
 import asyncio
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import redis
 
@@ -16,6 +16,7 @@ from CARTRIDGE.app.services.whatsapp_service import WhatsAppService
 
 POLL_SECONDS = int(os.getenv("NOTIFICATION_POLL_SECONDS", "5"))
 BATCH_SIZE = int(os.getenv("NOTIFICATION_BATCH_SIZE", "25"))
+PROCESSING_LEASE_SECONDS = int(os.getenv("NOTIFICATION_PROCESSING_LEASE_SECONDS", "120"))
 
 
 def _redis_client():
@@ -24,26 +25,39 @@ def _redis_client():
 
 def _claim_batch(db):
     now = datetime.utcnow()
-    return (
+    stale_before = now - timedelta(seconds=PROCESSING_LEASE_SECONDS)
+    # PROCESSING uses next_attempt_at as a lease timestamp. If a worker dies after
+    # committing the claim but before delivery, another worker may reclaim it once
+    # the lease expires instead of leaving the notification stuck forever.
+    items = (
         db.query(Notification)
         .filter(
-            Notification.status.in_([NotificationStatus.PENDING, NotificationStatus.RETRY]),
-            (Notification.next_attempt_at.is_(None)) | (Notification.next_attempt_at <= now),
+            (
+                Notification.status.in_([NotificationStatus.PENDING, NotificationStatus.RETRY])
+                & ((Notification.next_attempt_at.is_(None)) | (Notification.next_attempt_at <= now))
+            )
+            | (
+                (Notification.status == NotificationStatus.PROCESSING)
+                & (Notification.next_attempt_at.is_not(None))
+                & (Notification.next_attempt_at <= stale_before)
+            )
         )
         .order_by(Notification.created_at.asc())
         .with_for_update(skip_locked=True)
         .limit(BATCH_SIZE)
         .all()
     )
+    for item in items:
+        item.status = NotificationStatus.PROCESSING
+        item.attempts += 1
+        item.next_attempt_at = now
+    return items
 
 
 async def process_once() -> int:
     db = SessionLocal()
     try:
         items = _claim_batch(db)
-        for item in items:
-            item.status = NotificationStatus.PROCESSING
-            item.attempts += 1
         db.commit()
 
         processed = 0
