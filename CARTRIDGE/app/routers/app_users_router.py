@@ -5,8 +5,8 @@ from sqlalchemy.orm import Session, joinedload
 
 from SHARED.database import get_db
 from SHARED.models import AppUser, Branch
-from app.schemas import AppUserCreate, AppUserUpdate, AppUserResponse
-from app.services.auth_service import AuthService
+from CARTRIDGE.app.schemas import AppUserCreate, AppUserUpdate, AppUserResponse
+from CARTRIDGE.app.services.auth_service import AuthService
 
 router = APIRouter(prefix="/api/app-users", tags=["AppUsers"])
 
