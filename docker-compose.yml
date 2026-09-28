@@ -33,6 +33,9 @@ services:
     command: ["alembic", "upgrade", "head"]
     environment:
       - DATABASE_URL=${DATABASE_URL:?Run ./scripts/init-env.sh first}
+      - SECRET_KEY=${SECRET_KEY:?Run ./scripts/init-env.sh first}
+      - NETWORK_CREDENTIAL_KEY=${NETWORK_CREDENTIAL_KEY:?Run ./scripts/init-env.sh first}
+      - APP_ENV=${APP_ENV:-production}
     depends_on:
       postgres-db:
         condition: service_healthy
