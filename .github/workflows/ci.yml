@@ -1,0 +1,90 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  static:
+    name: Static and security checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -r requirements-dev.txt
+      - run: python scripts/check_security.py
+      - run: python scripts/audit_authorization.py
+      - run: ruff check SHARED CARTRIDGE REPAIR LOCATION PORTAL main_server.py
+      - run: bandit -c pyproject.toml -r SHARED CARTRIDGE REPAIR LOCATION main_server.py
+      - run: pip-audit -r requirements.txt
+      - name: Type check (advisory baseline)
+        continue-on-error: true
+        run: mypy SHARED CARTRIDGE/app REPAIR/app LOCATION/app main_server.py
+      - name: JavaScript syntax
+        run: |
+          node --check PORTAL/static/api-client.js
+          node --check PORTAL/static/portal.js
+          node --check CARTRIDGE/app/static/js/app.js
+          node --check REPAIR/app/static/js/repair_app.js
+          node --check LOCATION/app/static/js/location_canvas.js
+
+  tests:
+    name: Unit API and security tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -r requirements-dev.txt
+      - run: python -m pytest --junitxml=test-results.xml
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-results
+          path: test-results.xml
+
+  postgres:
+    name: PostgreSQL migrations and isolation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -r requirements-dev.txt
+      - run: python scripts/start_test_postgres.py
+      - run: python -m pytest tests/migrations tests/security/test_branch_isolation.py -v
+      - if: always()
+        run: docker stop rep-zap-migration-test || true
+
+  docker:
+    name: Production image build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          tags: rep-zap-inv:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
