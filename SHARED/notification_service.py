@@ -4,7 +4,6 @@ import json
 from datetime import datetime, timedelta
 from typing import Iterable
 
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from SHARED.models import Notification, NotificationStatus
@@ -32,27 +31,29 @@ def enqueue(
     existing = db.query(Notification).filter(Notification.idempotency_key == idempotency_key).first()
     if existing:
         return existing, False
-    item = Notification(
-        branch_id=branch_id,
-        cartridge_id=cartridge_id,
-        channel="whatsapp",
-        recipient=recipient,
-        payload=payload,
-        status=NotificationStatus.PENDING,
-        attempts=0,
-        idempotency_key=idempotency_key,
-        instance_name=instance_name,
-    )
-    db.add(item)
+    # A nested transaction contains the uniqueness race without rolling back other
+    # notifications already queued by the same HTTP request.
     try:
-        db.flush()
-    except IntegrityError:
-        db.rollback()
+        with db.begin_nested():
+            item = Notification(
+                branch_id=branch_id,
+                cartridge_id=cartridge_id,
+                channel="whatsapp",
+                recipient=recipient,
+                payload=payload,
+                status=NotificationStatus.PENDING,
+                attempts=0,
+                idempotency_key=idempotency_key,
+                instance_name=instance_name,
+            )
+            db.add(item)
+            db.flush()
+        return item, True
+    except Exception:
         existing = db.query(Notification).filter(Notification.idempotency_key == idempotency_key).first()
         if existing:
             return existing, False
         raise
-    return item, True
 
 
 def mark_sent(item: Notification, provider_message_id: str | None = None) -> None:
