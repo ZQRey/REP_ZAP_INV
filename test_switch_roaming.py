@@ -11,7 +11,7 @@ sys.path.insert(0, str(BASE_DIR / "CARTRIDGE"))
 
 from main_server import app
 from SHARED.database import SessionLocal, init_db
-from SHARED.models import Asset, NetworkSwitch, SwitchPort, EquipmentHistoryLog
+from SHARED.models import Asset, NetworkSwitch, SwitchPort
 
 def run_tests():
     init_db()
@@ -84,19 +84,15 @@ def run_tests():
     rel = sim_data['relocated_assets'][0]
     assert rel['old_cabinet'] == 'Кабинет 101'
     assert rel['new_cabinet'] == 'Кабинет 305'
-    print(f"[+] SUCCESS: Device {rel['name']} moved from {rel['old_cabinet']} to {rel['new_cabinet']}!")
+    assert rel.get('observation_only') is True
+    print(f"[+] SUCCESS: observed possible move of {rel['name']} from {rel['old_cabinet']} to {rel['new_cabinet']} without changing inventory location")
 
-    # 6. Verify Asset in database and history
+    # 6. Verify network observation did not mutate authoritative inventory location.
     db = SessionLocal()
     updated_asset = db.query(Asset).filter(Asset.inventory_number == 'TEST-ROAM-PC').first()
-    assert updated_asset.cabinet == 'Кабинет 305', f'Asset cabinet is {updated_asset.cabinet}, expected Кабинет 305'
-
-    history_entry = db.query(EquipmentHistoryLog).filter(
-        EquipmentHistoryLog.asset_id == updated_asset.id,
-        EquipmentHistoryLog.action.ilike('%перемещение%')
-    ).order_by(EquipmentHistoryLog.id.desc()).first()
-    assert history_entry is not None, 'History entry not found'
-    print(f'[+] History log recorded: action="{history_entry.action}", details="{history_entry.details}"')
+    assert updated_asset.cabinet == 'Кабинет 101', (
+        f'Network polling must not move inventory; cabinet unexpectedly became {updated_asset.cabinet}'
+    )
     db.close()
 
     # 7. Test switch poll endpoint
@@ -117,7 +113,7 @@ def run_tests():
     assert updated_sw['mgmt_port'] == 8043
     print('[+] Switch management settings updated to Omada SDN successfully')
 
-    print('\n*** ALL SWITCH L2 INTEGRATION & ROAMING TESTS PASSED 100%! ***')
+    print('\n*** ALL SWITCH L2 OBSERVATION TESTS PASSED ***')
 
 if __name__ == '__main__':
     run_tests()
