@@ -1,0 +1,56 @@
+"""Non-secret application defaults. Safe to import from migrations."""
+
+DEFAULT_SETTINGS = {
+    # Active Directory / LDAP
+    "ad_host": "",
+    "ad_base_dn": "",
+    "ad_bind_user": "",
+    "ad_bind_password": "",
+    "ad_attr_name": "displayName",
+    "ad_attr_cabinet": "physicalDeliveryOfficeName",
+    "ad_attr_department": "department",
+    "ad_attr_phone": "mobile,telephoneNumber",
+    "ad_filter_users": "(&(objectCategory=person)(objectClass=user)(!(userAccountControl:1.2.840.113556.1.4.803:=2)))",
+    "ad_filter_computers": "(&(objectCategory=computer)(!(userAccountControl:1.2.840.113556.1.4.803:=2)))",
+    
+    # WhatsApp (Evolution API) — ИСКЛЮЧИТЕЛЬНО для модуля картриджей
+    "wa_mode": "shared",
+    "wa_api_url": "http://whatsapp-gateway:8080",
+    "wa_api_key": "",
+    "wa_instance_name": "cartridge_bot",
+    "wa_message_template": "Здравствуйте, {name}! Ваш картридж {marker} ({model}) для кабинета {cabinet} успешно заправлен и ожидает выдачи в {it_office}.",
+    
+    # Организация и реквизиты
+    "org_name": "ООО «ТехноПром»",
+    "it_office": "Кабинет IT № 108",
+    "default_cartridge_vendor": "ООО «СервисПринт»",
+    "default_repair_vendor": "ООО «ТехноРемСервис»",
+    "cartridge_act_prefix": "АКТ-ЗПР-",
+    "repair_act_prefix": "АКТ-РЕМ-",
+}
+
+SETTING_DESCRIPTIONS = {
+    "ad_host": "LDAP Сервер (IP или доменное имя с протоколом ldap:// или ldaps://)",
+    "ad_base_dn": "Базовый DN каталога Active Directory (например, DC=gp1,DC=loc)",
+    "ad_bind_user": "Учетная запись для подключения к AD (короткое имя svc_ldap@gp1.loc, DOMAIN\\svc_ldap или DN)",
+    "ad_bind_password": "Пароль учетной записи для подключения к Active Directory (LDAP)",
+    "ad_attr_name": "Атрибут ФИО / имени пользователя в AD",
+    "ad_attr_cabinet": "Атрибут номера кабинета в AD",
+    "ad_attr_department": "Атрибут подразделения/отдела в AD",
+    "ad_attr_phone": "Атрибуты телефона (через запятую)",
+    "ad_filter_users": "LDAP-фильтр выборки пользователей",
+    "ad_filter_computers": "LDAP-фильтр выборки компьютеров",
+    
+    "wa_api_url": "URL сервиса Evolution API (шлюз WhatsApp)",
+    "wa_api_key": "Глобальный API Key шлюза Evolution API",
+    "wa_instance_name": "Имя инстанса WhatsApp в Evolution API",
+    "wa_message_template": "Шаблон WhatsApp-сообщения при готовности картриджа к выдаче",
+    
+    "org_name": "Наименование организации (для актов передачи)",
+    "it_office": "Кабинет / Местоположение IT-отдела по умолчанию",
+    "default_cartridge_vendor": "Поставщик услуг заправки картриджей по умолчанию",
+    "default_repair_vendor": "Сервисный центр по ремонту техники по умолчанию",
+    "cartridge_act_prefix": "Префикс номеров актов передачи картриджей",
+    "repair_act_prefix": "Префикс номеров актов передачи техники в ремонт",
+}
+
