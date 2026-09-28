@@ -9,7 +9,7 @@ from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from SHARED.database import init_db
-from app.routers import (
+from CARTRIDGE.app.routers import (
     auth_router,
     branches_router,
     app_users_router,
