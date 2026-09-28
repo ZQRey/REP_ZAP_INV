@@ -1,3 +1,4 @@
+from SHARED.security_config import DEMO_ENABLED
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 from app.config import DATABASE_URL, DEFAULT_SETTINGS, SETTING_DESCRIPTIONS
@@ -7,7 +8,7 @@ connect_args = {}
 if DATABASE_URL.startswith("sqlite"):
     connect_args = {"check_same_thread": False}
 
-engine = create_engine(DATABASE_URL, connect_args=connect_args)
+engine = create_engine(DATABASE_URL, hide_parameters=True, connect_args=connect_args)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
@@ -62,7 +63,7 @@ def init_db():
                 if "wa_message_template" not in cols_branches:
                     conn.execute(text("ALTER TABLE branches ADD COLUMN wa_message_template TEXT;"))
     except Exception as ex:
-        print(f"[MIGRATION CHECK] Schema migration warning: {ex}")
+        print(f"[MIGRATION CHECK] Schema migration warning: {type(ex).__name__}")
     
     db = SessionLocal()
     try:
@@ -92,34 +93,10 @@ def init_db():
             db.add(main_branch)
             db.flush()
 
-        # 3. Инициализация локального суперпользователя (admin / admin123)
-        admin_user = db.query(models.AppUser).filter(models.AppUser.username == "admin").first()
-        if not admin_user:
-            admin_user = models.AppUser(
-                username="admin",
-                full_name="Главный Администратор",
-                password_hash=AuthService.hash_password("admin123"),
-                auth_type="local",
-                role="superadmin",
-                is_active=True,
-                branch_id=None  # Доступ ко всем филиалам
-            )
-            db.add(admin_user)
-        else:
-            if admin_user.role == "admin":
-                admin_user.role = "superadmin"
-
-        # 4. Очистка логинов существующих AD-пользователей от доменных префиксов/суффиксов (@...)
-        ad_users = db.query(models.AppUser).filter(models.AppUser.auth_type == "ad").all()
-        for u in ad_users:
-            if "@" in u.username or "\\" in u.username:
-                clean_name = u.username.split("@")[0].split("\\")[-1].strip()
-                existing = db.query(models.AppUser).filter(models.AppUser.username == clean_name, models.AppUser.id != u.id).first()
-                if not existing:
-                    u.username = clean_name
+        # Administrators are provisioned explicitly with SHARED.bootstrap_admin.
 
         # 5. Инициализация популярных моделей картриджей по умолчанию
-        if db.query(models.CartridgeModel).count() == 0:
+        if DEMO_ENABLED and db.query(models.CartridgeModel).count() == 0:
             default_models = [
                 models.CartridgeModel(
                     name="HP CE285A (85A)",
@@ -183,6 +160,7 @@ def init_db():
         db.commit()
     except Exception as e:
         db.rollback()
-        print(f"[INIT DB ERROR] Error initializing database: {e}")
+        print(f"[INIT DB ERROR] Error initializing database: {type(e).__name__}")
     finally:
         db.close()
+

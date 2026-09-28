@@ -7,18 +7,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 DEFAULT_SQLITE_PATH = BASE_DIR.parent / "BD" / "app_unified.db"
 DEFAULT_SQLITE_PATH.parent.mkdir(parents=True, exist_ok=True)
 
-DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{DEFAULT_SQLITE_PATH.as_posix()}")
+from SHARED.security_config import DATABASE_URL, SECRET_KEY, DEBUG, JWT_ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
 
-# App configuration
-SECRET_KEY = os.getenv("SECRET_KEY", "unified-it-enterprise-secret-key-2026")
-DEBUG = os.getenv("DEBUG", "False").lower() in ("true", "1", "yes")
-
-# Default values for settings table initialization
 DEFAULT_SETTINGS = {
     # Active Directory / LDAP
-    "ad_host": "ldap://192.168.1.10:389",
-    "ad_base_dn": "DC=gp1,DC=loc",
-    "ad_bind_user": "svc_ldap@gp1.loc",
+    "ad_host": "",
+    "ad_base_dn": "",
+    "ad_bind_user": "",
     "ad_bind_password": "",
     "ad_attr_name": "displayName",
     "ad_attr_cabinet": "physicalDeliveryOfficeName",
@@ -29,7 +24,7 @@ DEFAULT_SETTINGS = {
     # WhatsApp (Evolution API)
     "wa_mode": "shared",  # "shared" | "individual"
     "wa_api_url": "http://whatsapp-gateway:8080",
-    "wa_api_key": "cartridge_secret_key_2026",
+    "wa_api_key": "",
     "wa_instance_name": "cartridge_bot",
     "wa_message_template": "Здравствуйте, {name}! Ваш картридж {marker} ({model}) для кабинета {cabinet} успешно заправлен и ожидает выдачи в {it_office}.",
     
@@ -61,3 +56,4 @@ SETTING_DESCRIPTIONS = {
     "default_vendor": "Поставщик услуг заправки по умолчанию (сервисный центр)",
     "act_prefix": "Префикс номеров актов передачи",
 }
+

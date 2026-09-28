@@ -1,3 +1,4 @@
+from SHARED.security_config import DEMO_ENABLED
 import logging
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
@@ -21,7 +22,7 @@ elif effective_db_url.startswith("postgresql://") and not effective_db_url.start
     except ImportError:
         effective_db_url = effective_db_url.replace("postgresql://", "postgresql+psycopg2://", 1)
 
-engine = create_engine(effective_db_url, connect_args=connect_args)
+engine = create_engine(effective_db_url, connect_args=connect_args, hide_parameters=True)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
@@ -41,7 +42,7 @@ def init_db():
     Инициализация таблиц базы данных и базовых записей:
     - Дефолтные системные настройки
     - Главный филиал
-    - Суперпользователь (admin / admin123)
+    - No implicit administrator provisioning
     - Базовые модели картриджей и техники
     """
     from SHARED import models
@@ -66,7 +67,7 @@ def init_db():
                     ("mgmt_port", "INTEGER DEFAULT 161"),
                     ("username", "VARCHAR(100)"),
                     ("password", "VARCHAR(255)"),
-                    ("snmp_community", "VARCHAR(100) DEFAULT 'public'"),
+                    ("snmp_community", "VARCHAR(100) DEFAULT ''"),
                     ("model", "VARCHAR(150)"),
                     ("total_ports", "INTEGER DEFAULT 24"),
                     ("extra_params", "JSON"),
@@ -79,7 +80,7 @@ def init_db():
                         try:
                             conn.execute(text(f"ALTER TABLE network_switches ADD COLUMN {col_name} {col_def}"))
                         except Exception as c_err:
-                            logger.warning(f"Error adding {col_name} to network_switches: {c_err}")
+                            logger.warning(f"Error adding {col_name} to network_switches: {type(c_err).__name__}")
 
             # 2. switch_ports
             if "switch_ports" in existing_tables:
@@ -98,7 +99,7 @@ def init_db():
                         try:
                             conn.execute(text(f"ALTER TABLE switch_ports ADD COLUMN {col_name} {col_def}"))
                         except Exception as c_err:
-                            logger.warning(f"Error adding {col_name} to switch_ports: {c_err}")
+                            logger.warning(f"Error adding {col_name} to switch_ports: {type(c_err).__name__}")
 
             # 3. cartridges
             if "cartridges" in existing_tables:
@@ -107,12 +108,12 @@ def init_db():
                     try:
                         conn.execute(text("ALTER TABLE cartridges ADD COLUMN branch_id INTEGER"))
                     except Exception as c_err:
-                        logger.warning(f"Error adding branch_id to cartridges: {c_err}")
+                        logger.warning(f"Error adding branch_id to cartridges: {type(c_err).__name__}")
                 if "condition" not in cols_cart:
                     try:
                         conn.execute(text("ALTER TABLE cartridges ADD COLUMN condition VARCHAR(20) DEFAULT 'working'"))
                     except Exception as c_err:
-                        logger.warning(f"Error adding condition to cartridges: {c_err}")
+                        logger.warning(f"Error adding condition to cartridges: {type(c_err).__name__}")
 
             # 4. batches
             if "batches" in existing_tables:
@@ -121,7 +122,7 @@ def init_db():
                     try:
                         conn.execute(text("ALTER TABLE batches ADD COLUMN branch_id INTEGER"))
                     except Exception as c_err:
-                        logger.warning(f"Error adding branch_id to batches: {c_err}")
+                        logger.warning(f"Error adding branch_id to batches: {type(c_err).__name__}")
 
             # 5. app_users
             if "app_users" in existing_tables:
@@ -130,7 +131,7 @@ def init_db():
                     try:
                         conn.execute(text("ALTER TABLE app_users ADD COLUMN wa_instance_name VARCHAR(100)"))
                     except Exception as c_err:
-                        logger.warning(f"Error adding wa_instance_name to app_users: {c_err}")
+                        logger.warning(f"Error adding wa_instance_name to app_users: {type(c_err).__name__}")
 
             # 6. branches
             if "branches" in existing_tables:
@@ -139,14 +140,14 @@ def init_db():
                     try:
                         conn.execute(text("ALTER TABLE branches ADD COLUMN it_office VARCHAR(100)"))
                     except Exception as c_err:
-                        logger.warning(f"Error adding it_office to branches: {c_err}")
+                        logger.warning(f"Error adding it_office to branches: {type(c_err).__name__}")
                 if "wa_message_template" not in cols_b:
                     try:
                         conn.execute(text("ALTER TABLE branches ADD COLUMN wa_message_template TEXT"))
                     except Exception as c_err:
-                        logger.warning(f"Error adding wa_message_template to branches: {c_err}")
+                        logger.warning(f"Error adding wa_message_template to branches: {type(c_err).__name__}")
     except Exception as ex:
-        logger.warning(f"Schema migration warning: {ex}")
+        logger.warning(f"Schema migration warning: {type(ex).__name__}")
 
     db = SessionLocal()
     try:
@@ -184,22 +185,10 @@ def init_db():
             db.add(main_branch)
             db.flush()
 
-        # 3. Локальный суперпользователь admin / admin123
-        admin_user = db.query(models.AppUser).filter(models.AppUser.username == "admin").first()
-        if not admin_user:
-            admin_user = models.AppUser(
-                username="admin",
-                full_name="Главный Администратор",
-                password_hash=AuthService.hash_password("admin123"),
-                auth_type="local",
-                role="superadmin",
-                is_active=True,
-                branch_id=main_branch.id if main_branch else None
-            )
-            db.add(admin_user)
+        # Administrators are provisioned explicitly via SHARED.bootstrap_admin.
 
         # 4. Базовые популярные модели картриджей (если справочник пуст)
-        if db.query(models.CartridgeModel).count() == 0:
+        if DEMO_ENABLED and db.query(models.CartridgeModel).count() == 0:
             demo_models = [
                 models.CartridgeModel(name="HP 85A (CE285A)", vendor="HP", resource_pages=1600, compatible_printers="HP LaserJet P1102 / M1132 / M1212nf"),
                 models.CartridgeModel(name="HP 83A (CF283A)", vendor="HP", resource_pages=1500, compatible_printers="HP LaserJet Pro M125 / M127 / M201 / M225"),
@@ -211,7 +200,7 @@ def init_db():
             db.add_all(demo_models)
 
         # 5. Базовые категории моделей техники (если справочник пуст)
-        if db.query(models.EquipmentModel).count() == 0:
+        if DEMO_ENABLED and db.query(models.EquipmentModel).count() == 0:
             demo_equip_models = [
                 models.EquipmentModel(name="HP ProDesk 400 G6", category="workstation", vendor="HP", specs_template="Core i5, 16GB RAM, 512GB SSD"),
                 models.EquipmentModel(name="Lenovo ThinkCentre M720q", category="workstation", vendor="Lenovo", specs_template="Core i3, 8GB RAM, 256GB SSD"),
@@ -227,7 +216,8 @@ def init_db():
         logger.info("[DB INIT] Database successfully initialized in BD/app_unified.db")
     except Exception as e:
         db.rollback()
-        logger.error(f"[DB INIT ERROR] Failed to initialize database: {e}")
+        logger.error(f"[DB INIT ERROR] Failed to initialize database: {type(e).__name__}")
         raise
     finally:
         db.close()
+
