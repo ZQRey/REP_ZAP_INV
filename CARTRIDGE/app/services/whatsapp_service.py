@@ -3,7 +3,7 @@ import re
 from typing import Dict, Any, Optional, List
 import httpx
 from sqlalchemy.orm import Session
-from app.services.settings_service import SettingsService
+from CARTRIDGE.app.services.settings_service import SettingsService
 
 
 class WhatsAppService:
