@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_
 
 from SHARED.database import get_db
+from SHARED.domain_transitions import InvalidTransition, transition_cartridge
 from SHARED.models import Cartridge, CartridgeStatus, ADUser, HistoryLog, Branch, AppUser
 from app.schemas import (
     CartridgeResponse,
@@ -182,7 +183,10 @@ def update_cartridge(
 
     if payload.status and payload.status != cart.status:
         changes.append(f"Статус: {cart.status.value} -> {payload.status.value}")
-        cart.status = payload.status
+        try:
+            transition_cartridge(cart, payload.status)
+        except InvalidTransition as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
 
     cart.updated_at = datetime.utcnow()
 
@@ -258,7 +262,10 @@ def accept_cartridge(
         action_msg = "Новый картридж принят на заправку"
     else:
         # Существующий картридж
-        cart.status = CartridgeStatus.PENDING_VENDOR
+        try:
+            transition_cartridge(cart, CartridgeStatus.PENDING_VENDOR)
+        except InvalidTransition as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
         cart.condition = payload.condition or "broken"
         cart.current_user_id = payload.current_user_id
         if payload.model:
@@ -314,7 +321,10 @@ def issue_cartridge(
     if cart.current_user:
         user_name = cart.current_user.display_name
 
-    cart.status = CartridgeStatus.IN_USE
+    try:
+        transition_cartridge(cart, CartridgeStatus.IN_USE)
+    except InvalidTransition as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     cart.updated_at = datetime.utcnow()
 
     actual_notes = (payload.notes if payload and payload.notes else None) or notes
@@ -352,8 +362,10 @@ def bulk_issue_cartridges(
         if cart.current_user:
             user_name = cart.current_user.display_name
 
-        cart.status = CartridgeStatus.IN_USE
-        cart.condition = "working"
+        try:
+            transition_cartridge(cart, CartridgeStatus.IN_USE)
+        except InvalidTransition as exc:
+            raise HTTPException(status_code=409, detail=f"{cart.marker_label}: {exc}") from exc
         cart.updated_at = now
 
         log = HistoryLog(
@@ -391,7 +403,10 @@ def return_cartridges_from_vendor(
     now = datetime.utcnow()
 
     for cart in cartridges:
-        cart.status = CartridgeStatus.READY_FOR_PICKUP
+        try:
+            transition_cartridge(cart, CartridgeStatus.READY_FOR_PICKUP)
+        except InvalidTransition as exc:
+            raise HTTPException(status_code=409, detail=f"{cart.marker_label}: {exc}") from exc
         cart.condition = "working"
         cart.updated_at = now
         log = HistoryLog(
