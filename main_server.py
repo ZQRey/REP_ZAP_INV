@@ -231,10 +231,20 @@ def portal_index():
 
 @app.get("/health")
 def unified_health():
+    from sqlalchemy import text
+    try:
+        from SHARED.database import SessionLocal
+        with SessionLocal() as db:
+            db.execute(text("SELECT 1"))
+        database = "ok"
+    except Exception:
+        database = "error"
+    if database != "ok":
+        raise HTTPException(status_code=503, detail="Database health check failed")
     return {
         "status": "ok",
         "platform": "unified-it-enterprise",
-        "database": "BD/app_unified.db",
+        "database": database,
         "modules": ["cartridges", "repair", "location", "portal"]
     }
 
