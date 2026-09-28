@@ -42,8 +42,8 @@ class SwitchIntegrationService:
         Основной метод опроса коммутатора:
         1. Извлекает таблицу MAC-адресов с устройства.
         2. Привязывает обнаруженные устройства к портам.
-        3. Если порт привязан к кабинету и оборудование переместилось —
-           автоматически обновляет кабинет и координаты на карте этажа!
+        3. Сопоставляет обнаружение с портом и возвращает предполагаемые перемещения,
+           не меняя фактическое местоположение оборудования.
         """
         switch = db.query(NetworkSwitch).filter(NetworkSwitch.id == switch_id).first()
         if not switch:
@@ -102,7 +102,7 @@ class SwitchIntegrationService:
         result = cls.process_mac_table(db=db, switch=switch, mac_entries=mac_table)
         
         switch.last_poll_status = "ok"
-        switch.last_poll_message = f"Успешно опрошено. Обнаружено MAC: {len(mac_table)}, перемещено: {len(result['relocated_assets'])}"
+        switch.last_poll_message = f"Успешно опрошено. Обнаружено MAC: {len(mac_table)}, наблюдений перемещения: {len(result['relocated_assets'])}"
         switch.last_polled_at = datetime.utcnow()
         db.commit()
 
@@ -343,7 +343,9 @@ class SwitchIntegrationService:
         Обрабатывает записи MAC-адресов:
         - Обновляет порты коммутатора.
         - Сопоставляет MAC с техникой (`Asset`).
-        - В случае несовпадения текущего кабинета с кабинетом порта — фиксирует переезд!
+        - Фиксирует сетевое наблюдение о возможном перемещении, но не изменяет
+          фактическое местоположение Asset. Изменение actual location должно быть
+          отдельной подтвержденной доменной операцией.
         """
         now = datetime.utcnow()
         ports_by_number = {p.port_number: p for p in switch.ports}
@@ -408,54 +410,25 @@ class SwitchIntegrationService:
 
                 port.connected_asset_id = asset.id
 
-                # =============================================================
-                # ПРОВЕРКА ПЕРЕМЕЩЕНИЯ В ДРУГОЙ КАБИНЕТ (L2 ROAMING)
-                # =============================================================
-                target_cabinet = port.cabinet
+                # Network polling is observation-only. A learned MAC may suggest that
+                # an asset is physically connected elsewhere, but a single observation must
+                # never rewrite the inventory's authoritative location.
+                target_cabinet = port.cabinet.strip() if port.cabinet and port.cabinet.strip() else None
                 old_cabinet = asset.cabinet or "Не указан"
-
-                # Если на порту задан кабинет, и он отличается от текущего кабинета техники:
-                if target_cabinet and target_cabinet.strip() and asset.cabinet != target_cabinet.strip():
-                    new_cabinet = target_cabinet.strip()
-                    asset.cabinet = new_cabinet
-
-                    # Если порт привязан к конкретной зоне этажа, перемещаем технику на плане этажа!
-                    if port.zone_id:
-                        asset.zone_id = port.zone_id
-                        zone = db.query(Zone).filter(Zone.id == port.zone_id).first()
-                        if zone:
-                            asset.floor_id = zone.floor_id
-                            # Центрируем маркер на карте в полигоне кабинета
-                            if zone.polygon_coords and len(zone.polygon_coords) >= 3:
-                                asset.coords_x = round(sum(pt["x"] for pt in zone.polygon_coords) / len(zone.polygon_coords), 4)
-                                asset.coords_y = round(sum(pt["y"] for pt in zone.polygon_coords) / len(zone.polygon_coords), 4)
-
-                    asset.updated_at = now
-
-                    # Запись в историю жизненного цикла оборудования
+                if target_cabinet and asset.cabinet != target_cabinet:
                     sw_name = switch.asset.name if switch.asset else switch.ip_address
-                    log_detail = (
-                        f"Обнаружено перемещение: устройство перенесено в '{new_cabinet}'. "
-                        f"Зафиксировано на порту {port.port_number} коммутатора '{sw_name}' (MAC: {mac}). "
-                        f"Предыдущее расположение: '{old_cabinet}'."
-                    )
-                    EquipmentService.log_history(
-                        db=db,
-                        asset_id=asset.id,
-                        action="Автоматическое перемещение (L2 монитор)",
-                        user_name="L2 NetWatcher",
-                        details=log_detail
-                    )
-
                     relocated_assets.append({
                         "asset_id": asset.id,
                         "inventory_number": asset.inventory_number,
                         "name": asset.name,
                         "mac": mac,
                         "switch_id": switch.id,
+                        "switch_name": sw_name,
                         "port_number": port.port_number,
                         "old_cabinet": old_cabinet,
-                        "new_cabinet": new_cabinet
+                        "new_cabinet": target_cabinet,
+                        "detected_zone_id": port.zone_id,
+                        "observation_only": True
                     })
 
             port_details.append({
