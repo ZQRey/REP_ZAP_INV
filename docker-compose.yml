@@ -46,6 +46,7 @@ services:
       - ./BD:/app/BD
       - ./secrets/ssh:/run/ssh:ro
       - ./uploads:/app/LOCATION/app/static/uploads
+      - ./uploads/maps:/app/LOCATION/app/static/maps
     environment:
       - DATABASE_URL=${DATABASE_URL:?Run ./scripts/init-env.sh first}
       - REDIS_URL=${REDIS_URL:?Run ./scripts/init-env.sh first}
