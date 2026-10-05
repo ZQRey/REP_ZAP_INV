@@ -2,9 +2,9 @@
 import logging
 import re
 import threading
-from SHARED.security_config import SECRET_KEY, DATABASE_URL, REDIS_URL, EVOLUTION_API_KEY, LDAP_BIND_PASSWORD
+from SHARED.security_config import SECRET_KEY, DATABASE_URL, REDIS_URL, EVOLUTION_API_KEY
 
-_sensitive = {v for v in (SECRET_KEY, DATABASE_URL, REDIS_URL, EVOLUTION_API_KEY, LDAP_BIND_PASSWORD) if v}
+_sensitive = {v for v in (SECRET_KEY, DATABASE_URL, REDIS_URL, EVOLUTION_API_KEY) if v}
 _lock = threading.Lock()
 
 
