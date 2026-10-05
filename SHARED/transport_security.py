@@ -1,4 +1,4 @@
-"""Verified transports: no trust-on-first-use and no plaintext LDAP binds."""
+"""Verified transports with explicit opt-in for trusted-network plaintext LDAP."""
 import ssl
 from SHARED.security_config import TLS_CA_FILE, SSH_KNOWN_HOSTS, LDAP_ALLOW_PLAINTEXT
 
