@@ -186,7 +186,7 @@ class SwitchIntegrationService:
         ssh.connect(host, port=port, username=user, password=pwd, timeout=5, look_for_keys=False, allow_agent=False)
 
         # Выполняем команду вывода таблицы хостов моста
-        stdin, stdout, stderr = ssh.exec_command("/interface bridge host print without-paging", timeout=8)
+        stdin, stdout, stderr = ssh.exec_command("/interface bridge host print without-paging", timeout=8)  # nosec B601 - fixed vendor CLI command
         output = stdout.read().decode("utf-8", errors="ignore")
         ssh.close()
 
@@ -221,7 +221,7 @@ class SwitchIntegrationService:
 
             ssh.connect(host, port=port, username=user, password=pwd, timeout=5, look_for_keys=False, allow_agent=False)
 
-            stdin, stdout, stderr = ssh.exec_command("show mac-address", timeout=8)
+            stdin, stdout, stderr = ssh.exec_command("show mac-address", timeout=8)  # nosec B601 - fixed vendor CLI command
             output = stdout.read().decode("utf-8", errors="ignore")
             ssh.close()
 
@@ -263,7 +263,7 @@ class SwitchIntegrationService:
 
             ssh.connect(host, port=port, username=user, password=pwd, timeout=5, look_for_keys=False, allow_agent=False)
 
-            stdin, stdout, stderr = ssh.exec_command("show mac address-table", timeout=8)
+            stdin, stdout, stderr = ssh.exec_command("show mac address-table", timeout=8)  # nosec B601 - fixed vendor CLI command
             output = stdout.read().decode("utf-8", errors="ignore")
             ssh.close()
 
@@ -298,7 +298,7 @@ class SwitchIntegrationService:
 
         ssh.connect(host, port=port, username=user, password=pwd, timeout=5, look_for_keys=False, allow_agent=False)
 
-        stdin, stdout, stderr = ssh.exec_command("show mac address-table", timeout=8)
+        stdin, stdout, stderr = ssh.exec_command("show mac address-table", timeout=8)  # nosec B601 - fixed vendor CLI command
         output = stdout.read().decode("utf-8", errors="ignore")
         ssh.close()
 
