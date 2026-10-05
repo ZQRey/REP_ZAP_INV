@@ -70,15 +70,34 @@ def test_missing_production_secrets_fail_without_exposure():
 
 
 def test_settings_never_return_secrets(client, account):
+    from SHARED.database import SessionLocal
+    from SHARED.models import SystemSetting
+    from CARTRIDGE.app.services.settings_service import SettingsService
+
     secret = secrets.token_urlsafe(24)
+    bind_user = "svc_ldap@gp1.loc"
     assert client.get("/api/settings").status_code == 401
     token = client.post("/api/v1/auth/login", json=account).json()["access_token"]
     headers = {"Authorization": "Bearer " + token}
     response = client.put("/api/settings", headers=headers, json={"settings": {
-        "ad_bind_password": secret, "wa_api_key": secret, "unknown_private_key": secret}})
+        "ad_bind_user": bind_user,
+        "ad_bind_password": secret,
+        "wa_api_key": secret,
+        "unknown_private_key": secret}})
     assert response.status_code == 200, response.text
     assert secret not in response.text
     assert secret not in client.get("/api/settings", headers=headers).text
+
+    with SessionLocal() as db:
+        stored_user = db.get(SystemSetting, "ad_bind_user").value
+        stored_password = db.get(SystemSetting, "ad_bind_password").value
+        assert stored_user.startswith("enc:v1:")
+        assert stored_password.startswith("enc:v1:")
+        assert bind_user not in stored_user
+        assert secret not in stored_password
+        effective = SettingsService.get_all(db)
+        assert effective["ad_bind_user"] == bind_user
+        assert effective["ad_bind_password"] == secret
 
 
 def test_validation_does_not_echo_password(client):
@@ -264,7 +283,7 @@ def test_actual_network_api_does_not_serialize_credentials(client, account):
         assert secret not in response.text
 
 
-@pytest.mark.parametrize("override", [{"DEMO_ENABLED": "true"}, {"DEBUG": "true"}, {"CORS_ORIGINS": "*"}, {"ACCESS_TOKEN_EXPIRE_MINUTES": "1440"}, {"WHATSAPP_ENABLED": "true", "EVOLUTION_API_KEY": ""}, {"LDAP_ENABLED": "true", "LDAP_BIND_PASSWORD": ""}])
+@pytest.mark.parametrize("override", [{"DEMO_ENABLED": "true"}, {"DEBUG": "true"}, {"CORS_ORIGINS": "*"}, {"ACCESS_TOKEN_EXPIRE_MINUTES": "1440"}, {"WHATSAPP_ENABLED": "true", "EVOLUTION_API_KEY": ""}])
 def test_production_configuration_rejects_unsafe_values(override):
     env = dict(os.environ)
     value = secrets.token_urlsafe(24)
