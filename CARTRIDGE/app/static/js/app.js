@@ -1,5 +1,4 @@
-async function openAuthenticatedPrint(path, headers) {
-    const popup = window.open('about:blank', '_blank');
+async function openAuthenticatedPrint(path, headers, popup = window.open('about:blank', '_blank')) {
     if (!popup) throw new Error('Разрешите открытие окна печати');
     try {
         const response = await fetch(path, {headers});
@@ -863,6 +862,7 @@ function cartridgeApp() {
                 return;
             }
 
+            const printWindow = window.open('about:blank', '_blank');
             this.batch.isSubmitting = true;
             try {
                 let targetBranchId = null;
@@ -889,15 +889,21 @@ function cartridgeApp() {
                 if (res.ok) {
                     const batchData = await res.json();
                     this.showToast(`Акт № ${batchData.act_number} сформирован! Открываем печатную форму...`, 'success');
-                    this.showToast('Акт создан. Печать доступна в истории актов.', 'success');
+                    try {
+                        await openAuthenticatedPrint(`/print/act/${batchData.id}`, this.authHeaders(), printWindow);
+                    } catch (printError) {
+                        this.showToast('Акт создан, но окно печати не открылось. Разрешите всплывающие окна и распечатайте акт из истории.', 'error');
+                    }
                     await this.refreshStats();
                     await this.loadPendingCartridges();
                     this.loadBatchesHistory();
                 } else {
                     const err = await res.json();
+                    if (printWindow) printWindow.close();
                     this.showToast(err.detail || 'Ошибка создания акта', 'error');
                 }
             } catch (e) {
+                if (printWindow) printWindow.close();
                 this.showToast('Ошибка соединения при создании акта', 'error');
             } finally {
                 this.batch.isSubmitting = false;
