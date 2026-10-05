@@ -205,13 +205,19 @@ def test_logs_redact_secrets(caplog):
 
 def test_password_hash_compatibility():
     import hashlib
-    from SHARED.passwords import hash_password, verify_password
+    from SHARED.passwords import MIN_PASSWORD_LENGTH, hash_password, verify_password
     value = secrets.token_urlsafe(24)
     salt = secrets.token_hex(16)
     old = salt + "$" + hashlib.pbkdf2_hmac("sha256", value.encode(), salt.encode(), 100000).hex()
     assert verify_password(value, old)
     assert verify_password(value, hash_password(value))
     assert not verify_password("wrong", old)
+    assert MIN_PASSWORD_LENGTH == 8
+    short = "a" * (MIN_PASSWORD_LENGTH - 1)
+    valid = "a" * MIN_PASSWORD_LENGTH
+    with pytest.raises(ValueError):
+        hash_password(short)
+    assert verify_password(valid, hash_password(valid))
 
 
 def test_network_allowlist(monkeypatch):
