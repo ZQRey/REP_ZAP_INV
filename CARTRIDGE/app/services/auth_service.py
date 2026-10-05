@@ -1,15 +1,9 @@
-from datetime import datetime, timedelta
-from typing import Optional, Dict, Any
-from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from typing import Optional
 from sqlalchemy import or_, func
 from sqlalchemy.orm import Session
 
-from SHARED.database import get_db
 from SHARED.models import AppUser
 from CARTRIDGE.app.services.ldap_service import LDAPService
-
-
 
 
 class AuthService:
@@ -27,38 +21,25 @@ class AuthService:
         db: Session,
         username: str,
         password: str,
-        auth_type: str = "local"
+        auth_type: str = "local",
     ) -> Optional[AppUser]:
-        """
-        Аутентифицирует пользователя локально или через Active Directory.
-        """
+        """Authenticate a local or Active Directory user."""
         if auth_type not in ("local", "ad") or not username.strip() or not password:
             return None
         clean_user = username.strip()
 
         if auth_type == "ad":
-            # Аутентифицируем в AD (поддерживает логин как без домена 'ivanov', так и 'ivanov@gp1.loc' или 'GP1\ivanov')
             success, sam_account, ad_profile = LDAPService.authenticate_ad_user(
                 db=db,
                 username=clean_user,
-                password=password
+                password=password,
             )
             if not success or not sam_account:
                 return None
 
-            # Если вход через AD успешен — ищем или создаем профиль AppUser по чистому sAMAccountName
-            user = db.query(AppUser).filter(
-                or_(
-                    func.lower(AppUser.username) == sam_account.lower(),
-                    func.lower(AppUser.username) == clean_user.lower()
-                )
-            ).first()
-
-            if not user or user.auth_type != "ad" or not user.is_active:
-                return None
-
-            # Получаем или обновляем данные в ad_users
             from SHARED.models import ADUser
+
+            # Refresh the local AD cache from the already authenticated LDAP profile.
             ad_info = db.query(ADUser).filter(ADUser.samaccountname.ilike(sam_account)).first()
             if ad_profile:
                 if not ad_info:
@@ -67,33 +48,50 @@ class AuthService:
                         display_name=ad_profile["display_name"],
                         department=ad_profile.get("department"),
                         cabinet=ad_profile.get("cabinet"),
-                        phone=ad_profile.get("phone")
+                        phone=ad_profile.get("phone"),
                     )
                     db.add(ad_info)
-                    db.commit()
                 else:
-                    if ad_profile.get("display_name"):
-                        ad_info.display_name = ad_profile["display_name"]
-                    if ad_profile.get("department"):
-                        ad_info.department = ad_profile["department"]
-                    if ad_profile.get("cabinet"):
-                        ad_info.cabinet = ad_profile["cabinet"]
-                    if ad_profile.get("phone"):
-                        ad_info.phone = ad_profile["phone"]
-                    db.commit()
+                    ad_info.display_name = ad_profile.get("display_name") or ad_info.display_name
+                    ad_info.department = ad_profile.get("department") or ad_info.department
+                    ad_info.cabinet = ad_profile.get("cabinet") or ad_info.cabinet
+                    ad_info.phone = ad_profile.get("phone") or ad_info.phone
 
-            display_name = (
-                (ad_profile.get("display_name") if ad_profile else None)
-                or (ad_info.display_name if ad_info else None)
-                or sam_account
-            )
+            # A pre-existing local account can never be taken over via AD.
+            user = db.query(AppUser).filter(
+                or_(
+                    func.lower(AppUser.username) == sam_account.lower(),
+                    func.lower(AppUser.username) == clean_user.lower(),
+                )
+            ).first()
 
-            if not user.is_active:
-                return None
+            if user is not None:
+                if user.auth_type != "ad" or not user.is_active:
+                    db.rollback()
+                    return None
+            else:
+                # First successful AD login gets the least-privileged local profile.
+                # branch_id=None intentionally grants no branch-scoped business data.
+                display_name = (
+                    (ad_profile.get("display_name") if ad_profile else None)
+                    or (ad_info.display_name if ad_info else None)
+                    or sam_account
+                )
+                user = AppUser(
+                    username=sam_account,
+                    full_name=display_name,
+                    password_hash=None,
+                    auth_type="ad",
+                    role="user",
+                    is_active=True,
+                    branch_id=None,
+                )
+                db.add(user)
 
+            db.commit()
+            db.refresh(user)
             return user
 
-        # Локальный вход
         user = db.query(AppUser).filter(func.lower(AppUser.username) == clean_user.lower()).first()
         if not user or user.auth_type != "local" or not user.password_hash:
             from SHARED.passwords import consume_dummy_check
@@ -102,13 +100,17 @@ class AuthService:
 
         if not cls.verify_password(password, user.password_hash) or not user.is_active:
             return None
-
         return user
 
 
 from SHARED.authentication import (
-    require_authenticated_user, get_current_user, require_role,
-    require_superadmin, require_admin, require_operator,
+    require_authenticated_user,
+    get_current_user,
+    require_role,
+    require_superadmin,
+    require_admin,
+    require_operator,
 )
+
 # Compatibility name is mandatory authentication now; no optional authorization bypass.
 get_current_user_optional = require_authenticated_user
