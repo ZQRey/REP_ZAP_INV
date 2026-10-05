@@ -1,5 +1,6 @@
-from SHARED.settings_security import effective_settings, SECRET_SETTINGS
+from SHARED.settings_security import effective_settings, ENV_SECRET_SETTINGS, PERSISTED_ENCRYPTED_SETTINGS
 from SHARED.security_config import PRODUCTION
+from SHARED.credential_crypto import encrypt_secret
 from fastapi import HTTPException
 from typing import Dict, Optional
 from sqlalchemy.orm import Session
@@ -31,11 +32,13 @@ class SettingsService:
         if legacy_filter is not None and "ad_filter_users" not in updates:
             updates["ad_filter_users"] = legacy_filter
 
-        if PRODUCTION and any(k in SECRET_SETTINGS for k in updates):
-            raise HTTPException(400, "Integration secrets are managed by environment or secret files")
+        if PRODUCTION and any(k in ENV_SECRET_SETTINGS for k in updates):
+            raise HTTPException(400, "This integration secret is managed outside the web settings database")
 
         dialect = db.get_bind().dialect.name
         for key, val in updates.items():
+            if key in PERSISTED_ENCRYPTED_SETTINGS and val:
+                val = encrypt_secret(val)
             values = {"key": key, "value": val}
             if dialect == "postgresql":
                 from sqlalchemy.dialects.postgresql import insert
