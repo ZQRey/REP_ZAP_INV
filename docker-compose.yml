@@ -1,5 +1,5 @@
 services:
-  # Nginx Reverse Proxy (HTTP: 80, HTTPS: 443)
+  # Internal Nginx reverse proxy. TLS terminates on the external Proxmox reverse proxy.
   nginx-proxy:
     image: nginx:alpine
     networks:
@@ -9,10 +9,8 @@ services:
     restart: unless-stopped
     ports:
       - "80:80"
-      - "443:443"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/ssl:/etc/nginx/ssl:ro
       - ./nginx_logs:/var/log/nginx
     depends_on:
       unified-server:

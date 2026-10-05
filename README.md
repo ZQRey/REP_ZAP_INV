@@ -28,3 +28,16 @@ docker compose up --build
 ```
 
 For production, review optional values such as `CORS_ORIGINS`, `NETWORK_ALLOWED_CIDRS`, and LDAP settings in `.env` before exposing the service externally.
+
+
+## Reverse proxy / TLS topology
+
+REP_ZAP_INV does not terminate TLS locally. The bundled Nginx container listens on HTTP port 80 only and is intended to be an internal upstream for a separate reverse-proxy container or VM in Proxmox VE.
+
+The external reverse proxy is responsible for:
+- HTTPS certificates and certificate renewal;
+- HTTP-to-HTTPS redirection;
+- HSTS and other edge TLS policy;
+- forwarding the original `Host`, `X-Forwarded-Proto`, and `X-Forwarded-For` headers.
+
+Configure the external reverse proxy upstream to the REP_ZAP_INV host on TCP port 80. Restrict access to that port at the host/network firewall so only trusted management networks and the external reverse proxy can reach it.
