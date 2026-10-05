@@ -1502,7 +1502,7 @@ function cartridgeApp() {
                         host: this.settingsForm.ad_host,
                         base_dn: this.settingsForm.ad_base_dn,
                         bind_user: this.settingsForm.ad_bind_user,
-                        bind_password: this.settingsForm.ad_bind_password
+                        bind_password: this.settingsForm.ad_bind_password === '******' ? null : this.settingsForm.ad_bind_password
                     })
                 });
 
