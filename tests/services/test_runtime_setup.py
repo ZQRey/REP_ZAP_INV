@@ -13,8 +13,11 @@ def test_runtime_secrets_are_persistent_and_existing_configuration_is_preserved(
     prepare(tmp_path / 'state', directory)
     saved = {p.name: p.read_text() for p in directory.iterdir()}
     assert len(saved) == 9 and len(set(saved.values())) == 9
+    keytab = tmp_path / 'state/BD/sso/http.keytab'
+    keytab.write_bytes(b'\x05\x02existing-service-key')
     prepare(tmp_path / 'state', directory)
     assert saved == {p.name: p.read_text() for p in directory.iterdir()}
+    assert keytab.read_bytes() == b'\x05\x02existing-service-key'
     monkeypatch.setenv('SECRET_KEY', 'different-existing-secret')
     with pytest.raises(RuntimeError, match='differs from saved'):
         prepare(tmp_path / 'state', directory)

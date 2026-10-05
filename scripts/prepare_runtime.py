@@ -41,11 +41,15 @@ def prepare(root=Path('/state'), secret_dir=Path('/run/app-secrets')):
     # BD parent and never touch PostgreSQL/Redis data directory ownership.
     (root / 'BD').mkdir(parents=True, exist_ok=True)
     os.chmod(root / 'BD', 0o755)
-    for relative in ('uploads', 'uploads/maps', 'secrets/ssh'):
+    for relative in ('uploads', 'uploads/maps', 'secrets/ssh', 'BD/sso'):
         path = root / relative
         path.mkdir(parents=True, exist_ok=True)
         os.chown(path, 10001, 10001)
-        os.chmod(path, 0o750)
+        os.chmod(path, 0o700 if relative == 'BD/sso' else 0o750)
+    keytab = root / 'BD/sso/http.keytab'
+    if keytab.exists():
+        os.chown(keytab, 10001, 10001)
+        os.chmod(keytab, 0o600)
     print('Runtime configuration and writable directories ready')
 
 
