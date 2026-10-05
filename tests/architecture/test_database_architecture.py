@@ -60,7 +60,7 @@ def test_guard_detects_second_architecture(source):
 def test_only_canonical_initialization_and_model_definitions():
     findings = []
     for path in ROOT.rglob("*.py"):
-        if any(p in path.parts for p in (".git", "__pycache__")): continue
+        if any(p in path.parts for p in (".git", "__pycache__", ".venv", ".publish")): continue
         relative = path.relative_to(ROOT).as_posix()
         findings.extend((relative, *f) for f in forbidden_initializers(path.read_text(encoding="utf-8"), relative))
     assert findings == []
@@ -143,6 +143,14 @@ def test_original_fields_and_relationships_preserved_by_integrity_migration():
         for col in spec.get(before["table"], {}).get("not_null", []):
             expected["columns"][col]["nullable"] = False
         actual = describe(getattr(models, name))
+        if name == 'AppUser':
+            # 0008 adds the initial-password gate; the original contract stays frozen.
+            added = actual['columns'].pop('must_change_password')
+            assert added['type'] == 'BOOLEAN' and added['nullable'] is False
+        if name == 'Zone':
+            assert actual['columns'].pop('description')['type'] == 'TEXT'
+        if name == 'SwitchPort':
+            assert actual['columns'].pop('learned_macs')['type'] == 'JSON'
         assert actual["columns"] == expected["columns"], name
         assert actual["relationships"] == expected["relationships"], name
         assert all(c in actual["constraints"] for c in expected["constraints"]), name

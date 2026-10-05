@@ -1768,5 +1768,24 @@
     "paths": [
       "/api/v1/location/zones/{zone_id}"
     ]
+  },
+  "main_server.py:change_password:POST": {
+    "path": "/api/v1/auth/change-password",
+    "domain": "auth",
+    "action": "password_self",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician",
+      "operator",
+      "viewer",
+      "user"
+    ],
+    "branch_scope": false,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/v1/auth/change-password"
+    ]
   }
 }

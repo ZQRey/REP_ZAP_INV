@@ -66,6 +66,7 @@ class AppUserUpdate(BaseModel):
 
 class AppUserResponse(AppUserBase):
     id: int
+    must_change_password: bool = False
     branch: Optional[BranchResponse] = None
     created_at: Optional[datetime] = None
 
@@ -271,5 +272,4 @@ class CartridgeModelResponse(CartridgeModelBase):
     created_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
-
 

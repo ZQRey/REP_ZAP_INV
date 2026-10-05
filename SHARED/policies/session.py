@@ -53,6 +53,12 @@ def scoped_writes(db, flush_context, instances):
     for obj in list(db.new) + list(db.dirty) + list(db.deleted):
         if obj in db.dirty and not db.is_modified(obj, include_collections=False): continue
         model = type(obj)
+        if policy['action'] == 'password_self':
+            changed = {a.key for a in inspect(obj).attrs if a.history.has_changes()}
+            if (model is m.AppUser and obj in db.dirty and obj.id == principal.id
+                    and changed <= {'password_hash', 'must_change_password'}):
+                continue
+            raise HTTPException(403, 'Password change may only modify the current account password')
         if policy["action"] not in {"write", "wa_self"}:
             raise HTTPException(403, "Read endpoint cannot modify objects")
         if model not in SCOPED | GLOBAL:

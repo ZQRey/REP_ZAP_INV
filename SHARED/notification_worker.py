@@ -20,7 +20,8 @@ PROCESSING_LEASE_SECONDS = int(os.getenv("NOTIFICATION_PROCESSING_LEASE_SECONDS"
 
 
 def _redis_client():
-    return redis.Redis.from_url(os.environ["REDIS_URL"], decode_responses=True)
+    from SHARED.security_config import REDIS_URL
+    return redis.Redis.from_url(REDIS_URL, decode_responses=True)
 
 
 def _claim_batch(db):

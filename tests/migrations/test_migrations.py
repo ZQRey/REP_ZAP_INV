@@ -50,7 +50,7 @@ def test_empty_startup_is_read_only_and_requires_migration(empty_database):
 
 def test_fresh_upgrade_model_parity_and_startup(empty_database):
     command.upgrade(config(), "head")
-    assert current() == "0007_port_learned_macs"
+    assert current() == "0008_initial_password"
     command.check(config())  # zero missing columns/FKs/indexes/types/defaults at head
     inspector = sa.inspect(engine)
     spec = json.loads((ROOT / "alembic/integrity_spec.json").read_text(encoding="utf-8"))
@@ -248,6 +248,8 @@ def test_no_schema_mutation_outside_migrations_or_test_fixtures():
             assert not any(isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and n.func.attr in {"create_all", "drop_all", "add_column"} for n in ast.walk(tree)), path
     for path in (ROOT / "Dockerfile", ROOT / "CARTRIDGE/Dockerfile"):
         assert "alembic upgrade" not in path.read_text(encoding="utf-8")
-    compose = (ROOT / "docker-compose.yml").read_text(encoding="utf-8")
-    assert 'command: ["alembic", "upgrade", "head"]' in compose
-    assert "service_completed_successfully" in compose
+    import yaml
+    compose = yaml.safe_load((ROOT / "docker-compose.yml").read_text(encoding="utf-8"))
+    job = compose['services']['database-migrations']
+    assert job['command'] == ['sh', '-c', 'alembic upgrade head && python -m SHARED.bootstrap_admin --initialize-default']
+    assert compose['services']['unified-server']['depends_on']['database-migrations']['condition'] == 'service_completed_successfully'

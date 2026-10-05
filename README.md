@@ -4,31 +4,21 @@ Unified IT management platform deployed with Docker Compose.
 
 ## Quick Start
 
-Requirements: Git, Docker Engine with Docker Compose v2, OpenSSL, and Python 3.
+Requirements: Docker Engine with Docker Compose v2. Git is needed only to clone the repository.
 
 ```bash
 git clone https://github.com/ZQRey/REP_ZAP_INV.git
 cd REP_ZAP_INV
-chmod +x scripts/init-env.sh
-./scripts/init-env.sh
-docker compose config
 docker compose up --build
 ```
 
-`scripts/init-env.sh` creates `.env` only when it does not already exist. It copies `.env.example`, generates independent cryptographically secure values with `openssl rand -hex 32`, and builds the PostgreSQL/Redis/Evolution connection URLs using Docker service names `postgres-db` and `redis`.
+No `.env`, host Python, OpenSSL or manual directory preparation is required. Compose prepares writable upload directories, generates independent random secrets in `secrets/runtime`, waits for PostgreSQL, applies Alembic migrations and initializes the administrator. Application processes start only after successful preparation and migrations.
 
-The generated `.env` is mode `600` and is ignored by Git. Do not commit it. Running the initializer again preserves an existing `.env` and therefore preserves encryption/signing keys and database passwords.
+On an empty database, sign in with **admin / admin123**. The portal requires a new password of at least 8 characters before granting access to modules or their APIs. Existing accounts are preserved; repeated startup never resets passwords or creates another administrator.
 
-If Compose reports `Run ./scripts/init-env.sh first`, initialize the environment before starting the stack:
+For background operation use `docker compose up -d --build`. Optional settings can be supplied in `.env` (see `.env.example`); existing deployments with populated `.env` are supported and their keys are preserved. LDAP and switch settings remain configurable in the application.
 
-```bash
-./scripts/init-env.sh
-docker compose config
-docker compose up --build
-```
-
-For production, review optional values such as `CORS_ORIGINS`, `NETWORK_ALLOWED_CIDRS`, and LDAP settings in `.env` before exposing the service externally.
-
+When moving an existing installation, copy `BD`, `uploads`, `secrets`, `evolution_instances` and the existing `.env` with the project. Preserve file ownership and stop the source stack before copying live database files (or use a database backup/restore). The destination then starts with the same `docker compose up --build`. Do not omit `secrets/runtime`: it contains database credentials and the key needed to decrypt saved switch credentials. Runtime data and secrets are ignored by Git.
 
 ## Reverse proxy / TLS topology
 

@@ -24,7 +24,7 @@ COPY REPAIR/ /app/REPAIR/
 COPY LOCATION/ /app/LOCATION/
 COPY PORTAL/ /app/PORTAL/
 COPY main_server.py /app/main_server.py
-COPY scripts/bootstrap_secrets.sh /app/scripts/bootstrap_secrets.sh
+COPY scripts/ /app/scripts/
 
 # Создание папок для БД
 RUN groupadd --gid 10001 app && useradd --uid 10001 --gid app --no-create-home app \

@@ -465,6 +465,11 @@ write`,
         },
 
         async selectFloor(floor) {
+            this.activeZone = null;
+            this.zoneDraft = null;
+            this.zonePoints = [];
+            this.activeTool = 'select';
+            if (this.stage) this.stage.draggable(true);
             this.currentFloor = floor;
             this.selectedFloorId = floor.id;
             await this.loadFloorAssets();
@@ -591,12 +596,18 @@ write`,
 
         startZone(type) {
             if (!this.currentFloor) return;
-            this.activeTool = 'draw_room'; this.zonePoints = [];
+            this.activeZone = null; this.activeTool = 'draw_room'; this.zonePoints = [];
             this.zoneDraft = {name: '', room_number: '', description: '', responsible_person: '', zone_type: type};
+            if (type === 'corridor') {
+                this.zoneDraft.fill_color = 'rgba(148, 163, 184, 0.12)';
+                this.zoneDraft.border_color = '#94a3b8';
+            }
             this.stage.draggable(false);
             this.showToast('Отметьте углы помещения на плане, затем нажмите «Сохранить разметку»');
         },
         editZone() {
+            if (!this.activeZone) return;
+            this.activeTool = 'select';
             this.zoneDraft = {...this.activeZone};
             this.zonePoints = [...this.activeZone.polygon_coords];
             this.activeZone = null;
@@ -608,14 +619,20 @@ write`,
             const url = this.zoneDraft.id ? `/api/v1/location/zones/${this.zoneDraft.id}` : `/api/v1/location/floors/${this.selectedFloorId}/zones`;
             const res = await fetch(url, {
                 method: this.zoneDraft.id ? 'PUT' : 'POST', headers: this.getAuthHeaders(),
-                body: JSON.stringify({...this.zoneDraft, polygon_coords: this.zonePoints})
+                body: JSON.stringify({...this.zoneDraft,
+                    room_number: this.zoneDraft.zone_type === 'corridor' ? null : this.zoneDraft.room_number,
+                    responsible_person: this.zoneDraft.zone_type === 'corridor' ? null : this.zoneDraft.responsible_person,
+                    polygon_coords: this.zonePoints})
             });
             if (!res.ok) { this.showToast('Не удалось сохранить помещение', 'error'); return; }
             const zone = await res.json();
             this.currentFloor.zones = this.currentFloor.zones.filter(z => z.id !== zone.id).concat(zone);
             this.cancelZone();
+            this.activeZone = zone;
         },
         cancelZone() {
+            const editedId = this.zoneDraft?.id;
+            if (editedId) this.activeZone = this.currentFloor.zones.find(z => z.id === editedId) || null;
             this.zoneDraft = null; this.zonePoints = []; this.activeTool = 'select';
             this.stage.draggable(true); this.renderFloor();
         },
@@ -675,7 +692,7 @@ write`,
 
                 const poly = new Konva.Line({
                     points: points,
-                    fill: z.fill_color || 'rgba(59, 130, 246, 0.15)',
+                    fill: z.fill_color || (z.zone_type === 'corridor' ? 'rgba(148, 163, 184, 0.12)' : 'rgba(59, 130, 246, 0.15)'),
                     stroke: z.border_color || '#3b82f6',
                     strokeWidth: 2,
                     closed: true
@@ -692,8 +709,14 @@ write`,
                     fill: '#94a3b8'
                 });
 
-                poly.on('click', () => { if (this.activeTool === 'select') this.activeZone = z; });
-                text.on('click', () => { if (this.activeTool === 'select') this.activeZone = z; });
+                [poly, text].forEach(shape => {
+                    shape.on('click tap', e => {
+                        if (this.activeTool === 'select' && !this.zoneDraft) { e.cancelBubble = true; this.activeZone = z; }
+                    });
+                    shape.on('dblclick dbltap', e => {
+                        if (this.activeTool === 'select' && !this.zoneDraft) { e.cancelBubble = true; this.activeZone = z; this.editZone(); }
+                    });
+                });
                 this.zonesLayer.add(poly);
                 this.zonesLayer.add(text);
             });

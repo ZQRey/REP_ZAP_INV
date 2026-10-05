@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 from SHARED.models import AssetType, AssetStatus, AssetCondition
 
 
@@ -19,6 +19,13 @@ class ZoneBase(BaseModel):
     responsible_person: Optional[str] = None
     room_number: Optional[str] = None
     description: Optional[str] = None
+
+    @model_validator(mode="after")
+    def corridor_fields(self):
+        if self.zone_type == 'corridor':
+            self.room_number = None
+            self.responsible_person = None
+        return self
 
     @field_validator("name")
     @classmethod

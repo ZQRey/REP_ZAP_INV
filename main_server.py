@@ -102,7 +102,8 @@ def login(payload: LoginRequest, request: Request, db: Session = Depends(get_db)
             "username": user.username,
             "full_name": user.full_name,
             "role": user.role,
-            "branch_id": user.branch_id
+            "branch_id": user.branch_id,
+            "must_change_password": user.must_change_password
         }
     }
 
@@ -117,8 +118,29 @@ def get_current_profile(current_user: AppUser = Depends(get_current_user)):
         "role": current_user.role,
         "branch_id": current_user.branch_id,
         "branch_name": current_user.branch.name if current_user.branch else None,
-        "auth_type": current_user.auth_type
+        "auth_type": current_user.auth_type,
+        "must_change_password": current_user.must_change_password
     }
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str = Field(min_length=1, max_length=1024)
+    new_password: str = Field(min_length=8, max_length=1024)
+
+
+@app.post('/api/v1/auth/change-password')
+def change_password(payload: ChangePasswordRequest, db: Session = Depends(get_db),
+                    current_user: AppUser = Depends(get_current_user)):
+    if current_user.auth_type != 'local':
+        raise HTTPException(400, 'Пароль доменной учётной записи меняется в Active Directory')
+    if not AuthService.verify_password(payload.current_password, current_user.password_hash or ''):
+        raise HTTPException(400, 'Текущий пароль неверен')
+    if payload.new_password == 'admin123' or payload.new_password == payload.current_password:
+        raise HTTPException(422, 'Укажите новый пароль, отличный от начального и текущего')
+    current_user.password_hash = AuthService.hash_password(payload.new_password)
+    current_user.must_change_password = False
+    db.commit()
+    return {'success': True}
 
 
 # Подключение роутеров модулей

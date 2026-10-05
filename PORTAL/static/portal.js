@@ -21,6 +21,10 @@ document.addEventListener('alpine:init', () => {
         },
         loginError: '',
         loginLoading: false,
+        showPasswordChange: false,
+        passwordForm: {current_password: '', new_password: '', confirmation: ''},
+        passwordError: '',
+        passwordLoading: false,
 
         // Настройки и филиалы
         showSettingsModal: false,
@@ -71,6 +75,7 @@ document.addEventListener('alpine:init', () => {
                 return;
             }
 
+            if (this.showPasswordChange) return;
             await this.loadBranches();
             await this.loadPortalStats();
         },
@@ -91,6 +96,7 @@ document.addEventListener('alpine:init', () => {
                     return false;
                 }
                 this.currentUser = await res.json();
+                this.showPasswordChange = !!this.currentUser.must_change_password;
                 if (this.currentUser.branch_id) {
                     this.selectedBranchId = this.currentUser.branch_id;
                 }
@@ -178,6 +184,8 @@ document.addEventListener('alpine:init', () => {
                 sessionStorage.setItem('token', this.token);
                 this.showLoginModal = false;
                 await this.loadCurrentUser();
+                this.loginForm.password = '';
+                if (this.showPasswordChange) return;
                 await this.loadBranches();
                 await this.loadPortalStats();
                 this.showToast('Вход выполнен успешно!', 'success');
@@ -189,6 +197,8 @@ document.addEventListener('alpine:init', () => {
         },
 
         logout() {
+            this.showPasswordChange = false;
+            this.passwordForm = {current_password: '', new_password: '', confirmation: ''};
             sessionStorage.removeItem('token');
             this.token = '';
             this.currentUser = null;
@@ -196,8 +206,30 @@ document.addEventListener('alpine:init', () => {
         },
 
         openModule(path) {
+            if (this.currentUser?.must_change_password) { this.showPasswordChange = true; return; }
             // Same-origin session is shared without credentials in navigation URLs.
             window.location.href = path;
+        },
+
+        async changePassword() {
+            this.passwordError = '';
+            if (this.passwordForm.new_password !== this.passwordForm.confirmation) {
+                this.passwordError = 'Новые пароли не совпадают'; return;
+            }
+            this.passwordLoading = true;
+            try {
+                const res = await fetch('/api/v1/auth/change-password', {
+                    method: 'POST', headers: this.getAuthHeaders(),
+                    body: JSON.stringify({current_password: this.passwordForm.current_password, new_password: this.passwordForm.new_password})
+                });
+                if (!res.ok) { const data = await res.json(); throw new Error(typeof data.detail === 'string' ? data.detail : 'Пароль должен содержать от 8 до 1024 символов'); }
+                this.passwordForm = {current_password: '', new_password: '', confirmation: ''};
+                await this.loadCurrentUser();
+                await this.loadBranches();
+                await this.loadPortalStats();
+                this.showToast('Пароль изменён. Можно приступать к работе.', 'success');
+            } catch (e) { this.passwordError = e.message; }
+            finally { this.passwordLoading = false; }
         },
 
         async openSettings() {
@@ -680,5 +712,4 @@ if (window.ApiClient && !window._sharedApiFetchInstalled) {
     window._sharedApiFetchInstalled = true;
     window.fetch = (resource, config) => window.ApiClient.request(resource, config);
 }
-
 

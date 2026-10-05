@@ -8,7 +8,8 @@ logger = logging.getLogger("SHARED.database")
 
 # Поддержка SQLite и PostgreSQL
 connect_args = {}
-effective_db_url = os.getenv("DATABASE_URL", "").strip()
+from SHARED.security_config import DATABASE_URL
+effective_db_url = DATABASE_URL.strip()
 if not effective_db_url:
     raise RuntimeError("Required configuration missing: DATABASE_URL")
 
@@ -149,4 +150,3 @@ def init_db():
     except Exception as e:
         logger.error(f"[DB INIT ERROR] Failed to initialize database: {type(e).__name__}")
         raise
-

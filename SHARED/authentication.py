@@ -17,6 +17,11 @@ def require_authenticated_user(request: Request, credentials: HTTPAuthorizationC
     user = db.query(AppUser).filter(AppUser.username == payload.get("sub"), AppUser.is_active.is_(True)).first() if payload else None
     if user is None:
         raise HTTPException(401, "Authentication required", headers={"WWW-Authenticate": "Bearer"})
+    if user.must_change_password and request.url.path not in {
+        '/api/v1/auth/me', '/api/auth/me', '/cartridges/api/auth/me',
+        '/api/v1/auth/change-password'
+    }:
+        raise HTTPException(403, 'password_change_required')
     request.state.principal = Principal.from_user(user)
     request.state.authenticated_user = user
     return user

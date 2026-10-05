@@ -1,4 +1,4 @@
-"""Explicit administrator provisioning/reset; never executed by server startup."""
+"""Administrator provisioning; Compose initializes an empty database exactly once."""
 import argparse
 import getpass
 import sys
@@ -27,6 +27,8 @@ def main():
         description="Create or explicitly reset a local superadmin account."
     )
     parser.add_argument("--username", default="admin")
+    parser.add_argument("--initialize-default", action="store_true",
+                        help="Initialize an empty database with admin and a mandatory password change.")
     parser.add_argument(
         "--reset-existing",
         action="store_true",
@@ -39,7 +41,9 @@ def main():
     )
     args = parser.parse_args()
 
-    password = _read_password(args, parser)
+    if args.initialize_default and (args.reset_existing or args.password_stdin or args.username != 'admin'):
+        parser.error('Default initialization cannot be combined with account reset options')
+    password = 'admin123' if args.initialize_default else _read_password(args, parser)
     if not MIN_PASSWORD_LENGTH <= len(password) <= MAX_PASSWORD_LENGTH:
         parser.error(
             f"Password length must be between {MIN_PASSWORD_LENGTH} and {MAX_PASSWORD_LENGTH} characters"
@@ -55,6 +59,9 @@ def main():
         parser.error("Username must not be empty")
 
     with session_scope() as db:
+        if args.initialize_default and db.query(AppUser).first() is not None:
+            print('Existing accounts preserved; initial administrator not created')
+            return
         user = db.query(AppUser).filter(AppUser.username == username).first()
         if user is not None:
             if not args.reset_existing:
@@ -63,6 +70,7 @@ def main():
                 )
             user.full_name = user.full_name or username
             user.password_hash = AuthService.hash_password(password)
+            user.must_change_password = False
             user.auth_type = "local"
             user.role = "superadmin"
             user.is_active = True
@@ -73,6 +81,7 @@ def main():
                 username=username,
                 full_name=username,
                 password_hash=AuthService.hash_password(password),
+                must_change_password=args.initialize_default,
                 auth_type="local",
                 role="superadmin",
                 is_active=True,

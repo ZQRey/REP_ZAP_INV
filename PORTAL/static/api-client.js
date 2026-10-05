@@ -37,6 +37,10 @@
         if (response.status === 401) {
             logout();
         }
+        if (response.status === 403 && window.location.pathname !== '/') {
+            const body = await response.clone().json().catch(() => null);
+            if (body?.detail === 'password_change_required') window.location.replace('/');
+        }
         return response;
     }
 

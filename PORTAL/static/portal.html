@@ -272,6 +272,18 @@
     <!-- ============================================== -->
     <!-- МОДАЛЬНОЕ ОКНО АВТОРИЗАЦИИ (LOGIN)             -->
     <!-- ============================================== -->
+    <div x-show="showPasswordChange" class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md" style="display: none;">
+        <form @submit.prevent="changePassword()" class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4">
+            <h2 class="text-xl font-bold text-slate-900">Смените начальный пароль</h2>
+            <p class="text-sm text-slate-600">Для начала работы задайте свой пароль. Минимум 8 символов.</p>
+            <label class="block text-sm text-slate-700">Текущий пароль<input type="password" autocomplete="current-password" x-model="passwordForm.current_password" required class="mt-1 w-full border border-slate-300 rounded-lg p-3"></label>
+            <label class="block text-sm text-slate-700">Новый пароль<input type="password" autocomplete="new-password" x-model="passwordForm.new_password" minlength="8" maxlength="1024" required class="mt-1 w-full border border-slate-300 rounded-lg p-3"></label>
+            <label class="block text-sm text-slate-700">Повторите новый пароль<input type="password" autocomplete="new-password" x-model="passwordForm.confirmation" minlength="8" required class="mt-1 w-full border border-slate-300 rounded-lg p-3"></label>
+            <p x-show="passwordError" x-text="passwordError" class="text-sm text-rose-600"></p>
+            <button type="submit" :disabled="passwordLoading" class="w-full rounded-lg bg-brand-600 text-white p-3 font-semibold" x-text="passwordLoading ? 'Сохранение…' : 'Сохранить пароль'"></button>
+            <button type="button" @click="logout()" class="w-full text-sm text-slate-500">Выйти</button>
+        </form>
+    </div>
     <div x-show="showLoginModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-md" style="display: none;">
         <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 space-y-5">
             <div class="text-center space-y-1">
@@ -750,4 +762,3 @@
 
 </body>
 </html>
-

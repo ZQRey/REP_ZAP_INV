@@ -1,5 +1,4 @@
 services:
-  # Internal Nginx reverse proxy. TLS terminates on the external Proxmox reverse proxy.
   nginx-proxy:
     image: nginx:alpine
     networks:
@@ -8,34 +7,36 @@ services:
     container_name: it_nginx_proxy
     restart: unless-stopped
     ports:
-      - "80:80"
+    - 80:80
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx_logs:/var/log/nginx
+    - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    - ./nginx_logs:/var/log/nginx
     depends_on:
       unified-server:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost/nginx-health || exit 1"]
+      test:
+      - CMD-SHELL
+      - wget -qO- http://localhost/nginx-health || exit 1
       interval: 10s
       timeout: 5s
       retries: 3
-
-  # One-shot schema gate. Every normal Compose deployment applies reviewed Alembic
-  # migrations before application processes are allowed to start.
   database-migrations:
     build:
       context: .
       dockerfile: Dockerfile
-    restart: "no"
-    command: ["alembic", "upgrade", "head"]
-    environment:
-      - DATABASE_URL=${DATABASE_URL:?Run ./scripts/init-env.sh first}
+    restart: 'no'
+    command:
+    - sh
+    - -c
+    - alembic upgrade head && python -m SHARED.bootstrap_admin --initialize-default
     depends_on:
       postgres-db:
         condition: service_healthy
-
-  # Единый веб-сервер и портал (Portal, Cartridge, Repair, Location API)
+      runtime-setup:
+        condition: service_completed_successfully
+    volumes:
+    - ./secrets/runtime:/run/app-secrets:ro
   unified-server:
     build:
       context: .
@@ -43,24 +44,20 @@ services:
     container_name: it_unified_portal
     restart: unless-stopped
     volumes:
-      - ./BD:/app/BD
-      - ./secrets/ssh:/run/ssh:ro
-      - ./uploads:/app/LOCATION/app/static/uploads
-      - ./uploads/maps:/app/LOCATION/app/static/maps
+    - ./BD:/app/BD
+    - ./secrets/ssh:/run/ssh:ro
+    - ./uploads:/app/LOCATION/app/static/uploads
+    - ./uploads/maps:/app/LOCATION/app/static/maps
+    - ./secrets/runtime:/run/app-secrets:ro
     environment:
-      - DATABASE_URL=${DATABASE_URL:?Run ./scripts/init-env.sh first}
-      - REDIS_URL=${REDIS_URL:?Run ./scripts/init-env.sh first}
-      - SECRET_KEY=${SECRET_KEY:?Run ./scripts/init-env.sh first}
-      - NETWORK_CREDENTIAL_KEY=${NETWORK_CREDENTIAL_KEY:?Run ./scripts/init-env.sh first}
-      - EVOLUTION_API_URL=http://whatsapp-gateway:8080
-      - EVOLUTION_API_KEY=${EVOLUTION_API_KEY:?Run ./scripts/init-env.sh first}
-      - PYTHONUNBUFFERED=1
-      - APP_ENV=${APP_ENV:-production}
-      - NETWORK_ALLOWED_CIDRS=${NETWORK_ALLOWED_CIDRS:-}
-      - CORS_ORIGINS=${CORS_ORIGINS:-}
-      - WHATSAPP_ENABLED=true
-      - TLS_CA_FILE=${TLS_CA_FILE:-}
-      - SSH_KNOWN_HOSTS=/run/ssh/known_hosts
+    - EVOLUTION_API_URL=http://whatsapp-gateway:8080
+    - PYTHONUNBUFFERED=1
+    - APP_ENV=${APP_ENV:-production}
+    - NETWORK_ALLOWED_CIDRS=${NETWORK_ALLOWED_CIDRS:-}
+    - CORS_ORIGINS=${CORS_ORIGINS:-}
+    - WHATSAPP_ENABLED=true
+    - TLS_CA_FILE=${TLS_CA_FILE:-}
+    - SSH_KNOWN_HOSTS=/run/ssh/known_hosts
     depends_on:
       database-migrations:
         condition: service_completed_successfully
@@ -68,56 +65,59 @@ services:
         condition: service_started
       whatsapp-gateway:
         condition: service_started
+      runtime-setup:
+        condition: service_completed_successfully
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/health >/dev/null || exit 1"]
+      test:
+      - CMD-SHELL
+      - curl -fsS http://localhost:8000/health >/dev/null || exit 1
       interval: 15s
       timeout: 5s
       retries: 5
       start_period: 20s
-
-  # Durable notification worker. PostgreSQL keeps the outbox; Redis only wakes workers.
   network-worker:
     build:
       context: .
       dockerfile: Dockerfile
     restart: unless-stopped
-    command: ["python", "-m", "SHARED.network_worker"]
+    command:
+    - python
+    - -m
+    - SHARED.network_worker
     volumes:
-      - ./secrets/ssh:/run/ssh:ro
+    - ./secrets/ssh:/run/ssh:ro
+    - ./secrets/runtime:/run/app-secrets:ro
     environment:
-      - DATABASE_URL=${DATABASE_URL:?Run ./scripts/init-env.sh first}
-      - REDIS_URL=${REDIS_URL:?Run ./scripts/init-env.sh first}
-      - SECRET_KEY=${SECRET_KEY:?Run ./scripts/init-env.sh first}
-      - NETWORK_CREDENTIAL_KEY=${NETWORK_CREDENTIAL_KEY:?Run ./scripts/init-env.sh first}
-      - NETWORK_ALLOWED_CIDRS=${NETWORK_ALLOWED_CIDRS:-}
-      - APP_ENV=${APP_ENV:-production}
-      - SSH_KNOWN_HOSTS=/run/ssh/known_hosts
-      - TLS_CA_FILE=${TLS_CA_FILE:-}
-      - NETWORK_POLL_SECONDS=${NETWORK_POLL_SECONDS:-60}
+    - NETWORK_ALLOWED_CIDRS=${NETWORK_ALLOWED_CIDRS:-}
+    - APP_ENV=${APP_ENV:-production}
+    - SSH_KNOWN_HOSTS=/run/ssh/known_hosts
+    - TLS_CA_FILE=${TLS_CA_FILE:-}
+    - NETWORK_POLL_SECONDS=${NETWORK_POLL_SECONDS:-60}
     depends_on:
       database-migrations:
         condition: service_completed_successfully
       redis:
         condition: service_started
-
+      runtime-setup:
+        condition: service_completed_successfully
   notification-worker:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: it_notification_worker
     restart: unless-stopped
-    command: ["python", "-m", "SHARED.notification_worker"]
+    command:
+    - python
+    - -m
+    - SHARED.notification_worker
     volumes:
-      - ./secrets/ssh:/run/ssh:ro
+    - ./secrets/ssh:/run/ssh:ro
+    - ./secrets/runtime:/run/app-secrets:ro
     environment:
-      - DATABASE_URL=${DATABASE_URL:?Run ./scripts/init-env.sh first}
-      - REDIS_URL=${REDIS_URL:?Run ./scripts/init-env.sh first}
-      - SECRET_KEY=${SECRET_KEY:?Run ./scripts/init-env.sh first}
-      - NETWORK_CREDENTIAL_KEY=${NETWORK_CREDENTIAL_KEY:?Run ./scripts/init-env.sh first}
-      - APP_ENV=${APP_ENV:-production}
-      - NOTIFICATION_POLL_SECONDS=${NOTIFICATION_POLL_SECONDS:-5}
-      - NOTIFICATION_BATCH_SIZE=${NOTIFICATION_BATCH_SIZE:-25}
-      - NOTIFICATION_PROCESSING_LEASE_SECONDS=${NOTIFICATION_PROCESSING_LEASE_SECONDS:-120}
+    - APP_ENV=${APP_ENV:-production}
+    - NOTIFICATION_POLL_SECONDS=${NOTIFICATION_POLL_SECONDS:-5}
+    - NOTIFICATION_BATCH_SIZE=${NOTIFICATION_BATCH_SIZE:-25}
+    - NOTIFICATION_PROCESSING_LEASE_SECONDS=${NOTIFICATION_PROCESSING_LEASE_SECONDS:-120}
     depends_on:
       database-migrations:
         condition: service_completed_successfully
@@ -125,70 +125,104 @@ services:
         condition: service_started
       whatsapp-gateway:
         condition: service_started
-
-  # Единая СУБД: PostgreSQL 15 с расширением PostGIS для интерактивной карты
+      runtime-setup:
+        condition: service_completed_successfully
   postgres-db:
     image: postgis/postgis:15-3.3-alpine
     container_name: it_unified_postgres
     restart: unless-stopped
     environment:
-      - POSTGRES_DB=it_management
-      - POSTGRES_USER=app_user
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?Run ./scripts/init-env.sh first}
+    - POSTGRES_DB=it_management
+    - POSTGRES_USER=app_user
+    - POSTGRES_PASSWORD_FILE=/run/app-secrets/postgres_password
     volumes:
-      - ./BD/postgres_data:/var/lib/postgresql/data
-      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    - ./BD/postgres_data:/var/lib/postgresql/data
+    - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    - ./secrets/runtime:/run/app-secrets:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U app_user -d it_management"]
+      test:
+      - CMD-SHELL
+      - pg_isready -U app_user -d it_management
       interval: 5s
       timeout: 5s
       retries: 5
-
-  # Redis для очередей задач (AD/SNMP воркеры) и WebSocket Pub/Sub карты
+    depends_on:
+      runtime-setup:
+        condition: service_completed_successfully
   redis:
     image: redis:7-alpine
-    command: ["sh", "-c", 'exec redis-server --requirepass "$$REDIS_PASSWORD"']
-    environment:
-      - REDIS_PASSWORD=${REDIS_PASSWORD:?Run ./scripts/init-env.sh first}
+    command:
+    - sh
+    - -c
+    - exec redis-server --requirepass "$$(cat /run/app-secrets/redis_password)"
     container_name: it_unified_redis
     restart: unless-stopped
     volumes:
-      - ./BD/redis_data:/data
-
-  # Шлюз WhatsApp (Evolution API) — ТОЛЬКО ДЛЯ КАРТРИДЖЕЙ
+    - ./BD/redis_data:/data
+    - ./secrets/runtime:/run/app-secrets:ro
+    depends_on:
+      runtime-setup:
+        condition: service_completed_successfully
   whatsapp-gateway:
     image: evoapicloud/evolution-api
     container_name: it_cartridge_whatsapp
     restart: unless-stopped
     volumes:
-      - ./evolution_instances:/evolution/instances
+    - ./evolution_instances:/evolution/instances
+    - ./secrets/runtime:/run/app-secrets:ro
     environment:
-      - SERVER_PORT=8080
-      - SERVER_TYPE=http
-      - SERVER_URL=http://whatsapp-gateway:8080
-      - AUTHENTICATION_API_KEY=${EVOLUTION_API_KEY:?Run ./scripts/init-env.sh first}
-      - AUTHENTICATION_TYPE=apikey
-      - LOG_LEVEL=ERROR,WARN,INFO
-      - DEL_INSTANCE=false
-      - DATABASE_ENABLED=true
-      - DATABASE_PROVIDER=postgresql
-      - DATABASE_CONNECTION_URI=${EVOLUTION_DATABASE_URL:?Run ./scripts/init-env.sh first}
-      - DATABASE_CLIENT_NAME=evolution_cartridge
-      - CACHE_REDIS_ENABLED=true
-      - CACHE_REDIS_URI=${EVOLUTION_REDIS_URL:?Run ./scripts/init-env.sh first}
+    - SERVER_PORT=8080
+    - SERVER_TYPE=http
+    - SERVER_URL=http://whatsapp-gateway:8080
+    - AUTHENTICATION_TYPE=apikey
+    - LOG_LEVEL=ERROR,WARN,INFO
+    - DEL_INSTANCE=false
+    - DATABASE_ENABLED=true
+    - DATABASE_PROVIDER=postgresql
+    - DATABASE_CLIENT_NAME=evolution_cartridge
+    - CACHE_REDIS_ENABLED=true
     depends_on:
       postgres-db:
         condition: service_healthy
       redis:
         condition: service_started
-
+      runtime-setup:
+        condition: service_completed_successfully
+    entrypoint:
+    - /bin/bash
+    - -c
+    - export AUTHENTICATION_API_KEY="$$(cat /run/app-secrets/evolution_api_key)" DATABASE_CONNECTION_URI="$$(cat
+      /run/app-secrets/evolution_database_url)" CACHE_REDIS_URI="$$(cat /run/app-secrets/evolution_redis_url)";
+      . ./Docker/scripts/deploy_database.sh && exec npm run start:prod
+  runtime-setup:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    user: 0:0
+    restart: 'no'
+    command:
+    - python
+    - /app/scripts/prepare_runtime.py
+    environment:
+    - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-}
+    - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+    - SECRET_KEY=${SECRET_KEY:-}
+    - NETWORK_CREDENTIAL_KEY=${NETWORK_CREDENTIAL_KEY:-}
+    - EVOLUTION_API_KEY=${EVOLUTION_API_KEY:-}
+    - DATABASE_URL=${DATABASE_URL:-}
+    - REDIS_URL=${REDIS_URL:-}
+    - EVOLUTION_DATABASE_URL=${EVOLUTION_DATABASE_URL:-}
+    - EVOLUTION_REDIS_URL=${EVOLUTION_REDIS_URL:-}
+    volumes:
+    - ./secrets/runtime:/run/app-secrets
+    - ./BD:/state/BD
+    - ./uploads:/state/uploads
+    - ./secrets/ssh:/state/secrets/ssh
 volumes:
-  postgres_data:
-  redis_data:
-
-
+  postgres_data: null
+  redis_data: null
 networks:
   default:
     ipam:
       config:
-        - subnet: 172.30.88.0/24
+      - subnet: 172.30.88.0/24

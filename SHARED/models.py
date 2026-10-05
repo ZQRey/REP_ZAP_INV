@@ -13,7 +13,7 @@ from sqlalchemy import (
     Numeric,
     JSON,
     Enum as SQLEnum,
-    func
+    func, false
 )
 from sqlalchemy.orm import relationship, synonym
 from SHARED.database import Base
@@ -59,6 +59,7 @@ class AppUser(Base):
     username = Column(String(100), unique=True, index=True, nullable=False)
     full_name = Column(String(255), nullable=False)
     password_hash = Column(String(255), nullable=True)
+    must_change_password = Column(Boolean, nullable=False, default=False, server_default=false())
     auth_type = Column(String(20), default="local")          # "local" или "ad"
     role = Column(String(20), default="user")            # "superadmin", "admin", "technician", "operator", "viewer"
     is_active = Column(Boolean, default=True)

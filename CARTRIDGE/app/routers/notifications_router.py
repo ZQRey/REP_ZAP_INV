@@ -108,7 +108,8 @@ def notify_ready_cartridges(
     db.commit()
     if queued_count:
         try:
-            redis.Redis.from_url(os.environ["REDIS_URL"]).lpush("notifications:wakeup", str(queued_count))
+            from SHARED.security_config import REDIS_URL
+            redis.Redis.from_url(REDIS_URL).lpush("notifications:wakeup", str(queued_count))
         except Exception:
             # PostgreSQL outbox remains authoritative; worker polling will still deliver.
             pass
