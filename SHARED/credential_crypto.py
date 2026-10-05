@@ -32,4 +32,4 @@ def decrypt_secret(value: str | None) -> str | None:
     try:
         return cipher.decrypt(value[len(PREFIX):].encode("ascii")).decode("utf-8")
     except InvalidToken as exc:
-        raise RuntimeError("Stored network credential cannot be decrypted with the configured key") from exc
+        raise RuntimeError("Stored credential cannot be decrypted with the configured key") from exc
