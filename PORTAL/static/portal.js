@@ -244,7 +244,7 @@ document.addEventListener('alpine:init', () => {
                         host: this.settingsData.ad_host,
                         base_dn: this.settingsData.ad_base_dn,
                         bind_user: this.settingsData.ad_bind_user,
-                        bind_password: this.settingsData.ad_bind_password
+                        bind_password: this.settingsData.ad_bind_password === '******' ? null : this.settingsData.ad_bind_password
                     })
                 });
                 const data = await res.json();
