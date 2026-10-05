@@ -175,6 +175,16 @@ class LDAPService:
             }
         except LDAPException as e:
             err_str = type(e).__name__
+            if err_str == "LDAPStartTLSError":
+                return {
+                    "success": False,
+                    "message": (
+                        f"Ошибка StartTLS ({normalized_target}). Контроллер домена не смог установить TLS "
+                        "или его сертификат не доверен контейнеру. Для защищенного режима настройте LDAP-сертификат "
+                        "на DC и TLS_CA_FILE/LDAPS. Для временного использования обычного LDAP во внутренней сети "
+                        "разрешите LDAP_ALLOW_PLAINTEXT=true и пересоздайте unified-server."
+                    ),
+                }
             if "52e" in err_str:
                 return {
                     "success": False,
@@ -216,7 +226,7 @@ class LDAPService:
         phone_attrs = [p.strip() for p in attr_phones_str.split(",") if p.strip()]
         
         search_filter = settings.get(
-            "ad_filter",
+            "ad_filter_users",
             "(&(objectCategory=person)(objectClass=user)(!(userAccountControl:1.2.840.113556.1.4.803:=2)))"
         )
 
