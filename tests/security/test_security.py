@@ -345,6 +345,93 @@ def test_ad_cannot_take_over_local_identity(client, account, monkeypatch):
         assert response.status_code == 401
 
 
+def test_first_ad_login_creates_minimal_app_user(client, monkeypatch):
+    from CARTRIDGE.app.services.ldap_service import LDAPService
+    from SHARED.database import SessionLocal
+    from SHARED.models import AppUser
+
+    monkeypatch.setattr(
+        LDAPService,
+        "authenticate_ad_user",
+        lambda **kw: (
+            True,
+            "domain.user",
+            {
+                "samaccountname": "domain.user",
+                "display_name": "Domain User",
+                "department": "IT",
+                "cabinet": "101",
+                "phone": None,
+            },
+        ),
+    )
+
+    payload = {
+        "username": "domain.user@gp1.loc",
+        "password": "ValidDomainPassword1",
+        "auth_type": "ad",
+    }
+    response = client.post("/api/v1/auth/login", json=payload)
+    assert response.status_code == 200, response.text
+    assert response.json()["user"]["username"] == "domain.user"
+    assert response.json()["user"]["role"] == "user"
+    assert response.json()["user"]["branch_id"] is None
+
+    with SessionLocal() as db:
+        user = db.query(AppUser).filter(AppUser.username == "domain.user").one()
+        assert user.auth_type == "ad"
+        assert user.password_hash is None
+        assert user.role == "user"
+        assert user.branch_id is None
+
+    second = client.post("/api/v1/auth/login", json=payload)
+    assert second.status_code == 200
+
+
+def test_app_user_management_requires_superadmin(client, monkeypatch):
+    from CARTRIDGE.app.services.ldap_service import LDAPService
+
+    monkeypatch.setattr(
+        LDAPService,
+        "authenticate_ad_user",
+        lambda **kw: (
+            True,
+            "ordinary.domain.user",
+            {
+                "samaccountname": "ordinary.domain.user",
+                "display_name": "Ordinary Domain User",
+                "department": None,
+                "cabinet": None,
+                "phone": None,
+            },
+        ),
+    )
+    login = client.post(
+        "/api/v1/auth/login",
+        json={
+            "username": "ordinary.domain.user",
+            "password": "ValidDomainPassword1",
+            "auth_type": "ad",
+        },
+    )
+    assert login.status_code == 200
+    headers = {"Authorization": "Bearer " + login.json()["access_token"]}
+    assert client.get("/api/app-users", headers=headers).status_code == 403
+    assert client.post(
+        "/api/app-users",
+        headers=headers,
+        json={
+            "username": "escalation",
+            "full_name": "Escalation",
+            "password": "password123",
+            "auth_type": "local",
+            "role": "superadmin",
+            "is_active": True,
+            "branch_id": None,
+        },
+    ).status_code == 403
+
+
 def test_unknown_ssh_host_is_rejected():
     import paramiko
     from SHARED.transport_security import ssh_client

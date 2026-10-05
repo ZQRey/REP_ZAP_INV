@@ -1318,6 +1318,11 @@
 
                 <!-- 2. Вкладка ПОЛЬЗОВАТЕЛИ СИСТЕМЫ -->
                 <div x-show="settingsTab === 'users'" class="space-y-4">
+                    <div class="rounded-xl border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
+                        Доменный пользователь создается автоматически при первом успешном входе через Active Directory
+                        с ролью <strong>Пользователь</strong> и без доступа к филиалам. После первого входа назначьте ему
+                        здесь нужную роль и филиал.
+                    </div>
                     <div class="flex justify-between items-center">
                         <p class="text-sm text-slate-500">Управление операторами и администраторами приложения</p>
                         <button @click="openCreateUser()"
