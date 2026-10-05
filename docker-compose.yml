@@ -21,6 +21,10 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
+    command:
+    - nginx
+    - -g
+    - daemon off;
   database-migrations:
     build:
       context: .
