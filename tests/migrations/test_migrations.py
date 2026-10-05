@@ -202,10 +202,10 @@ def test_counter_rollback_is_transactional(client):
 
 
 def test_both_document_apis_use_persisted_atomic_counters(client, account):
-    from SHARED.models import Cartridge, Asset, Branch, DocumentCounter
+    from SHARED.models import Cartridge, CartridgeStatus, Asset, Branch, DocumentCounter
     with SessionLocal() as db:
         branch = db.query(Branch).first()
-        cartridge = Cartridge(marker_label="API-CART", model="M", cabinet="R", branch_id=branch.id)
+        cartridge = Cartridge(marker_label="API-CART", model="M", cabinet="R", branch_id=branch.id, status=CartridgeStatus.PENDING_VENDOR)
         asset = Asset(inventory_number="API-ASSET", name="A", branch_id=branch.id)
         db.add_all([cartridge, asset]); db.commit()
         cartridge_id, asset_id = cartridge.id, asset.id
