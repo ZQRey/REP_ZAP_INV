@@ -199,9 +199,27 @@ def test_unmanaged_switch_supports_28_ports_and_manual_mapping(branches):
     assert response.status_code == 200, response.text
     assert response.json()["downstream_port_count"] == 28
     assert response.json()["downstream_ports"]["AA:BB:CC:DD:EE:01"] == 28
+    with SessionLocal() as db:
+        db.get(m.SwitchPort, 1).connected_asset_id = None
+        db.commit()
+    report = branches.get("/api/v1/location/reports", headers=headers("operator1")).json()
+    assert any(row["downstream_name"] == "Office 28" and row["downstream_port_count"] == 28 for row in report["items"])
     response = branches.put("/api/v1/location/switches/1/ports/1", headers=headers("admin1"), json={
         "downstream_ports": {"AA:BB:CC:DD:EE:01": 29}})
     assert response.status_code == 422
+
+
+def test_room_number_and_room_name_are_not_false_roaming(branches):
+    with SessionLocal() as db:
+        asset = db.get(m.Asset, 1)
+        asset.mac_address, asset.zone_id, asset.cabinet = "AA:BB:CC:DD:EE:01", 1, "120"
+        asset.coords_x = asset.coords_y = .5
+        port = db.get(m.SwitchPort, 1)
+        port.status, port.cabinet, port.learned_macs = "up", "Zone 1", ["AA:BB:CC:DD:EE:01"]
+        db.commit()
+    response = branches.get("/api/v1/location/floors/1/assets", headers=headers("admin1"))
+    assert response.status_code == 200, response.text
+    assert response.json()[0]["network_location_status"] == "online"
 
 
 def test_acceptance_is_not_a_second_repair(branches):

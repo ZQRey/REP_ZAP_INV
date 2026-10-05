@@ -66,6 +66,9 @@ def build_report(db: Session):
         if port.connected_asset and port.connected_asset.id not in observed:
             rows.append(row(port.connected_asset, port))
             observed.add(port.connected_asset.id)
+        topology = (port.switch.extra_params or {}).get("port_topology", {}).get(str(port.port_number), {})
+        if not macs and not port.connected_asset and (topology or port.zone_id or port.socket_label or port.cabinet):
+            rows.append(row(None, port))
     rows.extend(row(a) for a in assets if a.id not in observed)
     return rows
 

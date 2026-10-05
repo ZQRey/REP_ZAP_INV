@@ -83,7 +83,7 @@ def enrich_assets_with_network_and_locations(db: Session, assets: List[Asset]) -
             conn_cabinet = p.cabinet or (p.zone.name if p.zone else None)
 
             if p.status == "up":
-                if conn_cabinet and a.cabinet and conn_cabinet.strip().lower() != a.cabinet.strip().lower():
+                if (p.zone_id and a.zone_id != p.zone_id) or (not p.zone_id and conn_cabinet and a.cabinet and conn_cabinet.strip().lower() != a.cabinet.strip().lower()):
                     net_status = "roaming"
                 else:
                     net_status = "online"

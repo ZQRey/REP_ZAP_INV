@@ -46,7 +46,6 @@
             <div class="flex gap-2"><button type="submit" class="flex-1 bg-blue-600 rounded-lg p-2">Сохранить</button><button type="button" @click="cancelZone()" class="bg-slate-700 rounded-lg p-2">Отмена</button></div>
         </form></template>
     </div>
-    <a href="/location/static/reports.html" class="fixed bottom-3 left-3 z-50 rounded-lg bg-blue-700 px-4 py-2">Отчёты карты сети</a>
     <!-- Верхняя панель (Top Toolbar) -->
     <header class="h-14 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 flex items-center justify-between px-4 z-30 shrink-0">
         <div class="flex items-center gap-4">
@@ -62,7 +61,7 @@
                 </div>
                 <div>
                     <h1 class="text-xs font-bold text-white leading-tight">NetMap & ITAM</h1>
-                    <p class="text-[10px] text-slate-400">Интерактивная 2D-карта этажей</p>
+                    <a href="/location/static/reports.html" class="text-[10px] text-blue-300 hover:text-white">Отчёты карты сети →</a>
                 </div>
             </div>
 
