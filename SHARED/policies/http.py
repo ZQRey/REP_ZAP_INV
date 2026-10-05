@@ -36,7 +36,8 @@ async def authorize_request(request: Request, credentials=Depends(security), db=
     if principal.role not in policy["roles"]:
         raise HTTPException(403, "Endpoint permission denied")
     if policy["branch_scope"] and principal.role != "superadmin" and principal.branch_id is None:
-        raise HTTPException(403, "Branch membership required")
+        if not (principal.role == "user" and policy["domain"] == "cartridges" and policy["action"] == "read"):
+            raise HTTPException(403, "Branch membership required")
     branch = None if principal.role == "superadmin" else principal.branch_id
     bind_scope(db, principal, policy, branch)
     body = {}

@@ -88,6 +88,8 @@ class AuthService:
                 )
                 db.add(user)
 
+            from SHARED.user_branch import sync_cartridge_owner_branch
+            sync_cartridge_owner_branch(db, user)
             db.commit()
             db.refresh(user)
             return user

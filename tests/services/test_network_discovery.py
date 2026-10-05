@@ -89,3 +89,26 @@ def test_superadmin_http_poll_transfers_atomically(client, account, monkeypatch)
     with SessionLocal() as db:
         pc=db.get(m.Asset,pid)
         assert (pc.branch_id,pc.zone_id) == (bid,zid)
+
+
+def test_owner_branch_comes_from_cartridge_and_admin_is_unchanged(client):
+    from SHARED.user_branch import sync_cartridge_owner_branch
+    with SessionLocal() as db:
+        branch=m.Branch(name="Ownership");db.add(branch);db.flush()
+        ordinary=m.AppUser(username="owner",full_name="Owner",role="user",is_active=True)
+        admin=m.AppUser(username="administrator",full_name="Admin",role="admin",is_active=True)
+        db.add_all([ordinary,admin]);db.add(m.Cartridge(marker_label="OWN",model="HP",cabinet="1",branch_id=branch.id,current_user_id="OWNER"));db.flush()
+        assert sync_cartridge_owner_branch(db,ordinary)
+        assert ordinary.branch_id == branch.id
+        assert not sync_cartridge_owner_branch(db,admin)
+        assert admin.branch_id is None
+
+
+def test_new_user_without_cartridges_gets_empty_list(client):
+    from SHARED.tokens import create_access_token
+    with SessionLocal() as db:
+        db.add(m.AppUser(username="new-owner",full_name="New",role="user",is_active=True));db.commit()
+    headers={"Authorization":"Bearer "+create_access_token({"sub":"new-owner"})}
+    response=client.get('/api/cartridges',headers=headers)
+    assert response.status_code == 200, response.text
+    assert response.json() == []
