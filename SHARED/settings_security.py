@@ -33,12 +33,18 @@ def effective_settings(values):
     return result
 
 
-def public_settings(values):
+def public_settings(values, reveal_bind_user=False):
     from SHARED.config import DEFAULT_SETTINGS
 
     allowed = set(DEFAULT_SETTINGS) | {"ad_filter", "default_vendor", "act_prefix"}
-    return {
-        key: ("******" if value else "") if key in MASKED_SETTINGS else value
-        for key, value in values.items()
-        if key in allowed
-    }
+    result = {}
+    for key, value in values.items():
+        if key not in allowed:
+            continue
+        if key in MASKED_SETTINGS:
+            result[key] = "******" if value else ""
+        elif key == "ad_bind_user" and not reveal_bind_user:
+            result[key] = "******" if value else ""
+        else:
+            result[key] = value
+    return result
