@@ -25,15 +25,38 @@ class SettingsService:
 
     @staticmethod
     def update_bulk(db: Session, updates: Dict[str, Optional[str]]) -> Dict[str, str]:
-        """Обновляет набор настроек в базе данных."""
+        """Обновляет набор настроек атомарно и совместимо со старыми LDAP-ключами."""
+        updates = dict(updates)
+        legacy_filter = updates.pop("ad_filter", None)
+        if legacy_filter is not None and "ad_filter_users" not in updates:
+            updates["ad_filter_users"] = legacy_filter
+
         if PRODUCTION and any(k in SECRET_SETTINGS for k in updates):
             raise HTTPException(400, "Integration secrets are managed by environment or secret files")
+
+        dialect = db.get_bind().dialect.name
         for key, val in updates.items():
-            record = db.query(SystemSetting).filter(SystemSetting.key == key).first()
-            if record:
-                record.value = val
+            values = {"key": key, "value": val}
+            if dialect == "postgresql":
+                from sqlalchemy.dialects.postgresql import insert
+                stmt = insert(SystemSetting).values(**values).on_conflict_do_update(
+                    index_elements=[SystemSetting.key],
+                    set_={"value": val},
+                )
+                db.execute(stmt)
+            elif dialect == "sqlite":
+                from sqlalchemy.dialects.sqlite import insert
+                stmt = insert(SystemSetting).values(**values).on_conflict_do_update(
+                    index_elements=[SystemSetting.key],
+                    set_={"value": val},
+                )
+                db.execute(stmt)
             else:
-                db.add(SystemSetting(key=key, value=val))
+                record = db.get(SystemSetting, key)
+                if record:
+                    record.value = val
+                else:
+                    db.add(SystemSetting(**values))
         db.commit()
         return SettingsService.get_all(db)
 

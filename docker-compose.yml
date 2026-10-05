@@ -60,6 +60,8 @@ services:
       - WHATSAPP_ENABLED=true
       - LDAP_ENABLED=${LDAP_ENABLED:-false}
       - LDAP_BIND_PASSWORD=${LDAP_BIND_PASSWORD:-}
+      - LDAP_ALLOW_PLAINTEXT=${LDAP_ALLOW_PLAINTEXT:-false}
+      - TLS_CA_FILE=${TLS_CA_FILE:-}
       - SSH_KNOWN_HOSTS=/run/ssh/known_hosts
     depends_on:
       database-migrations:

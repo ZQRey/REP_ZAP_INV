@@ -8,18 +8,14 @@ from SHARED.config import DEFAULT_SQLITE_PATH
 
 from SHARED.security_config import DATABASE_URL, SECRET_KEY, DEBUG, JWT_ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
 
-DEFAULT_SETTINGS = {
-    # Active Directory / LDAP
-    "ad_host": "",
-    "ad_base_dn": "",
-    "ad_bind_user": "",
-    "ad_bind_password": "",
-    "ad_attr_name": "displayName",
-    "ad_attr_cabinet": "physicalDeliveryOfficeName",
-    "ad_attr_department": "department",
-    "ad_attr_phone": "mobile,telephoneNumber",
-    "ad_filter": "(&(objectCategory=person)(objectClass=user)(!(userAccountControl:1.2.840.113556.1.4.803:=2)))",
-    
+from SHARED.config import DEFAULT_SETTINGS as SHARED_DEFAULT_SETTINGS, SETTING_DESCRIPTIONS as SHARED_SETTING_DESCRIPTIONS
+
+DEFAULT_SETTINGS = dict(SHARED_DEFAULT_SETTINGS)
+DEFAULT_SETTINGS.update({
+    # Backward-compatible cartridge aliases still used by legacy report/batch code.
+    "default_vendor": SHARED_DEFAULT_SETTINGS["default_cartridge_vendor"],
+    "act_prefix": SHARED_DEFAULT_SETTINGS["cartridge_act_prefix"],
+
     # WhatsApp (Evolution API)
     "wa_mode": "shared",  # "shared" | "individual"
     "wa_api_url": "http://whatsapp-gateway:8080",
@@ -31,20 +27,11 @@ DEFAULT_SETTINGS = {
     "org_name": "ООО «ТехноПром»",
     "it_office": "Кабинет IT № 108",
     "default_vendor": "ООО «СервисПринт»",
-    "act_prefix": "АКТ-",
-}
+    "act_prefix": SHARED_DEFAULT_SETTINGS["cartridge_act_prefix"],
+})
 
-SETTING_DESCRIPTIONS = {
-    "ad_host": "LDAP Сервер (IP или доменное имя с протоколом ldap:// или ldaps://)",
-    "ad_base_dn": "Базовый DN каталога Active Directory (например, DC=gp1,DC=loc)",
-    "ad_bind_user": "Учетная запись для подключения к AD (короткое имя svc_ldap@gp1.loc, DOMAIN\\svc_ldap или DN)",
-    "ad_bind_password": "Пароль учетной записи для подключения к Active Directory (LDAP)",
-    "ad_attr_name": "Атрибут ФИО / имени пользователя в AD",
-    "ad_attr_cabinet": "Атрибут номера кабинета в AD",
-    "ad_attr_department": "Атрибут подразделения/отдела в AD",
-    "ad_attr_phone": "Атрибуты телефона (через запятую, проверяются по очереди)",
-    "ad_filter": "LDAP-фильтр выборки пользователей",
-    
+SETTING_DESCRIPTIONS = dict(SHARED_SETTING_DESCRIPTIONS)
+SETTING_DESCRIPTIONS.update({
     "wa_api_url": "URL сервиса Evolution API (локальный шлюз)",
     "wa_api_key": "Глобальный API Key шлюза Evolution API",
     "wa_instance_name": "Имя инстанса WhatsApp в Evolution API",
@@ -54,5 +41,5 @@ SETTING_DESCRIPTIONS = {
     "it_office": "Кабинет / Местоположение IT-отдела для получения картриджей",
     "default_vendor": "Поставщик услуг заправки по умолчанию (сервисный центр)",
     "act_prefix": "Префикс номеров актов передачи",
-}
+})
 

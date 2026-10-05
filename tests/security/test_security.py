@@ -177,14 +177,24 @@ def test_rate_limit_is_atomic_under_concurrency(monkeypatch):
 def test_ldap_requires_verified_tls(monkeypatch):
     import ssl
     import ldap3
-    from SHARED.transport_security import ldap_connection
+    import SHARED.transport_security as transport
     factory = Mock()
     monkeypatch.setattr(ldap3, "Connection", factory)
-    for secure in (False, True):
-        ldap_connection("dc.example", 636 if secure else 389, secure, "test", secrets.token_urlsafe(24))
-        server = factory.call_args.args[0]
-        assert server.tls.validate == ssl.CERT_REQUIRED
-        assert factory.call_args.kwargs["auto_bind"] == (ldap3.AUTO_BIND_NO_TLS if secure else ldap3.AUTO_BIND_TLS_BEFORE_BIND)
+
+    monkeypatch.setattr(transport, "LDAP_ALLOW_PLAINTEXT", False)
+    transport.ldap_connection("dc.example", 389, False, "test", secrets.token_urlsafe(24))
+    server = factory.call_args.args[0]
+    assert server.tls.validate == ssl.CERT_REQUIRED
+    assert factory.call_args.kwargs["auto_bind"] == ldap3.AUTO_BIND_TLS_BEFORE_BIND
+
+    transport.ldap_connection("dc.example", 636, True, "test", secrets.token_urlsafe(24))
+    server = factory.call_args.args[0]
+    assert server.tls.validate == ssl.CERT_REQUIRED
+    assert factory.call_args.kwargs["auto_bind"] == ldap3.AUTO_BIND_NO_TLS
+
+    monkeypatch.setattr(transport, "LDAP_ALLOW_PLAINTEXT", True)
+    transport.ldap_connection("dc.example", 389, False, "test", secrets.token_urlsafe(24))
+    assert factory.call_args.kwargs["auto_bind"] == ldap3.AUTO_BIND_NO_TLS
 
 
 def test_logs_redact_secrets(caplog):
