@@ -301,7 +301,7 @@ def test_scope_layer_rejects_unscoped_sql_and_read_side_effects(branches):
 
 
 def test_notifications_preflight_all_ids_before_any_adapter_call(branches, monkeypatch):
-    from app.services.whatsapp_service import WhatsAppService
+    from CARTRIDGE.app.services.whatsapp_service import WhatsAppService
     def forbidden(*args, **kwargs):
         pytest.fail("External adapter called before authorization completed")
     monkeypatch.setattr(WhatsAppService, "get_instance_for_user", forbidden)
@@ -337,7 +337,7 @@ def test_network_registration_cannot_create_allowlist_bypass(branches):
 
 @pytest.mark.parametrize("content_type", ["application/json", "application/problem+json", None])
 def test_bulk_preflight_matches_fastapi_json_content_types(branches, monkeypatch, content_type):
-    from app.services.whatsapp_service import WhatsAppService
+    from CARTRIDGE.app.services.whatsapp_service import WhatsAppService
     def forbidden(*args, **kwargs):
         pytest.fail("Adapter called for an unauthorized bulk request")
     monkeypatch.setattr(WhatsAppService, "get_instance_for_user", forbidden)
