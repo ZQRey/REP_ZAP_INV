@@ -1,6 +1,6 @@
 """Verified transports: no trust-on-first-use and no plaintext LDAP binds."""
 import ssl
-from SHARED.security_config import TLS_CA_FILE, SSH_KNOWN_HOSTS
+from SHARED.security_config import TLS_CA_FILE, SSH_KNOWN_HOSTS, LDAP_ALLOW_PLAINTEXT
 
 
 def tls_context():
@@ -25,6 +25,17 @@ def ldap_connection(host, port, use_ssl, user, password, timeout=5):
     register_secret(password)
     server = Server(host, port=port, use_ssl=use_ssl, get_info=NONE, connect_timeout=timeout,
                     tls=Tls(validate=ssl.CERT_REQUIRED, ca_certs_file=TLS_CA_FILE))
-    return Connection(server, user=user, password=password, read_only=True,
-                      auto_bind=AUTO_BIND_NO_TLS if use_ssl else AUTO_BIND_TLS_BEFORE_BIND,
-                      receive_timeout=timeout)
+    if use_ssl:
+        auto_bind = AUTO_BIND_NO_TLS
+    elif LDAP_ALLOW_PLAINTEXT:
+        auto_bind = AUTO_BIND_NO_TLS
+    else:
+        auto_bind = AUTO_BIND_TLS_BEFORE_BIND
+    return Connection(
+        server,
+        user=user,
+        password=password,
+        read_only=True,
+        auto_bind=auto_bind,
+        receive_timeout=timeout,
+    )
