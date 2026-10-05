@@ -29,7 +29,8 @@ def save_floor_zone(
         fill_color=payload.fill_color or "rgba(59, 130, 246, 0.15)",
         border_color=payload.border_color or "#3b82f6",
         responsible_person=payload.responsible_person,
-        room_number=payload.room_number
+        room_number=payload.room_number,
+        description=payload.description
     )
     db.add(zone)
     db.commit()
@@ -52,3 +53,16 @@ def delete_zone(
     db.commit()
     return {"success": True, "message": "Зона удалена"}
 
+
+
+@router.put("/zones/{zone_id}", response_model=ZoneResponse)
+def update_zone(zone_id: int, payload: ZoneBase, db: Session = Depends(get_db),
+                current_user: AppUser = Depends(require_authenticated_user)):
+    zone = db.query(Zone).filter(Zone.id == zone_id).first()
+    if not zone:
+        raise HTTPException(404, "Зона не найдена")
+    for key, value in payload.model_dump().items():
+        setattr(zone, key, value)
+    db.commit()
+    db.refresh(zone)
+    return zone

@@ -73,7 +73,10 @@ def scoped_writes(db, flush_context, instances):
             if principal.role != "superadmin" and (branch is None or branch != principal.branch_id):
                 raise HTTPException(403, "Write outside authorized branch")
             if model in DIRECT and obj not in db.new and model is not m.AppUser:
-                if inspect(obj).attrs.branch_id.history.has_changes():
+                if inspect(obj).attrs.branch_id.history.has_changes() and not (
+                    model is m.Asset and obj.id in db.info.get("network_transfers", set())
+                    and principal.role == "superadmin" and policy["network"] and policy["domain"] == "location"
+                ):
                     raise HTTPException(403, "Branch transfer requires a dedicated reviewed operation")
             if model in PARENTS and obj not in db.new:
                 field, parent = PARENTS[model]

@@ -108,7 +108,8 @@ class LDAPService:
             from ldap3 import Server, Connection, ALL, SUBTREE
             server_address, port, use_ssl = LDAPService.parse_ldap_server(host)
             effective_user = LDAPService.normalize_bind_user(bind_user, base_dn)
-            conn = ldap_connection(server_address, port, use_ssl, effective_user, bind_pwd)
+            conn = ldap_connection(server_address, port, use_ssl, effective_user, bind_pwd,
+                allow_plaintext=str(settings.get("ad_allow_plaintext", "false")).lower() == "true")
 
             attrs = ["sAMAccountName", "displayName", "department", "physicalDeliveryOfficeName", "telephoneNumber", "mobile"]
             conn.search(
@@ -192,7 +193,8 @@ class LDAPService:
             from ldap3 import Server, Connection, ALL, SUBTREE
             server_address, port, use_ssl = LDAPService.parse_ldap_server(host)
             effective_user = LDAPService.normalize_bind_user(bind_user, base_dn)
-            conn = ldap_connection(server_address, port, use_ssl, effective_user, bind_pwd)
+            conn = ldap_connection(server_address, port, use_ssl, effective_user, bind_pwd,
+                allow_plaintext=str(settings.get("ad_allow_plaintext", "false")).lower() == "true")
 
             attrs = [
                 "sAMAccountName",

@@ -29,6 +29,27 @@
         <span x-text="toast.message"></span>
     </div>
 
+    <div class="fixed right-4 top-16 z-40 bg-slate-900 p-3 rounded-lg space-y-2">
+        <button @click="startZone('office')" class="px-3 py-2 bg-blue-600 rounded">Разметить кабинет</button>
+        <button @click="startZone('corridor')" class="px-3 py-2 bg-blue-600 rounded">Разметить коридор</button>
+        <template x-if="zoneDraft"><div class="flex flex-col gap-2">
+            <input x-model="zoneDraft.name" placeholder="Название" class="bg-slate-800 p-2">
+            <input x-model="zoneDraft.room_number" placeholder="Номер кабинета" class="bg-slate-800 p-2">
+            <input x-model="zoneDraft.responsible_person" placeholder="Ответственный" class="bg-slate-800 p-2">
+            <textarea x-model="zoneDraft.description" placeholder="Описание помещения" class="bg-slate-800 p-2"></textarea>
+            <span x-text="'Точек: ' + zonePoints.length"></span>
+            <button @click="saveZone()">Сохранить разметку</button><button @click="cancelZone()">Отмена</button>
+        </div></template>
+        <template x-if="activeZone"><div class="max-w-md max-h-96 overflow-auto space-y-2">
+            <button @click="activeZone = null">Закрыть</button> <button @click="editZone()">Редактировать помещение</button>
+            <h3 x-text="activeZone.name + ' ' + (activeZone.room_number || '')"></h3>
+            <p x-text="activeZone.description"></p><p x-text="activeZone.responsible_person"></p>
+            <h4>Техника</h4>
+            <template x-for="a in zoneAssets" :key="a.id"><p x-text="a.inventory_number + ' — ' + a.name + ' ' + (a.notes || '')"></p></template>
+            <h4>Порты</h4>
+            <template x-for="p in zonePorts" :key="p.id"><p x-text="p.switch_name + ': порт ' + p.port_number + ' — ' + (p.last_mac || '') + ' ' + (p.connected_asset_name || '')"></p></template>
+        </div></template>
+    </div>
     <!-- Верхняя панель (Top Toolbar) -->
     <header class="h-14 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 flex items-center justify-between px-4 z-30 shrink-0">
         <div class="flex items-center gap-4">
@@ -631,6 +652,7 @@
                 </div>
 
                 <div class="grid grid-cols-2 gap-3" x-show="switchForm.management_type === 'omada'">
+                    <label>MAC коммутатора в Omada<input x-model="switchForm.switch_mac" class="w-full bg-slate-950 p-2 rounded"></label>
                     <div>
                         <label class="block font-semibold text-slate-300 mb-1">Omada Site Name</label>
                         <input type="text" x-model="switchForm.site" placeholder="Default" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white">
@@ -813,6 +835,7 @@
                         <input type="text" x-model="newSwitchForm.cabinet" placeholder="Серверная 108" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white">
                     </div>
                     <div x-show="newSwitchForm.management_type === 'omada'">
+                        <label>MAC коммутатора в Omada</label><input x-model="newSwitchForm.switch_mac" placeholder="AA:BB:CC:DD:EE:FF" class="w-full bg-slate-950 p-2 rounded">
                         <label class="block font-semibold text-slate-300 mb-1">Omada Site Name</label>
                         <input type="text" x-model="newSwitchForm.site" placeholder="Default" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white">
                     </div>
@@ -1188,6 +1211,7 @@
                 </div>
                 <div>
                     <label class="block font-semibold text-slate-300 mb-1">Примечания</label>
+                    <label>MAC техники</label><input x-model="addAssetForm.mac_address" placeholder="AA:BB:CC:DD:EE:FF" class="w-full bg-slate-800 p-2 rounded">
                     <textarea x-model="addAssetForm.notes" rows="2" placeholder="Дополнительная информация..." class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white"></textarea>
                 </div>
 

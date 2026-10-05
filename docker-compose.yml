@@ -75,6 +75,26 @@ services:
       start_period: 20s
 
   # Durable notification worker. PostgreSQL keeps the outbox; Redis only wakes workers.
+  network-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: ["python", "-m", "SHARED.network_worker"]
+    volumes:
+      - ./secrets/ssh:/run/ssh:ro
+    environment:
+      - DATABASE_URL=${DATABASE_URL:?Run ./scripts/init-env.sh first}
+      - SECRET_KEY=${SECRET_KEY:?Run ./scripts/init-env.sh first}
+      - NETWORK_CREDENTIAL_KEY=${NETWORK_CREDENTIAL_KEY:?Run ./scripts/init-env.sh first}
+      - APP_ENV=${APP_ENV:-production}
+      - SSH_KNOWN_HOSTS=/run/ssh/known_hosts
+      - TLS_CA_FILE=${TLS_CA_FILE:-}
+      - NETWORK_POLL_SECONDS=${NETWORK_POLL_SECONDS:-60}
+    depends_on:
+      database-migrations:
+        condition: service_completed_successfully
+
   notification-worker:
     build:
       context: .

@@ -516,6 +516,7 @@ class Zone(Base):
     border_color = Column(String(50), default="#3b82f6")
     responsible_person = Column(String(200), nullable=True)
     room_number = Column(String(50), nullable=True)
+    description = Column(Text, nullable=True)
 
     floor = relationship("Floor", back_populates="zones")
     assets = relationship("Asset", back_populates="zone")

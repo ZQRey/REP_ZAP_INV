@@ -98,6 +98,7 @@ def enrich_assets_with_network_and_locations(db: Session, assets: List[Asset]) -
             hostname=a.hostname,
             ip_address=a.ip_address,
             mac_address=a.mac_address,
+            notes=a.notes,
             connected_switch_name=sw_name,
             connected_switch_ip=sw_ip,
             connected_port_number=port_num,
@@ -218,11 +219,11 @@ def update_asset_position(
     asset.coords_y = max(0.0, min(1.0, payload.coords_y))
     if payload.floor_id:
         asset.floor_id = payload.floor_id
-    if payload.zone_id:
+    if "zone_id" in payload.model_fields_set:
         asset.zone_id = payload.zone_id
         zone = db.query(Zone).filter(Zone.id == payload.zone_id).first()
         if zone and zone.room_number:
-            asset.cabinet = f"Кабинет {zone.room_number}"
+            asset.cabinet = zone.room_number
 
     db.commit()
     db.refresh(asset)
@@ -341,6 +342,7 @@ def create_and_place_asset(
         coords_x=max(0.0, min(1.0, payload.coords_x)),
         coords_y=max(0.0, min(1.0, payload.coords_y)),
         zone_id=payload.zone_id,
+        mac_address=payload.mac_address,
         notes=payload.notes
     )
     db.add(asset)

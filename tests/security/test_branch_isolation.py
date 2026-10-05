@@ -78,7 +78,7 @@ def test_foreign_object_ids_rejected(branches, method, path, body):
         assert db.get(m.Floor, 2).name == "Floor 2"
 
 
-@pytest.mark.parametrize("username,expected", [("admin1", 404), ("user1", 404), ("orphan", 403), ("root", 200)])
+@pytest.mark.parametrize("username,expected", [("admin1", 404), ("user1", 403), ("orphan", 403), ("root", 200)])
 def test_explicit_cross_branch_policy(branches, username, expected):
     response = branches.get("/api/v1/repair/equipment/2", headers=headers(username))
     assert response.status_code == expected, response.text
@@ -101,11 +101,11 @@ def test_own_branch_read_and_aggregates(branches):
 
 
 def test_ordinary_user_ownership_is_login_not_display_name(branches):
-    assert branches.get("/api/v1/repair/equipment/1", headers=headers("user1")).status_code == 200
+    assert branches.get("/api/v1/repair/equipment/1", headers=headers("user1")).status_code == 403
     with SessionLocal() as db:
         db.add(m.Asset(id=3, inventory_number="INV3", name="Unassigned", branch_id=1))
         db.commit()
-    assert branches.get("/api/v1/repair/equipment/3", headers=headers("user1")).status_code == 404
+    assert branches.get("/api/v1/repair/equipment/3", headers=headers("user1")).status_code == 403
 
 
 def routes(application, prefix=""):

@@ -63,6 +63,7 @@ def _format_switch_response(sw: NetworkSwitch) -> NetworkSwitchResponse:
         model=sw.model,
         total_ports=sw.total_ports,
         site=(sw.extra_params or {}).get("site", "Default"),
+        switch_mac=(sw.extra_params or {}).get("switch_mac"),
         credentials_configured=bool(sw.password or sw.snmp_community),
         name=sw.asset.name if sw.asset else "Коммутатор",
         cabinet=sw.asset.cabinet if sw.asset else None,

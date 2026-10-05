@@ -135,6 +135,7 @@ document.addEventListener('alpine:init', () => {
             total_ports: 24,
             cabinet: 'Серверная',
             site: 'Default',
+            switch_mac: '',
             coords_x: 0.25,
             coords_y: 0.25
         },
@@ -193,6 +194,7 @@ write memory`,
                 username: '',
                 total_ports: 24,
                 site: 'Default',
+            switch_mac: '',
                 snmp_community: '',
                 description: 'Прямая интеграция с контроллером Omada SDN (аппаратный OC200/OC300 или программный контроллер) через REST API.',
                 cli_guide: `1. Откройте веб-интерфейс контроллера Omada: https://<IP_КОНТРОЛЛЕРА>:8043
@@ -336,6 +338,7 @@ write`,
             cabinet: '',
             coords_x: 0.5,
             coords_y: 0.5,
+            mac_address: '',
             notes: ''
         },
 
@@ -348,6 +351,9 @@ write`,
         animFrame: null,
 
         // Инструменты
+        zonePoints: [],
+        zoneDraft: null,
+        activeZone: null,
         activeTool: 'select', // select, pan, draw_room
         isTracing: false,
         traceMessage: '',
@@ -370,6 +376,17 @@ write`,
             }
 
             await this.loadCurrentUser();
+            if (!this.currentUser) return;
+            if (this.currentUser.role === 'user') {
+                const panel = document.createElement('section');
+                panel.style.cssText = 'position:fixed;inset:0;z-index:9999;background:#0f172a;color:white;display:grid;place-content:center;text-align:center;gap:24px';
+                const title = document.createElement('h1');
+                title.textContent = 'Доступ к модулю запрещён';
+                const back = document.createElement('a');
+                back.href = '/'; back.textContent = 'Вернуться обратно';
+                panel.append(title, back); document.body.replaceChildren(panel);
+                return;
+            }
             await this.loadBranches();
             
             // Инициализация холста Konva
@@ -382,6 +399,14 @@ write`,
 
             await this.loadUnplacedAssets();
             await this.loadAllPlacedAssets();
+            this.pollTimer = setInterval(async () => {
+                if (document.hidden || this.isPollingSwitch) return;
+                await this.loadFloorSwitches();
+                await this.loadFloorAssets();
+                await this.loadAllPlacedAssets();
+                this.renderFloor();
+            }, 60000);
+            window.addEventListener('pagehide', () => clearInterval(this.pollTimer), {once: true});
         },
 
         getAuthHeaders() {
@@ -514,6 +539,15 @@ write`,
             this.stage.add(this.assetsLayer);
             this.stage.add(this.animLayer);
 
+            this.stage.on('click', () => {
+                if (this.activeTool !== 'draw_room') return;
+                const point = this.stage.getRelativePointerPosition();
+                this.zonePoints.push({x: Math.max(0, Math.min(1, point.x / this.stage.width())),
+                    y: Math.max(0, Math.min(1, point.y / this.stage.height()))});
+                this.renderFloor();
+                this.zonesLayer.add(new Konva.Line({points: this.zonePoints.flatMap(p => [p.x*this.stage.width(), p.y*this.stage.height()]), stroke: '#fbbf24', strokeWidth: 3, closed: false}));
+                this.zonesLayer.batchDraw();
+            });
             // Зум колесиком мыши
             const scaleBy = 1.08;
             this.stage.on('wheel', (e) => {
@@ -549,6 +583,41 @@ write`,
             container.addEventListener('drop', (e) => this.handleDropOnCanvas(e));
         },
 
+        startZone(type) {
+            if (!this.currentFloor) return;
+            this.activeTool = 'draw_room'; this.zonePoints = [];
+            this.zoneDraft = {name: '', room_number: '', description: '', responsible_person: '', zone_type: type};
+            this.stage.draggable(false);
+            this.showToast('Отметьте углы помещения на плане, затем нажмите «Сохранить разметку»');
+        },
+        editZone() {
+            this.zoneDraft = {...this.activeZone};
+            this.zonePoints = [...this.activeZone.polygon_coords];
+            this.activeZone = null;
+        },
+        async saveZone() {
+            if (this.zonePoints.length < 3 || !this.zoneDraft.name.trim()) {
+                this.showToast('Укажите название и минимум три точки', 'error'); return;
+            }
+            const url = this.zoneDraft.id ? `/api/v1/location/zones/${this.zoneDraft.id}` : `/api/v1/location/floors/${this.selectedFloorId}/zones`;
+            const res = await fetch(url, {
+                method: this.zoneDraft.id ? 'PUT' : 'POST', headers: this.getAuthHeaders(),
+                body: JSON.stringify({...this.zoneDraft, polygon_coords: this.zonePoints})
+            });
+            if (!res.ok) { this.showToast('Не удалось сохранить помещение', 'error'); return; }
+            const zone = await res.json();
+            this.currentFloor.zones = this.currentFloor.zones.filter(z => z.id !== zone.id).concat(zone);
+            this.cancelZone();
+        },
+        cancelZone() {
+            this.zoneDraft = null; this.zonePoints = []; this.activeTool = 'select';
+            this.stage.draggable(true); this.renderFloor();
+        },
+        get zoneAssets() { return this.placedAssets.filter(a => a.zone_id === this.activeZone?.id); },
+        get zonePorts() {
+            return this.switchesList.flatMap(sw => (sw.ports || []).filter(p => p.zone_id === this.activeZone?.id)
+                .map(p => ({...p, switch_name: sw.name || sw.ip_address})));
+        },
         // Отрисовка плана этажа, зон и размещенных устройств
         renderFloor() {
             if (!this.stage || !this.currentFloor) return;
@@ -617,6 +686,8 @@ write`,
                     fill: '#94a3b8'
                 });
 
+                poly.on('click', () => { if (this.activeTool === 'select') this.activeZone = z; });
+                text.on('click', () => { if (this.activeTool === 'select') this.activeZone = z; });
                 this.zonesLayer.add(poly);
                 this.zonesLayer.add(text);
             });
@@ -768,6 +839,16 @@ write`,
             this.assetsLayer.batchDraw();
         },
 
+        zoneAt(x, y) {
+            return (this.currentFloor?.zones || []).find(z => {
+                const pts = z.polygon_coords || []; let inside = false;
+                for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+                    const a = pts[i], b = pts[j];
+                    if ((a.y > y) !== (b.y > y) && x < (b.x-a.x)*(y-a.y)/(b.y-a.y)+a.x) inside = !inside;
+                }
+                return inside;
+            });
+        },
         // Обновление координат актива на сервере
         async updateAssetPos(assetId, normX, normY) {
             try {
@@ -777,7 +858,8 @@ write`,
                     body: JSON.stringify({
                         coords_x: normX,
                         coords_y: normY,
-                        floor_id: this.selectedFloorId
+                        floor_id: this.selectedFloorId,
+                        zone_id: this.zoneAt(normX, normY)?.id || null
                     })
                 });
                 this.showToast('Положение сохранено', 'info');
@@ -1178,7 +1260,8 @@ write`,
                 cabinet: '',
                 coords_x: 0.5,
                 coords_y: 0.5,
-                notes: ''
+                mac_address: '',
+            notes: ''
             };
             this.showAddAssetModal = true;
         },
@@ -1232,7 +1315,8 @@ write`,
                 snmp_community: sw.snmp_community || '',
                 total_ports: sw.total_ports || 24,
                 cabinet: sw.cabinet || '',
-                site: sw.site || 'Default'
+                site: sw.site || 'Default',
+                switch_mac: sw.switch_mac || ''
             };
             this.showSwitchSettingsModal = true;
         },
@@ -1252,6 +1336,7 @@ write`,
                     cabinet: this.switchForm.cabinet,
                     extra_params: {
                         site: this.switchForm.site,
+                        switch_mac: this.switchForm.switch_mac,
                         allow_demo_fallback: false
                     }
                 };
@@ -1434,6 +1519,7 @@ write`,
                     coords_y: this.newSwitchForm.coords_y || 0.25,
                     extra_params: {
                         site: this.newSwitchForm.site || 'Default',
+                        switch_mac: this.newSwitchForm.switch_mac,
                         vendor: this.selectedSwitchVendor,
                         allow_demo_fallback: false
                     }

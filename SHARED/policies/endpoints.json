@@ -1321,8 +1321,7 @@
       "admin",
       "technician",
       "operator",
-      "viewer",
-      "user"
+      "viewer"
     ],
     "action": "read",
     "domain": "catalogs",
@@ -1354,8 +1353,7 @@
       "admin",
       "technician",
       "operator",
-      "viewer",
-      "user"
+      "viewer"
     ],
     "action": "read",
     "domain": "catalogs",
@@ -1415,8 +1413,7 @@
       "admin",
       "technician",
       "operator",
-      "viewer",
-      "user"
+      "viewer"
     ],
     "action": "read",
     "domain": "repair",
@@ -1434,8 +1431,7 @@
       "admin",
       "technician",
       "operator",
-      "viewer",
-      "user"
+      "viewer"
     ],
     "action": "read",
     "domain": "repair",
@@ -1471,8 +1467,7 @@
       "admin",
       "technician",
       "operator",
-      "viewer",
-      "user"
+      "viewer"
     ],
     "action": "read",
     "domain": "repair",
@@ -1756,6 +1751,22 @@
     "network": false,
     "paths": [
       "/api/v1/location/floors/{floor_id}/map"
+    ]
+  },
+  "LOCATION/app/routers/zones_router.py:update_zone:PUT": {
+    "path": "/api/v1/location/zones/{zone_id}",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician"
+    ],
+    "action": "write",
+    "domain": "location",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/v1/location/zones/{zone_id}"
     ]
   }
 }

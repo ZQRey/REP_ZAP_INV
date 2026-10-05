@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 from SHARED.models import AssetType, AssetStatus, AssetCondition
 
 
@@ -18,6 +18,21 @@ class ZoneBase(BaseModel):
     border_color: Optional[str] = "#3b82f6"
     responsible_person: Optional[str] = None
     room_number: Optional[str] = None
+    description: Optional[str] = None
+
+    @field_validator("name")
+    @classmethod
+    def valid_name(cls, value):
+        if not value.strip() or len(value.strip()) > 150:
+            raise ValueError("Название помещения обязательно, максимум 150 символов")
+        return value.strip()
+
+    @field_validator("polygon_coords")
+    @classmethod
+    def valid_polygon(cls, value):
+        if len(value) < 3 or any(set(p) != {"x", "y"} or not (0 <= p["x"] <= 1 and 0 <= p["y"] <= 1) for p in value):
+            raise ValueError("Нужны минимум три точки с координатами от 0 до 1")
+        return value
 
 
 class ZoneCreate(ZoneBase):
@@ -60,6 +75,7 @@ class FloorResponse(FloorBase):
 
 
 class AssetCreateAndPlace(BaseModel):
+    mac_address: Optional[str] = None
     inventory_number: str
     name: str
     asset_type: str = "workstation"
@@ -108,6 +124,7 @@ class PlacedAssetResponse(BaseModel):
     hostname: Optional[str] = None
     ip_address: Optional[str] = None
     mac_address: Optional[str] = None
+    notes: Optional[str] = None
     # Данные L2/L3 сетевого коммутатора
     connected_switch_name: Optional[str] = None
     connected_switch_ip: Optional[str] = None
@@ -158,6 +175,7 @@ class NetworkSwitchResponse(BaseModel):
     model: Optional[str] = None
     total_ports: int
     site: str = "Default"
+    switch_mac: Optional[str] = None
     credentials_configured: bool = False
     name: str
     cabinet: Optional[str] = None

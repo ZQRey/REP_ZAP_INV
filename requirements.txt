@@ -18,3 +18,5 @@ redis>=5.0.0,<9
 alembic>=1.13,<2
 
 cryptography>=50.0.0,<51
+
+pysnmp>=7.1,<8

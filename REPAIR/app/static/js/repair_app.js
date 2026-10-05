@@ -202,6 +202,17 @@ document.addEventListener('alpine:init', () => {
             }
 
             await this.loadCurrentUser();
+            if (!this.currentUser) return;
+            if (this.currentUser.role === 'user') {
+                const panel = document.createElement('section');
+                panel.style.cssText = 'position:fixed;inset:0;z-index:9999;background:#0f172a;color:white;display:grid;place-content:center;text-align:center;gap:24px';
+                const title = document.createElement('h1');
+                title.textContent = 'Доступ к модулю запрещён';
+                const back = document.createElement('a');
+                back.href = '/'; back.textContent = 'Вернуться обратно';
+                panel.append(title, back); document.body.replaceChildren(panel);
+                return;
+            }
             await this.loadBranches();
             await this.loadADUsers();
             await this.loadEquipment();

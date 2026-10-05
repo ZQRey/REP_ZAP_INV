@@ -42,8 +42,7 @@ class SwitchIntegrationService:
         Основной метод опроса коммутатора:
         1. Извлекает таблицу MAC-адресов с устройства.
         2. Привязывает обнаруженные устройства к портам.
-        3. Сопоставляет обнаружение с портом и возвращает предполагаемые перемещения,
-           не меняя фактическое местоположение оборудования.
+        3. Переносит однозначно найденную технику в помещение, назначенное порту.
         """
         switch = db.query(NetworkSwitch).filter(NetworkSwitch.id == switch_id).first()
         if not switch:
@@ -130,6 +129,9 @@ class SwitchIntegrationService:
         user = switch.username or ""
         pwd = switch.password or ""
         site_name = (switch.extra_params or {}).get("site", "Default")
+        switch_mac = normalize_mac((switch.extra_params or {}).get("switch_mac", ""))
+        if not switch_mac:
+            raise ValueError("Укажите MAC коммутатора в настройках Omada")
 
         scheme = "https"
         base_url = f"{scheme}://{host}:{port}"
@@ -151,9 +153,13 @@ class SwitchIntegrationService:
             # 2. Получение клиентов сайта
             clients_url = f"{base_url}/api/v2/sites/{site_name}/clients"
             c_res = client.get(clients_url, headers=headers)
+            if c_res.status_code != 200:
+                raise ConnectionError("Omada clients query failed")
             if c_res.status_code == 200:
                 clients_data = c_res.json().get("result", {}).get("data", [])
                 for c in clients_data:
+                    if normalize_mac(c.get("switchMac", "")) != switch_mac:
+                        continue
                     c_mac = normalize_mac(c.get("mac", ""))
                     c_port = c.get("port")
                     c_ip = c.get("ip")
@@ -319,7 +325,39 @@ class SwitchIntegrationService:
         Универсальный опрос по протоколу SNMP v2c (dot1dTpFdbTable - OID 1.3.6.1.2.1.17.4.3.1.2).
         Подходит для коммутаторов всех производителей (HP, TP-Link, Cisco, D-Link, MikroTik).
         """
-        raise NotImplementedError("SNMP bridge walk is not implemented; no synthetic result will be returned")
+        import asyncio
+        from pysnmp.hlapi.v3arch.asyncio import (SnmpEngine, CommunityData, UdpTransportTarget,
+            ContextData, ObjectType, ObjectIdentity, walk_cmd)
+
+        async def collect():
+            engine = SnmpEngine()
+            target = await UdpTransportTarget.create((switch.ip_address, switch.mgmt_port or 161), timeout=3, retries=1)
+            async def walk(oid):
+                rows = {}
+                async for error, status, index, bindings in walk_cmd(engine,
+                    CommunityData(switch.snmp_community or "public", mpModel=1), target,
+                    ContextData(), ObjectType(ObjectIdentity(oid)), lexicographicMode=False, maxRows=10000):
+                    if error or status:
+                        raise ConnectionError("SNMP walk failed")
+                    for name, value in bindings:
+                        suffix = str(name)[len(oid)+1:]
+                        rows[suffix] = int(value)
+                return rows
+            try:
+                forwarding = await walk("1.3.6.1.2.1.17.4.3.1.2")
+                interfaces = await walk("1.3.6.1.2.1.17.1.4.1.2")
+                port_map = (switch.extra_params or {}).get("ifindex_port_map", {})
+                result = []
+                for suffix, bridge_port in forwarding.items():
+                    octets = suffix.split(".")
+                    if len(octets) != 6 or bridge_port <= 0: continue
+                    ifindex = interfaces.get(str(bridge_port))
+                    physical = int(port_map.get(str(ifindex), bridge_port))
+                    result.append({"mac": ":".join(f"{int(n):02X}" for n in octets), "port": physical, "ip": None})
+                return result
+            finally:
+                engine.close_dispatcher()
+        return asyncio.run(collect())
 
     @classmethod
     def _get_demo_mac_table(cls, switch: NetworkSwitch) -> List[Dict[str, Any]]:
@@ -343,9 +381,8 @@ class SwitchIntegrationService:
         Обрабатывает записи MAC-адресов:
         - Обновляет порты коммутатора.
         - Сопоставляет MAC с техникой (`Asset`).
-        - Фиксирует сетевое наблюдение о возможном перемещении, но не изменяет
-          фактическое местоположение Asset. Изменение actual location должно быть
-          отдельной подтвержденной доменной операцией.
+        - Переносит технику по точному уникальному MAC в помещение порта.
+        - Пропускает неоднозначные MAC и порты с несколькими устройствами.
         """
         now = datetime.utcnow()
         ports_by_number = {p.port_number: p for p in switch.ports}
@@ -386,16 +423,13 @@ class SwitchIntegrationService:
 
             # Поиск техники в базе данных по MAC-адресу
             # Проверяем поле mac_address, а также specs/notes
-            term_clean = mac.replace(":", "").lower()
-            asset = db.query(Asset).filter(
-                Asset.branch_id == switch.asset.branch_id,
-                or_(
-                    func.lower(Asset.mac_address) == mac.lower(),
-                    func.lower(Asset.mac_address) == term_clean,
-                    Asset.specs.ilike(f"%{mac}%"),
-                    Asset.notes.ilike(f"%{mac}%")
-                )
-            ).first()
+            # Exact normalized identity only: free-text notes cannot establish identity.
+            candidates = [a for a in db.query(Asset).filter(Asset.mac_address.is_not(None)).all()
+                          if normalize_mac(a.mac_address) == mac]
+            asset = candidates[0] if len(candidates) == 1 else None
+            port_macs = {normalize_mac(e.get("mac")) for e in mac_entries if e.get("port") == port_num}
+            if len(port_macs - {None}) > 1:
+                asset = None  # An uplink with multiple MACs has no unique room destination.
 
             if asset:
                 matched_count += 1
@@ -408,28 +442,31 @@ class SwitchIntegrationService:
                 for op in other_ports:
                     op.connected_asset_id = None
 
-                port.connected_asset_id = asset.id
 
-                # Network polling is observation-only. A learned MAC may suggest that
-                # an asset is physically connected elsewhere, but a single observation must
-                # never rewrite the inventory's authoritative location.
-                target_cabinet = port.cabinet.strip() if port.cabinet and port.cabinet.strip() else None
-                old_cabinet = asset.cabinet or "Не указан"
-                if target_cabinet and asset.cabinet != target_cabinet:
-                    sw_name = switch.asset.name if switch.asset else switch.ip_address
-                    relocated_assets.append({
-                        "asset_id": asset.id,
-                        "inventory_number": asset.inventory_number,
-                        "name": asset.name,
-                        "mac": mac,
-                        "switch_id": switch.id,
-                        "switch_name": sw_name,
-                        "port_number": port.port_number,
-                        "old_cabinet": old_cabinet,
-                        "new_cabinet": target_cabinet,
-                        "detected_zone_id": port.zone_id,
-                        "observation_only": True
-                    })
+                zone = db.query(Zone).filter(Zone.id == port.zone_id).first() if port.zone_id else None
+                if zone and zone.zone_type != "corridor":
+                    floor = zone.floor
+                    changed = (asset.zone_id != zone.id or asset.floor_id != floor.id or asset.branch_id != floor.branch_id)
+                    if changed:
+                        old_cabinet = asset.cabinet
+                        # Only this concrete transfer is permitted by the ORM write policy.
+                        db.info.setdefault("network_transfers", set()).add(asset.id)
+                        asset.branch_id = floor.branch_id
+                        asset.floor_id = floor.id
+                        asset.zone_id = zone.id
+                        asset.cabinet = zone.room_number or zone.name
+                        points = zone.polygon_coords or []
+                        asset.coords_x = sum(p["x"] for p in points)/len(points) if points else None
+                        asset.coords_y = sum(p["y"] for p in points)/len(points) if points else None
+                        db.add(EquipmentHistoryLog(asset_id=asset.id, action="Перемещение по MAC",
+                            details=f"{old_cabinet} -> {asset.cabinet}; switch #{switch.id}, port {port_num}, MAC {mac}"))
+                        relocated_assets.append({"asset_id": asset.id, "inventory_number": asset.inventory_number,
+                            "name": asset.name, "mac": mac, "switch_id": switch.id,
+                            "switch_name": switch.asset.name, "port_number": port_num,
+                            "old_cabinet": old_cabinet, "new_cabinet": asset.cabinet,
+                            "detected_zone_id": zone.id, "observation_only": False})
+
+                port.connected_asset_id = asset.id
 
             port_details.append({
                 "port_number": port.port_number,
@@ -442,6 +479,7 @@ class SwitchIntegrationService:
             })
 
         db.commit()
+        db.info.pop("network_transfers", None)
 
         return {
             "matched_count": matched_count,
