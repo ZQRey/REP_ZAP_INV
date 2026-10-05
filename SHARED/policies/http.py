@@ -49,7 +49,11 @@ async def authorize_request(request: Request, credentials=Depends(security), db=
     containers = [dict(request.path_params), dict(request.query_params)]
     if isinstance(body, dict):
         containers.append(body)
-        if isinstance(body.get("switch_config"), dict): containers.append(body["switch_config"])
+        if isinstance(body.get("extra_params"), dict): containers.append(body["extra_params"])
+        if isinstance(body.get("switch_config"), dict):
+            containers.append(body["switch_config"])
+            if isinstance(body["switch_config"].get("extra_params"), dict):
+                containers.append(body["switch_config"]["extra_params"])
         if body.get("switch_config") is not None and principal.role not in {"superadmin", "admin", "technician"}:
             raise HTTPException(403, "Network configuration permission required")
     # Branch selection is validated before resolving any referenced ID or calling an adapter.
@@ -92,6 +96,8 @@ async def authorize_request(request: Request, credentials=Depends(security), db=
                 if policy["network"]:
                     sw = obj if model is m.NetworkSwitch else getattr(obj, "switch_device", None)
                     if sw is not None: require_network_target(db, principal, sw.ip_address)
+        if values.get("controller_host"):
+            require_network_target(db, principal, values["controller_host"], allow_registered=False)
         if (policy["network"] or isinstance(body, dict) and values is body.get("switch_config")) and values.get("ip_address"):
             require_network_target(db, principal, values["ip_address"])
     if policy["action"] == "write" and len(seen_branches) > 1:

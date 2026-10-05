@@ -626,11 +626,11 @@
 
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="block font-semibold text-slate-300 mb-1">Имя пользователя (Login)</label>
+                        <label class="block font-semibold text-slate-300 mb-1"><span x-text="switchForm.management_type === 'omada' &amp;&amp; switchForm.omada_auth_mode === 'openapi' ? 'Client ID' : 'Имя пользователя (Login)'"></span></label>
                         <input type="text" x-model="switchForm.username" placeholder="admin / manager" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white">
                     </div>
                     <div>
-                        <label class="block font-semibold text-slate-300 mb-1">Пароль доступа</label>
+                        <label class="block font-semibold text-slate-300 mb-1"><span x-text="switchForm.management_type === 'omada' &amp;&amp; switchForm.omada_auth_mode === 'openapi' ? 'Client Secret' : 'Пароль доступа'"></span></label>
                         <input type="password" x-model="switchForm.password" placeholder="Оставьте пустым, если не менялся" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white">
                     </div>
                 </div>
@@ -647,11 +647,20 @@
                             <option value="16">16 портов</option>
                             <option value="24">24 порта</option>
                             <option value="48">48 портов</option>
+                            <option value="52">52 порта</option>
                         </select>
                     </div>
                 </div>
 
                 <div class="grid grid-cols-2 gap-3" x-show="switchForm.management_type === 'omada'">
+                    <div class="col-span-2 space-y-2">
+                        <label>Авторизация Omada<select x-model="switchForm.omada_auth_mode" class="w-full bg-slate-800 p-2 rounded"><option value="openapi">Open API — Client ID / Client Secret</option><option value="password">Учётная запись контроллера</option></select></label>
+                        <label>IP контроллера<input x-model="switchForm.controller_host" placeholder="172.16.16.110" class="w-full bg-slate-800 p-2 rounded"></label>
+                        <label>Controller ID<input x-model="switchForm.controller_id" class="w-full bg-slate-800 p-2 rounded"></label>
+                        <label>Site ID<input x-model="switchForm.site_id" class="w-full bg-slate-800 p-2 rounded"></label>
+                        <details><summary>Доверенный сертификат контроллера</summary><textarea x-model="switchForm.controller_certificate" rows="3" placeholder="PEM сертификат для собственного сертификата Omada" class="w-full bg-slate-800 p-2 rounded"></textarea></details>
+                        <p class="text-xs text-slate-400">Для Open API заполните Client ID и Client Secret в полях доступа выше. IP коммутатора укажите отдельно от IP контроллера.</p>
+                    </div>
                     <label>MAC коммутатора в Omada<input x-model="switchForm.switch_mac" class="w-full bg-slate-950 p-2 rounded"></label>
                     <div>
                         <label class="block font-semibold text-slate-300 mb-1">Omada Site Name</label>
@@ -807,11 +816,11 @@
 
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
-                        <label class="block font-semibold text-slate-300 mb-1">Имя пользователя (Login)</label>
+                        <label class="block font-semibold text-slate-300 mb-1"><span x-text="newSwitchForm.management_type === 'omada' &amp;&amp; newSwitchForm.omada_auth_mode === 'openapi' ? 'Client ID' : 'Имя пользователя (Login)'"></span></label>
                         <input type="text" x-model="newSwitchForm.username" placeholder="admin / manager" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white">
                     </div>
                     <div>
-                        <label class="block font-semibold text-slate-300 mb-1">Пароль доступа</label>
+                        <label class="block font-semibold text-slate-300 mb-1"><span x-text="newSwitchForm.management_type === 'omada' &amp;&amp; newSwitchForm.omada_auth_mode === 'openapi' ? 'Client Secret' : 'Пароль доступа'"></span></label>
                         <input type="password" x-model="newSwitchForm.password" placeholder="Пароль SSH / Omada" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white">
                     </div>
                     <div>
@@ -835,7 +844,15 @@
                         <input type="text" x-model="newSwitchForm.cabinet" placeholder="Серверная 108" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white">
                     </div>
                     <div x-show="newSwitchForm.management_type === 'omada'">
-                        <label>MAC коммутатора в Omada</label><input x-model="newSwitchForm.switch_mac" placeholder="AA:BB:CC:DD:EE:FF" class="w-full bg-slate-950 p-2 rounded">
+                        <div class="col-span-2 space-y-2">
+                        <label>Авторизация Omada<select x-model="newSwitchForm.omada_auth_mode" class="w-full bg-slate-800 p-2 rounded"><option value="openapi">Open API — Client ID / Client Secret</option><option value="password">Учётная запись контроллера</option></select></label>
+                        <label>IP контроллера<input x-model="newSwitchForm.controller_host" placeholder="172.16.16.110" class="w-full bg-slate-800 p-2 rounded"></label>
+                        <label>Controller ID<input x-model="newSwitchForm.controller_id" class="w-full bg-slate-800 p-2 rounded"></label>
+                        <label>Site ID<input x-model="newSwitchForm.site_id" class="w-full bg-slate-800 p-2 rounded"></label>
+                        <details><summary>Доверенный сертификат контроллера</summary><textarea x-model="newSwitchForm.controller_certificate" rows="3" placeholder="PEM сертификат для собственного сертификата Omada" class="w-full bg-slate-800 p-2 rounded"></textarea></details>
+                        <p class="text-xs text-slate-400">Для Open API заполните Client ID и Client Secret в полях доступа выше. IP коммутатора укажите отдельно от IP контроллера.</p>
+                    </div>
+                    <label>MAC коммутатора в Omada</label><input x-model="newSwitchForm.switch_mac" placeholder="AA:BB:CC:DD:EE:FF" class="w-full bg-slate-950 p-2 rounded">
                         <label class="block font-semibold text-slate-300 mb-1">Omada Site Name</label>
                         <input type="text" x-model="newSwitchForm.site" placeholder="Default" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white">
                     </div>

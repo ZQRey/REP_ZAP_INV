@@ -124,6 +124,9 @@ class SwitchIntegrationService:
         """
         Интеграция с контроллером TP-Link Omada SDN (Software / OC200 / OC300).
         """
+        if (switch.extra_params or {}).get("omada_auth_mode") == "openapi":
+            from LOCATION.app.services.omada_service import poll_openapi
+            return poll_openapi(switch, normalize_mac)
         host = switch.ip_address.strip()
         port = switch.mgmt_port or 8043
         user = switch.username or ""
@@ -622,6 +625,16 @@ class SwitchIntegrationService:
 
         # 2. Omada SDN Controller API проверка
         elif mgmt_type == "omada":
+            if (extra_params or {}).get("omada_auth_mode") == "openapi":
+                try:
+                    device = NetworkSwitch(ip_address=host, mgmt_port=mgmt_port, username=username,
+                        password=password, total_ports=96, extra_params=extra_params)
+                    rows = cls._poll_omada_controller(device)
+                    return {"success": True, "reachable": True, "status": "ok",
+                        "message": f"Omada Open API: авторизация и чтение клиентов успешны, MAC: {len(rows)}"}
+                except Exception as exc:
+                    return {"success": False, "reachable": False, "status": "error",
+                        "message": f"Ошибка Omada Open API: {type(exc).__name__}"}
             scheme = "https"
             base_url = f"{scheme}://{host}:{mgmt_port}"
             try:

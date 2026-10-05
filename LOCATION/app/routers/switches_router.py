@@ -65,6 +65,8 @@ def _format_switch_response(sw: NetworkSwitch) -> NetworkSwitchResponse:
         total_ports=sw.total_ports,
         site=(sw.extra_params or {}).get("site", "Default"),
         switch_mac=(sw.extra_params or {}).get("switch_mac"),
+        omada_config={k: (sw.extra_params or {}).get(k) for k in (
+            "omada_auth_mode", "controller_host", "controller_id", "site_id", "controller_certificate")},
         credentials_configured=bool(sw.password or sw.snmp_community),
         name=sw.asset.name if sw.asset else "Коммутатор",
         cabinet=sw.asset.cabinet if sw.asset else None,
@@ -201,7 +203,7 @@ def update_switch(
     if payload.snmp_community:
         sw.snmp_community = payload.snmp_community.strip()
     if payload.extra_params is not None:
-        sw.extra_params = payload.extra_params
+        sw.extra_params = {**(sw.extra_params or {}), **payload.extra_params}
 
     # Если изменилось число портов
     if payload.total_ports and payload.total_ports != sw.total_ports:

@@ -135,6 +135,7 @@ document.addEventListener('alpine:init', () => {
             total_ports: 24,
             cabinet: 'Серверная',
             site: 'Default',
+            omada_auth_mode: 'openapi', controller_host: '', controller_id: '', site_id: '', controller_certificate: '',
             switch_mac: '',
             coords_x: 0.25,
             coords_y: 0.25
@@ -409,6 +410,11 @@ write`,
             window.addEventListener('pagehide', () => clearInterval(this.pollTimer), {once: true});
         },
 
+        omadaParams(form) {
+            return {omada_auth_mode: form.omada_auth_mode || 'openapi',
+                controller_host: form.controller_host || '', controller_id: form.controller_id || '',
+                site_id: form.site_id || '', controller_certificate: form.controller_certificate || ''};
+        },
         getAuthHeaders() {
             return {
                 'Authorization': `Bearer ${this.token}`,
@@ -1304,6 +1310,8 @@ write`,
         // ==========================================
         openSwitchSettingsModal(sw) {
             this.switchForm = {
+                ...sw.omada_config,
+                omada_auth_mode: sw.omada_config?.omada_auth_mode || 'password',
                 id: sw.id,
                 name: sw.name,
                 ip_address: sw.ip_address,
@@ -1335,6 +1343,7 @@ write`,
                     total_ports: parseInt(this.switchForm.total_ports),
                     cabinet: this.switchForm.cabinet,
                     extra_params: {
+                        ...this.omadaParams(this.switchForm),
                         site: this.switchForm.site,
                         switch_mac: this.switchForm.switch_mac,
                         allow_demo_fallback: false
@@ -1459,6 +1468,8 @@ write`,
                     password: form.password || null,
                     snmp_community: form.snmp_community || '',
                     extra_params: {
+                        ...this.omadaParams(form),
+                        switch_mac: form.switch_mac || '',
                         site: form.site || 'Default'
                     }
                 };
@@ -1518,6 +1529,7 @@ write`,
                     coords_x: this.newSwitchForm.coords_x || 0.25,
                     coords_y: this.newSwitchForm.coords_y || 0.25,
                     extra_params: {
+                        ...this.omadaParams(this.newSwitchForm),
                         site: this.newSwitchForm.site || 'Default',
                         switch_mac: this.newSwitchForm.switch_mac,
                         vendor: this.selectedSwitchVendor,

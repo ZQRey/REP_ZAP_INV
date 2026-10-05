@@ -177,6 +177,7 @@ class NetworkSwitchResponse(BaseModel):
     total_ports: int
     site: str = "Default"
     switch_mac: Optional[str] = None
+    omada_config: Dict[str, Any] = {}
     credentials_configured: bool = False
     name: str
     cabinet: Optional[str] = None

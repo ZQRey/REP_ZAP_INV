@@ -346,3 +346,14 @@ def test_bulk_preflight_matches_fastapi_json_content_types(branches, monkeypatch
         request_headers["Content-Type"] = content_type
     response = branches.post("/api/notifications/whatsapp/ready", content='{"cartridge_ids": [1, 2]}', headers=request_headers)
     assert response.status_code in (403, 404), response.text
+
+
+def test_omada_controller_must_be_in_admin_branch_network(branches, monkeypatch):
+    from LOCATION.app.services.switch_integration_service import SwitchIntegrationService
+    def forbidden(**kwargs):
+        raise AssertionError("Unauthorized controller must not be contacted")
+    monkeypatch.setattr(SwitchIntegrationService,"test_connection",forbidden)
+    response=branches.post('/api/v1/location/switches/test-connection',headers=headers('admin1'),json={
+        'ip_address':'10.1.0.1','management_type':'omada','mgmt_port':8043,
+        'extra_params':{'omada_auth_mode':'openapi','controller_host':'10.2.0.100'}})
+    assert response.status_code == 403, response.text
