@@ -356,6 +356,8 @@ class SwitchIntegrationService:
                     octets = parts[-6:]
                     ifindex = interfaces.get(str(bridge_port))
                     physical = int(port_map.get(str(ifindex), bridge_port))
+                    if not 1 <= physical <= switch.total_ports:
+                        continue
                     result.append({"mac": ":".join(f"{int(n):02X}" for n in octets), "port": physical, "ip": None})
                 return result
             finally:
@@ -403,7 +405,7 @@ class SwitchIntegrationService:
             ip = entry.get("ip")
             mac = normalize_mac(raw_mac)
 
-            if not port_num or not mac:
+            if not port_num or not mac or port_num > switch.total_ports:
                 continue
 
             # Получаем или создаем порт
