@@ -135,7 +135,6 @@
       "superadmin",
       "admin",
       "technician",
-      "operator",
       "viewer"
     ],
     "action": "read",
@@ -153,7 +152,6 @@
       "superadmin",
       "admin",
       "technician",
-      "operator",
       "viewer"
     ],
     "action": "read",
@@ -169,8 +167,7 @@
     "path": "/api/batches",
     "roles": [
       "superadmin",
-      "admin",
-      "operator"
+      "admin"
     ],
     "action": "write",
     "domain": "cartridges",
@@ -249,7 +246,6 @@
       "superadmin",
       "admin",
       "technician",
-      "operator",
       "viewer",
       "user"
     ],
@@ -268,7 +264,6 @@
       "superadmin",
       "admin",
       "technician",
-      "operator",
       "viewer",
       "user"
     ],
@@ -287,9 +282,7 @@
       "superadmin",
       "admin",
       "technician",
-      "operator",
-      "viewer",
-      "user"
+      "viewer"
     ],
     "action": "read",
     "domain": "cartridges",
@@ -304,8 +297,7 @@
     "path": "/api/cartridges",
     "roles": [
       "superadmin",
-      "admin",
-      "operator"
+      "admin"
     ],
     "action": "write",
     "domain": "cartridges",
@@ -320,8 +312,7 @@
     "path": "/api/cartridges/{cartridge_id}",
     "roles": [
       "superadmin",
-      "admin",
-      "operator"
+      "admin"
     ],
     "action": "write",
     "domain": "cartridges",
@@ -351,8 +342,7 @@
     "path": "/api/cartridges/accept",
     "roles": [
       "superadmin",
-      "admin",
-      "operator"
+      "admin"
     ],
     "action": "write",
     "domain": "cartridges",
@@ -367,8 +357,7 @@
     "path": "/api/cartridges/{cartridge_id}/issue",
     "roles": [
       "superadmin",
-      "admin",
-      "operator"
+      "admin"
     ],
     "action": "write",
     "domain": "cartridges",
@@ -383,8 +372,7 @@
     "path": "/api/cartridges/bulk-issue",
     "roles": [
       "superadmin",
-      "admin",
-      "operator"
+      "admin"
     ],
     "action": "write",
     "domain": "cartridges",
@@ -399,8 +387,7 @@
     "path": "/api/cartridges/return-vendor",
     "roles": [
       "superadmin",
-      "admin",
-      "operator"
+      "admin"
     ],
     "action": "write",
     "domain": "cartridges",
@@ -417,7 +404,6 @@
       "superadmin",
       "admin",
       "technician",
-      "operator",
       "viewer",
       "user"
     ],
@@ -476,8 +462,7 @@
     "path": "/api/notifications/whatsapp/ready",
     "roles": [
       "superadmin",
-      "admin",
-      "operator"
+      "admin"
     ],
     "action": "write",
     "domain": "cartridges",
@@ -494,7 +479,6 @@
       "superadmin",
       "admin",
       "technician",
-      "operator",
       "viewer"
     ],
     "action": "read",
@@ -566,7 +550,6 @@
       "superadmin",
       "admin",
       "technician",
-      "operator",
       "viewer",
       "user"
     ],
@@ -640,8 +623,7 @@
     "path": "/api/settings/wa/status",
     "roles": [
       "superadmin",
-      "admin",
-      "operator"
+      "admin"
     ],
     "action": "wa_self",
     "domain": "whatsapp",
@@ -670,8 +652,7 @@
     "path": "/api/settings/wa/qr",
     "roles": [
       "superadmin",
-      "admin",
-      "operator"
+      "admin"
     ],
     "action": "wa_self",
     "domain": "whatsapp",
@@ -686,8 +667,7 @@
     "path": "/api/settings/wa/reset",
     "roles": [
       "superadmin",
-      "admin",
-      "operator"
+      "admin"
     ],
     "action": "wa_self",
     "domain": "whatsapp",
@@ -717,8 +697,7 @@
     "roles": [
       "superadmin",
       "admin",
-      "technician",
-      "operator"
+      "technician"
     ],
     "action": "read",
     "domain": "directory",
@@ -760,7 +739,6 @@
       "superadmin",
       "admin",
       "technician",
-      "operator",
       "viewer"
     ],
     "action": "read",
@@ -778,7 +756,6 @@
       "superadmin",
       "admin",
       "technician",
-      "operator",
       "viewer"
     ],
     "action": "read",
@@ -796,7 +773,6 @@
       "superadmin",
       "admin",
       "technician",
-      "operator",
       "viewer"
     ],
     "action": "read",
@@ -829,8 +805,7 @@
     "roles": [
       "superadmin",
       "admin",
-      "technician",
-      "operator"
+      "technician"
     ],
     "action": "write",
     "domain": "location",
@@ -862,8 +837,7 @@
     "roles": [
       "superadmin",
       "admin",
-      "technician",
-      "operator"
+      "technician"
     ],
     "action": "write",
     "domain": "location",
@@ -880,7 +854,6 @@
       "superadmin",
       "admin",
       "technician",
-      "operator",
       "viewer"
     ],
     "action": "read",
@@ -958,7 +931,6 @@
       "superadmin",
       "admin",
       "technician",
-      "operator",
       "viewer"
     ],
     "action": "read",
@@ -976,7 +948,6 @@
       "superadmin",
       "admin",
       "technician",
-      "operator",
       "viewer"
     ],
     "action": "read",
@@ -994,7 +965,6 @@
       "superadmin",
       "admin",
       "technician",
-      "operator",
       "viewer"
     ],
     "action": "read",
@@ -1075,8 +1045,7 @@
     "roles": [
       "superadmin",
       "admin",
-      "technician",
-      "operator"
+      "technician"
     ],
     "action": "write",
     "domain": "location",
@@ -1108,8 +1077,7 @@
     "roles": [
       "superadmin",
       "admin",
-      "technician",
-      "operator"
+      "technician"
     ],
     "action": "write",
     "domain": "location",
@@ -1302,7 +1270,6 @@
       "superadmin",
       "admin",
       "technician",
-      "operator",
       "viewer"
     ],
     "action": "read",
@@ -1320,7 +1287,6 @@
       "superadmin",
       "admin",
       "technician",
-      "operator",
       "viewer"
     ],
     "action": "read",
@@ -1352,7 +1318,6 @@
       "superadmin",
       "admin",
       "technician",
-      "operator",
       "viewer"
     ],
     "action": "read",
@@ -1412,7 +1377,6 @@
       "superadmin",
       "admin",
       "technician",
-      "operator",
       "viewer"
     ],
     "action": "read",
@@ -1430,7 +1394,6 @@
       "superadmin",
       "admin",
       "technician",
-      "operator",
       "viewer"
     ],
     "action": "read",
@@ -1447,8 +1410,7 @@
     "roles": [
       "superadmin",
       "admin",
-      "technician",
-      "operator"
+      "technician"
     ],
     "action": "read",
     "domain": "directory",
@@ -1466,7 +1428,6 @@
       "superadmin",
       "admin",
       "technician",
-      "operator",
       "viewer"
     ],
     "action": "read",
@@ -1483,8 +1444,7 @@
     "roles": [
       "superadmin",
       "admin",
-      "technician",
-      "operator"
+      "technician"
     ],
     "action": "write",
     "domain": "repair",
@@ -1500,8 +1460,7 @@
     "roles": [
       "superadmin",
       "admin",
-      "technician",
-      "operator"
+      "technician"
     ],
     "action": "write",
     "domain": "repair",
@@ -1517,8 +1476,7 @@
     "roles": [
       "superadmin",
       "admin",
-      "technician",
-      "operator"
+      "technician"
     ],
     "action": "write",
     "domain": "repair",
@@ -1582,8 +1540,7 @@
     "roles": [
       "superadmin",
       "admin",
-      "technician",
-      "operator"
+      "technician"
     ],
     "action": "write",
     "domain": "repair",
@@ -1599,8 +1556,7 @@
     "roles": [
       "superadmin",
       "admin",
-      "technician",
-      "operator"
+      "technician"
     ],
     "action": "write",
     "domain": "repair",
@@ -1617,7 +1573,6 @@
       "superadmin",
       "admin",
       "technician",
-      "operator",
       "viewer"
     ],
     "action": "read",
@@ -1635,7 +1590,6 @@
       "superadmin",
       "admin",
       "technician",
-      "operator",
       "viewer"
     ],
     "action": "read",
@@ -1652,8 +1606,7 @@
     "roles": [
       "superadmin",
       "admin",
-      "technician",
-      "operator"
+      "technician"
     ],
     "action": "write",
     "domain": "repair",
@@ -1669,8 +1622,7 @@
     "roles": [
       "superadmin",
       "admin",
-      "technician",
-      "operator"
+      "technician"
     ],
     "action": "write",
     "domain": "repair",
@@ -1687,7 +1639,6 @@
       "superadmin",
       "admin",
       "technician",
-      "operator",
       "viewer"
     ],
     "action": "read",
@@ -1741,7 +1692,6 @@
       "superadmin",
       "admin",
       "technician",
-      "operator",
       "viewer"
     ],
     "action": "read",
@@ -1786,6 +1736,42 @@
     "network": false,
     "paths": [
       "/api/v1/auth/change-password"
+    ]
+  },
+  "LOCATION/app/routers/reports_router.py:get_network_report:GET": {
+    "path": "/api/v1/location/reports",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician",
+      "operator",
+      "viewer"
+    ],
+    "action": "read",
+    "domain": "location",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/v1/location/reports"
+    ]
+  },
+  "LOCATION/app/routers/reports_router.py:export_network_report:GET": {
+    "path": "/api/v1/location/reports/csv",
+    "roles": [
+      "superadmin",
+      "admin",
+      "technician",
+      "operator",
+      "viewer"
+    ],
+    "action": "read",
+    "domain": "location",
+    "branch_scope": true,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/v1/location/reports/csv"
     ]
   }
 }

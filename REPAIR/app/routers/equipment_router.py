@@ -441,7 +441,7 @@ def accept_broken_equipment(
         asset_type=payload.asset_type,
         cabinet=payload.cabinet,
         branch_id=payload.branch_id or current_user.branch_id,
-        current_user_id=payload.current_user_id,
+        current_user_id=payload.current_user_id or None,
         serial_number=payload.serial_number,
         reported_issue=payload.reported_issue,
         condition=payload.condition,
@@ -465,6 +465,8 @@ def create_manual_equipment(
         raise HTTPException(status_code=400, detail=f"Оборудование с инвентарным номером '{inv}' уже зарегистрировано")
 
     now = datetime.utcnow()
+    if payload.current_user_id and not db.query(ADUser).filter(ADUser.samaccountname == payload.current_user_id).first():
+        raise HTTPException(400, "Сотрудник не найден. Выберите сотрудника из списка или оставьте поле пустым.")
     asset = Asset(
         inventory_number=inv,
         serial_number=payload.serial_number.strip() if payload.serial_number else None,
@@ -474,7 +476,7 @@ def create_manual_equipment(
         condition=payload.condition,
         cabinet=payload.cabinet.strip() if payload.cabinet else None,
         branch_id=payload.branch_id or current_user.branch_id,
-        current_user_id=payload.current_user_id,
+        current_user_id=payload.current_user_id or None,
         specs=payload.specs or {},
         notes=payload.notes,
         created_at=now,
@@ -701,6 +703,11 @@ def return_equipment_from_sc(
             oi.cost = cost_val
             oi.status = "repaired" if (payload.condition or AssetCondition.WORKING) == AssetCondition.WORKING else "unrepairable"
             oi.returned_at = now
+        db.flush()
+        for batch in {item.batch for item in open_items}:
+            if all(item.status != "in_repair" for item in batch.items):
+                batch.status = "closed"
+                batch.closed_at = now
 
         EquipmentService.log_history(
             db=db,
@@ -764,4 +771,3 @@ def install_equipment_at_workplace(
         "count": count,
         "message": f"Успешно установлено на рабочие места: {count} единиц техники."
     }
-

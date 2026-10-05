@@ -389,6 +389,10 @@ write`,
                 return;
             }
             await this.loadBranches();
+            if (this.currentUser.role === 'operator') {
+                window.location.replace('/location/static/reports.html');
+                return;
+            }
             
             // Инициализация холста Konva
             this.initKonva();
@@ -1027,6 +1031,13 @@ write`,
         // Переход и центрирование камеры на объекте (поиск на карте)
         async focusAsset(asset) {
             if (!asset) return;
+            if (asset.branch_id && asset.branch_id != this.selectedBranchId) {
+                this.selectedBranchId = asset.branch_id;
+                await this.loadFloors();
+            }
+            if (asset.floor_id && !this.floors.some(f => f.id == asset.floor_id)) {
+                await this.loadFloors();
+            }
 
             // Если объект размещен на другом этаже, сначала переключаемся на нужный этаж
             if (asset.floor_id && asset.floor_id != this.selectedFloorId) {
@@ -1620,6 +1631,10 @@ write`,
         openPortSettingsModal(p) {
             this.selectedPort = p;
             this.portForm = {
+                connection_mode: p.connection_mode || 'auto',
+                downstream_name: p.downstream_name || '',
+                downstream_port_count: p.downstream_port_count || 8,
+                downstream_ports: {...(p.downstream_ports || {})},
                 cabinet: p.cabinet || '',
                 socket_label: p.socket_label || '',
                 zone_id: p.zone_id || '',
@@ -1634,6 +1649,10 @@ write`,
             if (!this.activeSwitch || !this.selectedPort) return;
             try {
                 const payload = {
+                    connection_mode: this.portForm.connection_mode || 'auto',
+                    downstream_name: this.portForm.downstream_name || '',
+                    downstream_port_count: parseInt(this.portForm.downstream_port_count) || 8,
+                    downstream_ports: Object.fromEntries(Object.entries(this.portForm.downstream_ports || {}).filter(([mac, number]) => parseInt(number) > 0).map(([mac, number]) => [mac, parseInt(number)])),
                     cabinet: this.portForm.cabinet,
                     socket_label: this.portForm.socket_label,
                     zone_id: this.portForm.zone_id ? parseInt(this.portForm.zone_id) : null,

@@ -1,0 +1,8 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Отчёты карты сети</title>
+<style>body{font:15px system-ui;background:#f1f5f9;color:#172033;margin:0}main{padding:24px}header{display:flex;align-items:center;gap:18px;flex-wrap:wrap}a{color:#1d4ed8}button,select,input{padding:10px;border:1px solid #cbd5e1;border-radius:8px;background:white}button{cursor:pointer;background:#1d4ed8;color:white}.table{overflow:auto;background:white;border-radius:12px;margin-top:20px;max-height:75vh}table{border-collapse:collapse;min-width:100%;white-space:nowrap}td,th{padding:12px;border-bottom:1px solid #e2e8f0;text-align:left}th{position:sticky;top:0;background:#e2e8f0}#message{color:#475569}h1{font-size:24px}</style></head>
+<body><main><header><a href="/">← Главная</a><h1>Отчёты карты сети и IT-активов</h1><a id="map" href="/location/">Карта</a></header>
+<p>Размещение техники и все обнаруженные MAC-адреса по портам. Несколько строк одного порта могут означать подключение через свич или межкоммутаторный канал.</p>
+<label>Филиал <select id="branch"></select></label> <label>Поиск <input id="search" placeholder="Кабинет, техника, MAC, порт"></label> <button id="refresh">Сформировать</button> <button id="export">Скачать CSV</button>
+<p id="message" role="status">Загрузка…</p><div class="table"><table><thead id="head"></thead><tbody id="rows"></tbody></table></div></main>
+<script src="/static/api-client.js"></script><script src="/location/static/js/network_reports.js"></script></body></html>

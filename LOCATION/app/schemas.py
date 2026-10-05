@@ -1,6 +1,6 @@
 from datetime import datetime
-from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, ConfigDict, field_validator, model_validator
+from typing import Optional, List, Dict, Any, Literal
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from SHARED.models import AssetType, AssetStatus, AssetCondition
 
 
@@ -114,6 +114,7 @@ class AssignCabinetRequest(BaseModel):
 
 
 class PlacedAssetResponse(BaseModel):
+    branch_id: Optional[int] = None
     id: int
     inventory_number: str
     name: str
@@ -161,11 +162,20 @@ class SwitchPortResponse(BaseModel):
     connected_asset_id: Optional[int] = None
     connected_asset_name: Optional[str] = None
     connected_asset_inv: Optional[str] = None
+    connected_assets: List[Dict[str, Any]] = []
+    connection_mode: str = "auto"
+    downstream_name: Optional[str] = None
+    downstream_port_count: Optional[int] = None
+    downstream_ports: Dict[str, int] = {}
 
     model_config = ConfigDict(from_attributes=True)
 
 
 class SwitchPortUpdate(BaseModel):
+    connection_mode: Optional[Literal["auto", "direct", "unmanaged", "uplink"]] = None
+    downstream_name: Optional[str] = Field(None, max_length=150)
+    downstream_port_count: Optional[int] = Field(None, ge=1, le=1024)
+    downstream_ports: Optional[Dict[str, int]] = None
     cabinet: Optional[str] = None
     socket_label: Optional[str] = None
     zone_id: Optional[int] = None
@@ -212,7 +222,7 @@ class NetworkSwitchCreate(BaseModel):
     username: Optional[str] = None
     password: Optional[str] = None
     snmp_community: str = ""
-    total_ports: int = 24
+    total_ports: int = Field(24, ge=1, le=1024)
     cabinet: Optional[str] = "Серверная"
     coords_x: float = 0.5
     coords_y: float = 0.5
@@ -228,7 +238,7 @@ class NetworkSwitchUpdate(BaseModel):
     username: Optional[str] = None
     password: Optional[str] = None
     snmp_community: Optional[str] = None
-    total_ports: Optional[int] = None
+    total_ports: Optional[int] = Field(None, ge=1, le=1024)
     cabinet: Optional[str] = None
     extra_params: Optional[Dict[str, Any]] = None
 

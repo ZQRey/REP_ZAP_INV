@@ -156,7 +156,8 @@ from LOCATION.app.routers import (
     zones_router,
     assets_placement_router,
     switches_router,
-    pathfinding_router
+    pathfinding_router,
+    reports_router as location_reports_router
 )
 from CARTRIDGE.app.routers import (
     cartridges_router,
@@ -189,6 +190,7 @@ app.include_router(zones_router.router)
 app.include_router(assets_placement_router.router)
 app.include_router(switches_router.router)
 app.include_router(pathfinding_router.router)
+app.include_router(location_reports_router.router)
 
 # Роутеры картриджей
 app.include_router(cartridges_router.router)

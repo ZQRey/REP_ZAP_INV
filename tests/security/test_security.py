@@ -118,8 +118,8 @@ def test_settings_never_return_secrets(client, account):
     ).json()["access_token"]
     operator_headers = {"Authorization": "Bearer " + operator_token}
     operator_view = client.get("/api/settings", headers=operator_headers)
-    assert operator_view.status_code == 200
-    assert operator_view.json()["ad_bind_user"] == "******"
+    assert operator_view.status_code == 403
+    assert secret not in operator_view.text
     assert client.put(
         "/api/settings",
         headers=operator_headers,

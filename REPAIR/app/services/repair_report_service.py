@@ -183,9 +183,7 @@ class RepairReportService:
             .filter(
                 EquipmentHistoryLog.asset_id.in_(asset_ids),
                 EquipmentHistoryLog.action.in_([
-                    "Передача в сервисный центр",
-                    "Приемка в IT-отдел",
-                    "Приемка неисправной техники в IT-отдел"
+                    "Передача в сервисный центр"
                 ])
             )
             .all()
@@ -614,4 +612,3 @@ class RepairReportService:
         wb.save(output)
         output.seek(0)
         return output
-

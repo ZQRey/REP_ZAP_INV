@@ -16,6 +16,23 @@ from REPAIR.app.services.equipment_service import EquipmentService
 logger = logging.getLogger("SwitchIntegration")
 
 
+def connection_error_message(exc):
+    """Explain transport failures without exposing URLs, tokens or credentials."""
+    current, seen = exc, set()
+    while current and id(current) not in seen:
+        seen.add(id(current))
+        if "certificate_verify_failed" in str(current).lower() or "certificate verify failed" in str(current).lower():
+            return "Сертификат контроллера не доверен. Добавьте сертификат контроллера в настройки подключения."
+        current = current.__cause__ or current.__context__
+    if isinstance(exc, httpx.HTTPStatusError):
+        if exc.response.status_code in (401, 403):
+            return "Контроллер отклонил авторизацию. Проверьте CLIENT ID, CLIENT SECRET, роль и доступ к сайту."
+        return f"Контроллер вернул HTTP {exc.response.status_code}."
+    if isinstance(exc, (httpx.ConnectError, httpx.TimeoutException)):
+        return "Контроллер недоступен. Проверьте адрес, порт и сетевой доступ с сервера приложения."
+    return f"Ошибка подключения: {type(exc).__name__}."
+
+
 def normalize_mac(mac_str: str) -> Optional[str]:
     """Нормализует MAC-адрес к стандартному виду AA:BB:CC:DD:EE:FF."""
     if not mac_str:
@@ -74,7 +91,7 @@ class SwitchIntegrationService:
                 mac_table = cls._poll_snmp_bridge(switch)
 
         except Exception as e:
-            poll_error = type(e).__name__
+            poll_error = connection_error_message(e)
             logger.error(f"Switch poll error for #{switch.id} ({switch.ip_address}): {type(e).__name__}")
 
         # Если физическое подключение не удалось (лабораторная сеть, стенд, офлайн),
@@ -86,7 +103,7 @@ class SwitchIntegrationService:
 
         if poll_error:
             switch.last_poll_status = "error"
-            switch.last_poll_message = f"Ошибка опроса: {poll_error}"
+            switch.last_poll_message = poll_error
             switch.last_polled_at = datetime.utcnow()
             db.commit()
             return {
@@ -441,8 +458,20 @@ class SwitchIntegrationService:
                           if normalize_mac(a.mac_address) == mac]
             asset = candidates[0] if len(candidates) == 1 else None
             port_macs = {normalize_mac(e.get("mac")) for e in mac_entries if e.get("port") == port_num}
-            if len(port_macs - {None}) > 1:
+            mode = (switch.extra_params or {}).get("port_topology", {}).get(str(port_num), {}).get("mode", "auto")
+            if mode == "uplink" or (len(port_macs - {None}) > 1 and mode != "unmanaged"):
                 asset = None  # An uplink with multiple MACs has no unique room destination.
+            eligible_ports = set()
+            for observation in mac_entries:
+                number = observation.get("port")
+                if normalize_mac(observation.get("mac")) != mac or not number:
+                    continue
+                config_mode = (switch.extra_params or {}).get("port_topology", {}).get(str(number), {}).get("mode", "auto")
+                count = len({normalize_mac(e.get("mac")) for e in mac_entries if e.get("port") == number} - {None})
+                if config_mode != "uplink" and (count == 1 or config_mode == "unmanaged"):
+                    eligible_ports.add(number)
+            if len(eligible_ports) != 1:
+                asset = None
 
             if asset:
                 matched_count += 1
@@ -479,7 +508,8 @@ class SwitchIntegrationService:
                             "old_cabinet": old_cabinet, "new_cabinet": asset.cabinet,
                             "detected_zone_id": zone.id, "observation_only": False})
 
-                port.connected_asset_id = asset.id
+                # The legacy single-device field stays empty for a shared downstream switch.
+                port.connected_asset_id = asset.id if mode != "unmanaged" else None
 
             port_details.append({
                 "port_number": port.port_number,
@@ -581,22 +611,26 @@ class SwitchIntegrationService:
             mgmt_port = 8043 if mgmt_type == "omada" else (161 if mgmt_type == "snmp" else 22)
 
         # 1. SNMP проверка
-        if mgmt_type == "snmp":
+        if mgmt_type == "snmp" or (mgmt_type in {"hp", "aruba", "tplink"} and mgmt_port == 161):
             try:
-                s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                s.settimeout(2.0)
-                comm = (snmp_community or "").encode('latin1')
-                # Минимальный SNMP v2c GetRequest для sysDescr (1.3.6.1.2.1.1.1.0)
-                packet = (
-                    b'\x30\x29\x02\x01\x01\x04' + bytes([len(comm)]) + comm +
-                    b'\xa0\x1f\x02\x04\x01\x02\x03\x04\x02\x01\x00\x02\x01\x00\x30\x11\x30\x0f\x06\x0b\x2b\x06\x01\x02\x01\x01\x01\x00\x05\x00'
-                )
+                import asyncio
+                from pysnmp.hlapi.v3arch.asyncio import (SnmpEngine, CommunityData,
+                    UdpTransportTarget, ContextData, ObjectType, ObjectIdentity, get_cmd)
+                async def probe():
+                    engine = SnmpEngine()
+                    try:
+                        target = await UdpTransportTarget.create((host, mgmt_port), timeout=3, retries=1)
+                        error, status, _, bindings = await get_cmd(engine,
+                            CommunityData(snmp_community or "public", mpModel=1), target,
+                            ContextData(), ObjectType(ObjectIdentity("1.3.6.1.2.1.1.1.0")))
+                        return not error and not status and bool(bindings)
+                    finally:
+                        engine.close_dispatcher()
                 t_req = time.time()
-                s.sendto(packet, (host, mgmt_port))
                 try:
-                    data, _ = s.recvfrom(2048)
+                    if not asyncio.run(probe()):
+                        raise socket.timeout()
                     latency_ms = round((time.time() - t_req) * 1000, 1)
-                    s.close()
                     return {
                         "success": True,
                         "reachable": True,
@@ -605,14 +639,13 @@ class SwitchIntegrationService:
                         "message": f"SNMP v2c успешно ответил ({latency_ms} мс). SNMP credentials подтвержден."
                     }
                 except socket.timeout:
-                    s.close()
                     latency_ms = round((time.time() - t0) * 1000, 1)
                     return {
                         "success": False,
-                        "reachable": True,
+                        "reachable": False,
                         "status": "warning",
                         "latency_ms": latency_ms,
-                        "message": f"Хост {host} отвечает, но порт SNMP {mgmt_port} не вернул ответ на SNMP credentials (проверьте параметры доступа на свитче)."
+                        "message": f"SNMP {host}:{mgmt_port} не ответил. Проверьте community, доступ UDP и настройки SNMP на коммутаторе."
                     }
             except Exception as e:
                 return {
@@ -634,7 +667,7 @@ class SwitchIntegrationService:
                         "message": f"Omada Open API: авторизация и чтение клиентов успешны, MAC: {len(rows)}"}
                 except Exception as exc:
                     return {"success": False, "reachable": False, "status": "error",
-                        "message": f"Ошибка Omada Open API: {type(exc).__name__}"}
+                        "message": connection_error_message(exc)}
             scheme = "https"
             base_url = f"{scheme}://{host}:{mgmt_port}"
             try:

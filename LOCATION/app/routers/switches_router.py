@@ -2,7 +2,7 @@ from SHARED.authentication import require_authenticated_user
 from typing import List, Optional
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query, Body, status
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, object_session
 
 from SHARED.database import get_db
 from SHARED.models import (
@@ -28,6 +28,7 @@ from LOCATION.app.schemas import (
     SwitchConnectionTestResponse
 )
 from LOCATION.app.services.switch_integration_service import SwitchIntegrationService, normalize_mac
+from LOCATION.app.services.placement_service import free_position
 
 router = APIRouter(prefix="/api/v1/location", tags=["Location Switches"])
 
@@ -35,7 +36,10 @@ router = APIRouter(prefix="/api/v1/location", tags=["Location Switches"])
 def _format_switch_response(sw: NetworkSwitch) -> NetworkSwitchResponse:
     """Вспомогательный форматер ответа коммутатора."""
     ports_out = []
+    assets = object_session(sw).query(Asset).filter(Asset.mac_address.is_not(None)).all()
     for p in sorted(sw.ports, key=lambda x: x.port_number):
+        macs = {normalize_mac(mac) for mac in (p.learned_macs or [])} - {None}
+        topology = (sw.extra_params or {}).get("port_topology", {}).get(str(p.port_number), {})
         ports_out.append(SwitchPortResponse(
             id=p.id,
             switch_id=p.switch_id,
@@ -48,6 +52,12 @@ def _format_switch_response(sw: NetworkSwitch) -> NetworkSwitchResponse:
             zone_id=p.zone_id,
             last_mac=p.last_mac,
             learned_macs=p.learned_macs or [],
+            connected_assets=[{"id": a.id, "name": a.name, "inventory_number": a.inventory_number,
+                               "mac": a.mac_address} for a in assets if normalize_mac(a.mac_address) in macs],
+            connection_mode=topology.get("mode", "auto"),
+            downstream_name=topology.get("name"),
+            downstream_port_count=topology.get("port_count"),
+            downstream_ports=topology.get("ports", {}),
             last_ip=p.last_ip,
             last_seen_at=p.last_seen_at,
             connected_asset_id=p.connected_asset_id,
@@ -71,7 +81,7 @@ def _format_switch_response(sw: NetworkSwitch) -> NetworkSwitchResponse:
         name=sw.asset.name if sw.asset else "Коммутатор",
         cabinet=sw.asset.cabinet if sw.asset else None,
         last_poll_status=sw.last_poll_status or "never",
-        last_poll_message="Poll failed" if sw.last_poll_status == "error" else None,
+        last_poll_message="Ошибка опроса. Проверьте подключение и параметры доступа." if sw.last_poll_status == "error" else None,
         last_polled_at=sw.last_polled_at,
         floor_id=sw.asset.floor_id if sw.asset else None,
         coords_x=sw.asset.coords_x if sw.asset else None,
@@ -131,10 +141,12 @@ def create_switch(
         coords_y=max(0.0, min(1.0, payload.coords_y)),
         ip_address=payload.ip_address.strip()
     )
+    asset.coords_x, asset.coords_y = free_position(asset.coords_x, asset.coords_y,
+        [(a.coords_x, a.coords_y) for a in db.query(Asset).filter(Asset.floor_id == floor.id).all()])
     db.add(asset)
     db.flush()
 
-    total_ports = max(4, min(96, payload.total_ports))
+    total_ports = payload.total_ports
     sw = NetworkSwitch(
         asset_id=asset.id,
         ip_address=payload.ip_address.strip(),
@@ -207,7 +219,12 @@ def update_switch(
 
     # Если изменилось число портов
     if payload.total_ports and payload.total_ports != sw.total_ports:
-        new_total = max(4, min(96, payload.total_ports))
+        new_total = payload.total_ports
+        excess = [p for p in sw.ports if p.port_number > new_total]
+        if any(p.connected_asset_id or p.zone_id or p.learned_macs for p in excess):
+            raise HTTPException(409, "Нельзя удалить порты с привязками или обнаруженными MAC. Сначала освободите их.")
+        for p in excess:
+            db.delete(p)
         current_max = max((p.port_number for p in sw.ports), default=0)
         if new_total > current_max:
             for p in range(current_max + 1, new_total + 1):
@@ -294,6 +311,32 @@ def update_switch_port(
         sport = SwitchPort(switch_id=switch_id, port_number=port_number)
         db.add(sport)
 
+    if any(value is not None for value in (payload.connection_mode, payload.downstream_name,
+                                          payload.downstream_port_count, payload.downstream_ports)):
+        sw = db.query(NetworkSwitch).filter(NetworkSwitch.id == switch_id).first()
+        params = dict(sw.extra_params or {})
+        topology = dict(params.get("port_topology", {}))
+        config = dict(topology.get(str(port_number), {}))
+        if payload.connection_mode is not None:
+            config["mode"] = payload.connection_mode
+        if payload.downstream_name is not None:
+            config["name"] = payload.downstream_name.strip()
+        if payload.downstream_port_count is not None:
+            config["port_count"] = payload.downstream_port_count
+        if payload.downstream_ports is not None:
+            ports = {}
+            for raw_mac, number in payload.downstream_ports.items():
+                mac = normalize_mac(raw_mac)
+                if not mac or not 1 <= number <= config.get("port_count", 1024):
+                    raise HTTPException(422, "Укажите корректный MAC и порт в пределах числа портов свича.")
+                ports[mac] = number
+            config["ports"] = ports
+        if any(number > config.get("port_count", 1024) for number in config.get("ports", {}).values()):
+            raise HTTPException(422, "Есть привязки к портам за пределами выбранного числа портов свича.")
+        topology[str(port_number)] = config
+        params["port_topology"] = topology
+        sw.extra_params = params
+
     if payload.cabinet is not None:
         sport.cabinet = payload.cabinet.strip() if payload.cabinet else None
     if payload.socket_label is not None:
@@ -318,23 +361,7 @@ def update_switch_port(
     db.commit()
     db.refresh(sport)
 
-    return SwitchPortResponse(
-        id=sport.id,
-        switch_id=sport.switch_id,
-        port_number=sport.port_number,
-        port_speed=sport.port_speed,
-        vlan_id=sport.vlan_id,
-        status=sport.status,
-        cabinet=sport.cabinet,
-        socket_label=sport.socket_label,
-        zone_id=sport.zone_id,
-        last_mac=sport.last_mac,
-        last_ip=sport.last_ip,
-        last_seen_at=sport.last_seen_at,
-        connected_asset_id=sport.connected_asset_id,
-        connected_asset_name=sport.connected_asset.name if sport.connected_asset else None,
-        connected_asset_inv=sport.connected_asset.inventory_number if sport.connected_asset else None
-    )
+    return next(p for p in _format_switch_response(sport.switch).ports if p.port_number == port_number)
 
 
 @router.post("/switches/{switch_id}/ports/{port_number}/connect")

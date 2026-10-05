@@ -214,6 +214,11 @@ document.addEventListener('alpine:init', () => {
                 return;
             }
             await this.loadBranches();
+            if (this.currentUser.role === 'operator') {
+                this.currentTab = 'reports';
+                await this.loadReport();
+                return;
+            }
             await this.loadADUsers();
             await this.loadEquipment();
             await this.loadModels();
@@ -225,6 +230,13 @@ document.addEventListener('alpine:init', () => {
                 'Authorization': `Bearer ${this.token}`,
                 'Content-Type': 'application/json'
             };
+        },
+
+        assetTypeLabel(value) {
+            return {workstation: 'Рабочая станция', laptop: 'Ноутбук', monitor: 'Монитор', printer: 'Принтер', scanner: 'Сканер', ups: 'ИБП', switch: 'Коммутатор', other: 'Другое'}[value] || value;
+        },
+        assetStatusLabel(value) {
+            return {at_workplace: 'На рабочем месте', pending_sc: 'Ожидает отправки в СЦ', at_sc: 'В сервисном центре', returned_it: 'Возвращено в IT', written_off: 'Списано'}[value] || value;
         },
 
         async loadCurrentUser() {
@@ -650,7 +662,7 @@ document.addEventListener('alpine:init', () => {
                 await this.loadEquipment();
                 await this.loadBatches();
                 // Открываем печатную форму в новом окне
-                openAuthenticatedPrint(`/print/repair-act/${newBatch.id}`, this.getAuthHeaders());
+                this.showToast('Акт создан. Печать доступна в истории актов.', 'success');
             } catch (e) {
                 this.showToast(e.message, 'error');
             }

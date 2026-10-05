@@ -46,6 +46,7 @@
             <div class="flex gap-2"><button type="submit" class="flex-1 bg-blue-600 rounded-lg p-2">Сохранить</button><button type="button" @click="cancelZone()" class="bg-slate-700 rounded-lg p-2">Отмена</button></div>
         </form></template>
     </div>
+    <a href="/location/static/reports.html" class="fixed bottom-3 left-3 z-50 rounded-lg bg-blue-700 px-4 py-2">Отчёты карты сети</a>
     <!-- Верхняя панель (Top Toolbar) -->
     <header class="h-14 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 flex items-center justify-between px-4 z-30 shrink-0">
         <div class="flex items-center gap-4">
@@ -422,7 +423,7 @@
                     </section>
                     <section><h4 class="text-xs uppercase tracking-wide text-slate-400 mb-3">Подключения <span class="text-blue-300" x-text="zonePorts.length"></span></h4>
                         <p x-show="!zonePorts.length" class="text-slate-500 text-xs">Порты к помещению не привязаны</p>
-                        <ul class="space-y-2"><template x-for="p in zonePorts" :key="p.id"><li class="rounded-lg bg-slate-800/70 p-3"><p class="font-medium" x-text="p.switch_name + ' · порт ' + p.port_number"></p><p class="text-xs text-slate-300 mt-1" x-text="p.connected_asset_name || 'Техника не привязана'"></p><p class="text-xs font-mono text-slate-400 mt-1 break-all" x-text="(p.learned_macs || []).join(', ') || p.last_mac || 'MAC не обнаружен'"></p></li></template></ul>
+                        <ul class="space-y-2"><template x-for="p in zonePorts" :key="p.id"><li class="rounded-lg bg-slate-800/70 p-3"><p class="font-medium" x-text="p.switch_name + ' · порт ' + p.port_number"></p><p class="text-xs text-slate-300 mt-1" x-text="(p.connected_assets || []).map(a => a.name + ' (' + a.inventory_number + ')').join('; ') || p.connected_asset_name || 'Техника не привязана'"></p><p class="text-xs font-mono text-slate-400 mt-1 break-all" x-text="(p.learned_macs || []).join(', ') || p.last_mac || 'MAC не обнаружен'"></p></li></template></ul>
                     </section>
                 </div>
             </section></template>
@@ -482,7 +483,7 @@
             <div class="flex items-center justify-between text-[11px] px-3 py-1.5 bg-slate-950/70 border border-slate-800 rounded-lg">
                 <div class="flex items-center gap-2">
                     <span class="w-2 h-2 rounded-full" :class="activeSwitch && activeSwitch.last_poll_status === 'ok' ? 'bg-emerald-400' : (activeSwitch && activeSwitch.last_poll_status === 'error' ? 'bg-rose-400' : 'bg-slate-500')"></span>
-                    <span class="text-slate-300" x-text="activeSwitch && activeSwitch.last_poll_message ? activeSwitch.last_poll_message : 'Опрос еще не выполнялся'"></span>
+                    <span class="text-slate-300" x-text="activeSwitch?.last_poll_status === 'ok' ? 'Опрос выполнен успешно' : (activeSwitch?.last_poll_message || 'Опрос еще не выполнялся')"></span>
                 </div>
                 <div class="text-slate-500" x-text="activeSwitch && activeSwitch.last_polled_at ? 'Обновлено: ' + new Date(activeSwitch.last_polled_at).toLocaleTimeString() : ''"></div>
             </div>
@@ -525,7 +526,7 @@
     <!-- МОДАЛКА: НАСТРОЙКА ПОРТА И ПРИВЯЗКА К КАБИНЕТУ -->
     <!-- ============================================== -->
     <div x-show="showPortModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md" style="display: none;">
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4" @click.outside="showPortModal = false">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto" @click.outside="showPortModal = false">
             <div class="flex items-center justify-between border-b border-slate-800 pb-3">
                 <div>
                     <h3 class="text-base font-bold text-white" x-text="selectedPort ? 'Порт ' + selectedPort.port_number + ' (Коммутатор ' + activeSwitch.name + ')' : ''"></h3>
@@ -537,6 +538,13 @@
             <form @submit.prevent="savePortSettings()" class="space-y-3 text-xs">
                 <div>
                     <label class="block font-semibold text-slate-300 mb-1">Привязка к кабинету *</label>
+                    <label class="block mb-3">Тип подключения<select x-model="portForm.connection_mode" class="w-full bg-slate-800 rounded-lg p-2"><option value="auto">Авто (общий порт без перемещения)</option><option value="direct">Напрямую</option><option value="unmanaged">Через неуправляемый свич в кабинете</option><option value="uplink">Межкоммутаторный канал</option></select></label>
+                    <div x-show="portForm.connection_mode === 'unmanaged'" class="space-y-3 rounded-xl bg-slate-950 p-3 mb-3">
+                        <label class="block">Название свича в кабинете<input x-model="portForm.downstream_name" maxlength="150" class="w-full bg-slate-800 rounded-lg p-2"></label>
+                        <label class="block">Количество портов свича<input type="number" min="1" max="1024" x-model="portForm.downstream_port_count" class="w-full bg-slate-800 rounded-lg p-2"></label>
+                        <p class="text-xs text-slate-400">Можно указать любое число портов, включая 28. Порты этого свича отмечаются вручную: SNMP их не видит.</p>
+                        <template x-for="mac in (selectedPort?.learned_macs || [])" :key="mac"><label class="flex items-center gap-3 text-xs"><span class="flex-1 font-mono" x-text="mac"></span><input type="number" min="1" :max="portForm.downstream_port_count" x-model="portForm.downstream_ports[mac]" placeholder="Порт" class="w-20 bg-slate-800 rounded p-2"></label></template>
+                    </div>
                     <input type="text" x-model="portForm.cabinet" placeholder="Например: Кабинет 302 или Бухгалтерия" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white focus:ring-1 focus:ring-purple-500">
                 </div>
 
@@ -577,7 +585,7 @@
                 <div class="p-3 bg-slate-950/60 rounded-xl border border-slate-800 space-y-1">
                     <div class="flex justify-between text-[11px]">
                         <span class="text-slate-400">Последний MAC:</span>
-                        <span class="font-mono text-purple-300 font-bold max-w-xs break-all whitespace-normal max-h-40 overflow-y-auto" x-text="selectedPort?.learned_macs?.length ? selectedPort.learned_macs.join(', ') : (selectedPort?.last_mac || 'Не зафиксирован')"></span>
+                        <ul class="space-y-2"><template x-for="a in (selectedPort?.connected_assets || [])" :key="a.id"><li class="rounded bg-slate-800 p-2"><span x-text="a.name + ' · ' + a.inventory_number"></span><br><span class="font-mono text-xs" x-text="a.mac"></span></li></template></ul><span class="font-mono text-purple-300 font-bold max-w-xs break-all whitespace-normal max-h-40 overflow-y-auto" x-text="selectedPort?.learned_macs?.length ? selectedPort.learned_macs.join(', ') : (selectedPort?.last_mac || 'Не зафиксирован')"></span>
                     </div>
                     <div class="flex justify-between text-[11px]">
                         <span class="text-slate-400">Подключенное устройство:</span>
@@ -659,13 +667,7 @@
                     </div>
                     <div>
                         <label class="block font-semibold text-slate-300 mb-1">Число портов</label>
-                        <select x-model="switchForm.total_ports" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white">
-                            <option value="8">8 портов</option>
-                            <option value="16">16 портов</option>
-                            <option value="24">24 порта</option>
-                            <option value="48">48 портов</option>
-                            <option value="52">52 порта</option>
-                        </select>
+                        <input type="number" min="1" max="1024" required x-model="switchForm.total_ports" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white">
                     </div>
                 </div>
 
@@ -849,12 +851,7 @@
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
                         <label class="block font-semibold text-slate-300 mb-1">Число физических портов</label>
-                        <select x-model="newSwitchForm.total_ports" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white">
-                            <option value="8">8 портов (Compact)</option>
-                            <option value="16">16 портов</option>
-                            <option value="24">24 порта (Стандартный)</option>
-                            <option value="48">48 портов (Высокая плотность)</option>
-                        </select>
+                        <input type="number" min="1" max="1024" required x-model="newSwitchForm.total_ports" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white">
                     </div>
                     <div>
                         <label class="block font-semibold text-slate-300 mb-1">Кабинет размещения</label>
@@ -1110,7 +1107,7 @@
                     <div class="p-3 bg-slate-950/60 rounded-xl border border-slate-800/80 space-y-1">
                         <div class="flex justify-between items-center">
                             <span class="font-bold text-white text-sm" x-text="assignAsset.name"></span>
-                            <span class="font-mono text-purple-300 font-bold bg-purple-950/80 px-2 py-0.5 rounded border border-purple-800/60" x-text="assignAsset.inventory_number"></span>
+                            <ul class="space-y-2"><template x-for="a in (selectedPort?.connected_assets || [])" :key="a.id"><li class="rounded bg-slate-800 p-2"><span x-text="a.name + ' · ' + a.inventory_number"></span><br><span class="font-mono text-xs" x-text="a.mac"></span></li></template></ul><span class="font-mono text-purple-300 font-bold bg-purple-950/80 px-2 py-0.5 rounded border border-purple-800/60" x-text="assignAsset.inventory_number"></span>
                         </div>
                         <div class="text-[11px] text-slate-400 flex justify-between pt-1">
                             <span>Текущий кабинет:</span>

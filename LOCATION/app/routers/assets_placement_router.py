@@ -21,6 +21,8 @@ from LOCATION.app.schemas import (
     AssetCreateAndPlace,
     AssignCabinetRequest
 )
+from LOCATION.app.services.switch_integration_service import normalize_mac
+from LOCATION.app.services.placement_service import free_position
 
 router = APIRouter(prefix="/api/v1/location", tags=["Location Assets Placement"])
 
@@ -30,22 +32,30 @@ def enrich_assets_with_network_and_locations(db: Session, assets: List[Asset]) -
     if not assets:
         return []
 
-    asset_ids = [a.id for a in assets]
-    mac_map = {a.mac_address.lower().strip(): a.id for a in assets if a.mac_address}
+    mac_map = {}
+    for a in assets:
+        mac = normalize_mac(a.mac_address)
+        if mac:
+            mac_map.setdefault(mac, []).append(a.id)
 
     ports = db.query(SwitchPort).options(
         joinedload(SwitchPort.switch).joinedload(NetworkSwitch.asset),
         joinedload(SwitchPort.zone)
-    ).filter(
-        (SwitchPort.connected_asset_id.in_(asset_ids)) |
-        (SwitchPort.last_mac.in_(list(mac_map.keys())) if mac_map else False)
     ).all()
 
     port_for_asset: Dict[int, SwitchPort] = {}
     for p in ports:
+        mode = (p.switch.extra_params or {}).get("port_topology", {}).get(str(p.port_number), {}).get("mode", "auto")
+        if mode == "uplink" or (len(p.learned_macs or []) > 1 and mode != "unmanaged"):
+            continue
+        for mac in p.learned_macs or []:
+            matches = mac_map.get(normalize_mac(mac), [])
+            if len(matches) == 1:
+                port_for_asset.setdefault(matches[0], p)
         target_aid = p.connected_asset_id
         if not target_aid and p.last_mac:
-            target_aid = mac_map.get(p.last_mac.lower().strip())
+            matches = mac_map.get(normalize_mac(p.last_mac), [])
+            target_aid = matches[0] if len(matches) == 1 else None
         if target_aid and target_aid not in port_for_asset:
             port_for_asset[target_aid] = p
 
@@ -82,6 +92,7 @@ def enrich_assets_with_network_and_locations(db: Session, assets: List[Asset]) -
 
         result.append(PlacedAssetResponse(
             id=a.id,
+            branch_id=a.branch_id,
             inventory_number=a.inventory_number,
             name=a.name,
             asset_type=a.asset_type.value if hasattr(a.asset_type, "value") else str(a.asset_type),
@@ -346,6 +357,13 @@ def create_and_place_asset(
         notes=payload.notes
     )
     db.add(asset)
+    if asset.zone_id:
+        zone = db.query(Zone).filter(Zone.id == asset.zone_id).first()
+        if zone and zone.polygon_coords:
+            asset.coords_x = sum(p["x"] for p in zone.polygon_coords) / len(zone.polygon_coords)
+            asset.coords_y = sum(p["y"] for p in zone.polygon_coords) / len(zone.polygon_coords)
+            asset.coords_x, asset.coords_y = free_position(asset.coords_x, asset.coords_y,
+                [(a.coords_x, a.coords_y) for a in db.query(Asset).filter(Asset.floor_id == floor.id).all()], zone.polygon_coords)
     db.commit()
     db.refresh(asset)
 

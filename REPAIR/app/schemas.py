@@ -54,7 +54,7 @@ class SwitchConfigSchema(BaseModel):
     password: Optional[str] = None
     snmp_community: Optional[str] = None
     model: Optional[str] = None
-    total_ports: int = 24
+    total_ports: int = Field(24, ge=1, le=1024)
     site: Optional[str] = "Default"
     is_online: Optional[bool] = False
     last_sync_at: Optional[datetime] = None
@@ -244,4 +244,3 @@ class ADComputerSyncResponse(BaseModel):
     message: str
     added: int = 0
     updated: int = 0
-

@@ -40,6 +40,37 @@ def test_uplink_does_not_move_asset(client):
         assert set(sw.ports[0].learned_macs) == {"AA:BB:CC:DD:EE:FF", "11:22:33:44:55:66"}
 
 
+def test_unmanaged_switch_moves_multiple_assets_to_room(client):
+    with SessionLocal() as db:
+        pc, sw, zone, branch = setup_network(db)
+        second = m.Asset(branch_id=pc.branch_id, inventory_number="PC2", name="PC2", mac_address="11:22:33:44:55:66")
+        db.add(second)
+        sw.extra_params = {"port_topology": {"1": {"mode": "unmanaged", "name": "Office switch"}}}
+        db.commit()
+        result = SwitchIntegrationService.process_mac_table(db, sw, [{"port":1,"mac":"aabbccddeeff"},{"port":1,"mac":"112233445566"}])
+        assert result["matched_count"] == 2
+        assert pc.zone_id == second.zone_id == zone.id
+        assert pc.branch_id == second.branch_id == branch.id
+        assert sw.ports[0].connected_asset_id is None
+
+
+def test_ambiguous_endpoint_ports_do_not_relocate(client):
+    with SessionLocal() as db:
+        pc, sw, zone, branch = setup_network(db)
+        original = pc.branch_id
+        result = SwitchIntegrationService.process_mac_table(db, sw, [{"port":1,"mac":"aabbccddeeff"},{"port":2,"mac":"aabbccddeeff"}])
+        assert result["relocated_assets"] == []
+        assert pc.branch_id == original
+
+
+def test_new_map_icons_do_not_overlap():
+    from LOCATION.app.services.placement_service import free_position
+    polygon = [{"x":.4,"y":.4},{"x":.6,"y":.4},{"x":.6,"y":.6},{"x":.4,"y":.6}]
+    x, y = free_position(.5, .5, [(.5, .5)], polygon)
+    assert (x, y) != (.5, .5)
+    assert .4 < x < .6 and .4 < y < .6
+
+
 @pytest.mark.parametrize("setting,expected", [("true",True),("false",False)])
 def test_ad_sync_uses_login_transport_settings(client, monkeypatch, setting, expected):
     from SHARED.ldap_service import LDAPService

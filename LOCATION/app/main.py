@@ -13,7 +13,8 @@ from LOCATION.app.routers import (
     zones_router,
     assets_placement_router,
     switches_router,
-    pathfinding_router
+    pathfinding_router,
+    reports_router
 )
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -40,6 +41,7 @@ app.include_router(zones_router.router)
 app.include_router(assets_placement_router.router)
 app.include_router(switches_router.router)
 app.include_router(pathfinding_router.router)
+app.include_router(reports_router.router)
 
 app.mount("/static", LocationStaticFiles(directory=str(STATIC_DIR)), name="location-static")
 

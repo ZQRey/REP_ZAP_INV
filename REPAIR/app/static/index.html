@@ -78,7 +78,7 @@
                 <div class="flex items-center gap-2">
                     <span class="text-xs text-slate-400 font-medium hidden md:inline">Филиал:</span>
                     <select x-model="selectedBranchId" @change="loadEquipment(); loadBatches();" class="text-xs bg-slate-100 hover:bg-slate-200 border-0 rounded-lg px-2.5 py-1.5 font-medium text-slate-700 focus:ring-2 focus:ring-brand-500 transition">
-                        <option value="">Все филиалы</option>
+                        <option x-show="currentUser?.role === 'superadmin'" value="">Все филиалы</option>
                         <template x-for="b in branches" :key="b.id">
                             <option :value="b.id" x-text="b.name"></option>
                         </template>
@@ -112,36 +112,36 @@
     <!-- Основная навигация по вкладкам / стадиям -->
     <div class="bg-white border-b border-slate-200">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex overflow-x-auto scrollbar-none gap-2 py-2">
-            <button @click="currentTab = 'all'" :class="currentTab === 'all' ? 'bg-brand-50 text-brand-700 font-semibold border-brand-200' : 'text-slate-600 hover:bg-slate-100 border-transparent'" class="px-3.5 py-2 text-xs rounded-lg border flex items-center gap-2 whitespace-nowrap transition">
+            <button x-show="currentUser?.role !== 'operator'" @click="currentTab = 'all'" :class="currentTab === 'all' ? 'bg-brand-50 text-brand-700 font-semibold border-brand-200' : 'text-slate-600 hover:bg-slate-100 border-transparent'" class="px-3.5 py-2 text-xs rounded-lg border flex items-center gap-2 whitespace-nowrap transition">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
                 <span>Все оборудование</span>
                 <span class="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-200 text-slate-700" x-text="counts.all"></span>
             </button>
 
-            <button @click="currentTab = 'accept'" :class="currentTab === 'accept' ? 'bg-brand-50 text-brand-700 font-semibold border-brand-200' : 'text-slate-600 hover:bg-slate-100 border-transparent'" class="px-3.5 py-2 text-xs rounded-lg border flex items-center gap-2 whitespace-nowrap transition">
+            <button x-show="currentUser?.role !== 'operator'" @click="currentTab = 'accept'" :class="currentTab === 'accept' ? 'bg-brand-50 text-brand-700 font-semibold border-brand-200' : 'text-slate-600 hover:bg-slate-100 border-transparent'" class="px-3.5 py-2 text-xs rounded-lg border flex items-center gap-2 whitespace-nowrap transition">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                 <span>1. Приемка в IT-отделе</span>
             </button>
 
-            <button @click="currentTab = 'send_sc'" :class="currentTab === 'send_sc' ? 'bg-amber-50 text-amber-800 font-semibold border-amber-200' : 'text-slate-600 hover:bg-slate-100 border-transparent'" class="px-3.5 py-2 text-xs rounded-lg border flex items-center gap-2 whitespace-nowrap transition">
+            <button x-show="currentUser?.role !== 'operator'" @click="currentTab = 'send_sc'" :class="currentTab === 'send_sc' ? 'bg-amber-50 text-amber-800 font-semibold border-amber-200' : 'text-slate-600 hover:bg-slate-100 border-transparent'" class="px-3.5 py-2 text-xs rounded-lg border flex items-center gap-2 whitespace-nowrap transition">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
                 <span>2. Отправка в СЦ</span>
                 <span class="px-1.5 py-0.5 rounded-full text-[10px] font-bold" :class="counts.pending_sc > 0 ? 'bg-amber-200 text-amber-900' : 'bg-slate-200 text-slate-700'" x-text="counts.pending_sc"></span>
             </button>
 
-            <button @click="currentTab = 'return_sc'" :class="currentTab === 'return_sc' ? 'bg-purple-50 text-purple-800 font-semibold border-purple-200' : 'text-slate-600 hover:bg-slate-100 border-transparent'" class="px-3.5 py-2 text-xs rounded-lg border flex items-center gap-2 whitespace-nowrap transition">
+            <button x-show="currentUser?.role !== 'operator'" @click="currentTab = 'return_sc'" :class="currentTab === 'return_sc' ? 'bg-purple-50 text-purple-800 font-semibold border-purple-200' : 'text-slate-600 hover:bg-slate-100 border-transparent'" class="px-3.5 py-2 text-xs rounded-lg border flex items-center gap-2 whitespace-nowrap transition">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>
                 <span>3. Принятие из СЦ</span>
                 <span class="px-1.5 py-0.5 rounded-full text-[10px] font-bold" :class="counts.at_sc > 0 ? 'bg-purple-200 text-purple-900' : 'bg-slate-200 text-slate-700'" x-text="counts.at_sc"></span>
             </button>
 
-            <button @click="currentTab = 'install_wp'" :class="currentTab === 'install_wp' ? 'bg-emerald-50 text-emerald-800 font-semibold border-emerald-200' : 'text-slate-600 hover:bg-slate-100 border-transparent'" class="px-3.5 py-2 text-xs rounded-lg border flex items-center gap-2 whitespace-nowrap transition">
+            <button x-show="currentUser?.role !== 'operator'" @click="currentTab = 'install_wp'" :class="currentTab === 'install_wp' ? 'bg-emerald-50 text-emerald-800 font-semibold border-emerald-200' : 'text-slate-600 hover:bg-slate-100 border-transparent'" class="px-3.5 py-2 text-xs rounded-lg border flex items-center gap-2 whitespace-nowrap transition">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                 <span>4. Установка на место</span>
                 <span class="px-1.5 py-0.5 rounded-full text-[10px] font-bold" :class="counts.returned_it > 0 ? 'bg-emerald-200 text-emerald-900' : 'bg-slate-200 text-slate-700'" x-text="counts.returned_it"></span>
             </button>
 
-            <button @click="currentTab = 'models'" :class="currentTab === 'models' ? 'bg-brand-50 text-brand-700 font-semibold border-brand-200' : 'text-slate-600 hover:bg-slate-100 border-transparent'" class="px-3.5 py-2 text-xs rounded-lg border flex items-center gap-2 whitespace-nowrap transition">
+            <button x-show="currentUser?.role !== 'operator'" @click="currentTab = 'models'" :class="currentTab === 'models' ? 'bg-brand-50 text-brand-700 font-semibold border-brand-200' : 'text-slate-600 hover:bg-slate-100 border-transparent'" class="px-3.5 py-2 text-xs rounded-lg border flex items-center gap-2 whitespace-nowrap transition">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
                 <span>Справочник моделей</span>
             </button>
@@ -249,7 +249,7 @@
                                         <div class="text-[10px] text-slate-400" x-show="item.hostname" x-text="item.hostname + (item.os_name ? ' (' + item.os_name + ')' : '')"></div>
                                     </td>
                                     <td class="px-4 py-3">
-                                        <span class="px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-100 text-slate-700" x-text="item.asset_type"></span>
+                                        <span class="px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-100 text-slate-700" x-text="assetTypeLabel(item.asset_type)"></span>
                                     </td>
                                     <td class="px-4 py-3">
                                         <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold"
@@ -259,7 +259,7 @@
                                         </span>
                                     </td>
                                     <td class="px-4 py-3">
-                                        <span class="text-slate-600 text-[11px]" x-text="item.status"></span>
+                                        <span class="text-slate-600 text-[11px]" x-text="assetStatusLabel(item.status)"></span>
                                     </td>
                                     <td class="px-4 py-3 text-slate-700" x-text="item.cabinet || '—'"></td>
                                     <td class="px-4 py-3 text-slate-700" x-text="item.current_user_name || item.current_user_id || '—'"></td>

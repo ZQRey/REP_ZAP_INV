@@ -154,9 +154,15 @@ document.addEventListener('alpine:init', () => {
                 }
 
                 // Загружаем статистику локаций
-                const locRes = await fetch('/api/v1/location/stats' + (this.selectedBranchId ? '?branch_id=' + this.selectedBranchId : ''), { headers: this.getAuthHeaders() });
+                const locRes = await fetch((this.currentUser?.role === 'operator' ? '/api/v1/location/reports' : '/api/v1/location/stats') + (this.selectedBranchId ? '?branch_id=' + this.selectedBranchId : ''), { headers: this.getAuthHeaders() });
                 if (locRes.ok) {
-                    this.locationStats = await locRes.json();
+                    const data = await locRes.json();
+                    this.locationStats = this.currentUser?.role === 'operator' ? {
+                        floors: new Set(data.items.map(r => r.floor).filter(f => f && f !== 'Не размещена')).size,
+                        zones: new Set(data.items.map(r => r.floor + '/' + r.room).filter(f => !f.endsWith('/'))).size,
+                        assets_placed: new Set(data.items.filter(r => r.floor !== 'Не размещена' && r.inventory_number).map(r => r.inventory_number)).size,
+                        switches: new Set(data.items.map(r => r.switch_ip).filter(Boolean)).size
+                    } : data;
                 }
             } catch (e) {
                 console.error('Stats loading warning', e);
@@ -712,4 +718,3 @@ if (window.ApiClient && !window._sharedApiFetchInstalled) {
     window._sharedApiFetchInstalled = true;
     window.fetch = (resource, config) => window.ApiClient.request(resource, config);
 }
-

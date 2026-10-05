@@ -50,7 +50,7 @@ def test_empty_startup_is_read_only_and_requires_migration(empty_database):
 
 def test_fresh_upgrade_model_parity_and_startup(empty_database):
     command.upgrade(config(), "head")
-    assert current() == "0008_initial_password"
+    assert current() == "0009_reconcile_repair_batches"
     command.check(config())  # zero missing columns/FKs/indexes/types/defaults at head
     inspector = sa.inspect(engine)
     spec = json.loads((ROOT / "alembic/integrity_spec.json").read_text(encoding="utf-8"))
@@ -67,6 +67,26 @@ def test_fresh_upgrade_model_parity_and_startup(empty_database):
         from SHARED.models import Branch, DocumentCounter
         assert db.query(Branch).count() == 1
         assert db.query(DocumentCounter).count() == 2
+
+
+def test_completed_repair_act_is_reconciled_without_closing_active_act(empty_database):
+    from SHARED.models import Branch, Asset, RepairBatch, RepairBatchItem
+    command.upgrade(config(), "0008_initial_password")
+    with SessionLocal() as db:
+        db.add(Branch(id=1, name="Repair reconciliation"))
+        db.flush()
+        db.add_all([Asset(id=1, inventory_number="M1", name="Returned", branch_id=1),
+                    Asset(id=2, inventory_number="M2", name="Active", branch_id=1),
+                    RepairBatch(id=1, act_number="M1", vendor_name="SC", branch_id=1),
+                    RepairBatch(id=2, act_number="M2", vendor_name="SC", branch_id=1)])
+        db.flush()
+        db.add_all([RepairBatchItem(batch_id=1, asset_id=1, status="repaired"),
+                    RepairBatchItem(batch_id=2, asset_id=2, status="in_repair")])
+        db.commit()
+    command.upgrade(config(), "head")
+    with SessionLocal() as db:
+        assert db.get(RepairBatch, 1).status == "closed"
+        assert db.get(RepairBatch, 2).status == "open"
 
 
 def test_existing_exact_schema_requires_explicit_adoption_and_preserves_rows(empty_database):

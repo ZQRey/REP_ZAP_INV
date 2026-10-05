@@ -95,9 +95,7 @@ function cartridgeApp() {
             if (r === 'user') {
                 this.currentTab = 'registry';
             } else if (r === 'operator') {
-                if (this.currentTab === 'settings') {
-                    this.currentTab = 'acceptance';
-                }
+                this.currentTab = 'reports';
             } else if (r === 'admin') {
                 if (this.currentTab === 'settings') {
                     if (this.settingsTab !== 'branches' && this.settingsTab !== 'models' && (this.settingsTab !== 'whatsapp' || this.settings?.wa_mode !== 'individual')) {
@@ -109,6 +107,11 @@ function cartridgeApp() {
 
         async loadInitialData() {
             await this.loadBranches();
+            if (this.currentUser?.role === 'operator') {
+                this.currentTab = 'reports';
+                this.initReportsTab();
+                return;
+            }
             this.loadCartridgeModels();
             if (this.currentUser?.role === 'user') {
                 this.currentTab = 'registry';
@@ -738,6 +741,10 @@ function cartridgeApp() {
         },
 
         async submitAcceptance() {
+            if (!this.acceptance.form.current_user_id) {
+                this.showToast('Выберите сотрудника — владельца картриджа из списка', 'error');
+                return;
+            }
             if (!this.acceptance.form.marker_label.trim()) {
                 this.showToast('Укажите надпись маркером', 'error');
                 return;
@@ -882,7 +889,7 @@ function cartridgeApp() {
                 if (res.ok) {
                     const batchData = await res.json();
                     this.showToast(`Акт № ${batchData.act_number} сформирован! Открываем печатную форму...`, 'success');
-                    openAuthenticatedPrint(`/print/act/${batchData.id}`, this.authHeaders());
+                    this.showToast('Акт создан. Печать доступна в истории актов.', 'success');
                     await this.refreshStats();
                     await this.loadPendingCartridges();
                     this.loadBatchesHistory();

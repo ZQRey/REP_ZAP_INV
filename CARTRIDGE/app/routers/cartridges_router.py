@@ -53,7 +53,10 @@ def get_cartridges(
             )
         )
 
-    return query.order_by(Cartridge.updated_at.desc()).offset(offset).limit(limit).all()
+    carts = query.order_by(Cartridge.updated_at.desc()).offset(offset).limit(limit).all()
+    if current_user.role == "user":
+        return [CartridgeResponse.model_validate(cart).model_copy(update={"notes": None}) for cart in carts]
+    return carts
 
 
 @router.get("/search/quick")
@@ -121,7 +124,7 @@ def create_cartridge(
         cabinet=payload.cabinet.strip(),
         branch_id=payload.branch_id if current_user.role == "superadmin" else current_user.branch_id,
         status=payload.status,
-        current_user_id=payload.current_user_id,
+        current_user_id=payload.current_user_id or None,
         notes=payload.notes,
         updated_at=datetime.utcnow()
     )
@@ -132,7 +135,7 @@ def create_cartridge(
     log = HistoryLog(
         cartridge_id=cart.id,
         action="Создание картриджа",
-        user_name=payload.current_user_id,
+        user_name=current_user.full_name or current_user.username,
         details=f"Зарегистрирован в системе. Модель: {cart.model}, Кабинет: {cart.cabinet}."
     )
     db.add(log)
@@ -253,7 +256,7 @@ def accept_cartridge(
             branch_id=payload.branch_id if current_user.role == "superadmin" else current_user.branch_id,
             status=CartridgeStatus.PENDING_VENDOR,
             condition=payload.condition or "broken",
-            current_user_id=payload.current_user_id,
+            current_user_id=payload.current_user_id or None,
             notes=payload.notes,
             updated_at=now
         )
@@ -289,7 +292,7 @@ def accept_cartridge(
     log = HistoryLog(
         cartridge_id=cart.id,
         action=action_msg,
-        user_name=user_name,
+        user_name=current_user.full_name or current_user.username,
         details=details
     )
     db.add(log)
@@ -332,7 +335,7 @@ def issue_cartridge(
     log = HistoryLog(
         cartridge_id=cart.id,
         action="Выдача в работу",
-        user_name=user_name,
+        user_name=current_user.full_name or current_user.username,
         details=f"Картридж выдан в кабинет {cart.cabinet} сотруднику {user_name}. {actual_notes or ''}"
     )
     db.add(log)
@@ -371,7 +374,7 @@ def bulk_issue_cartridges(
         log = HistoryLog(
             cartridge_id=cart.id,
             action="Выдача в работу (массовая)",
-            user_name=user_name,
+            user_name=current_user.full_name or current_user.username,
             details=f"Картридж выдан в кабинет {cart.cabinet} сотруднику {user_name}. {payload.notes or ''}"
         )
         db.add(log)

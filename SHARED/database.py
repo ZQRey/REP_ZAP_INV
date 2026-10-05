@@ -8,7 +8,11 @@ logger = logging.getLogger("SHARED.database")
 
 # Поддержка SQLite и PostgreSQL
 connect_args = {}
-from SHARED.security_config import DATABASE_URL
+from SHARED.config_values import secret
+DATABASE_URL = secret("DATABASE_URL")
+if not DATABASE_URL and os.getenv("APP_ENV", "production").lower() in {"development", "test"}:
+    from pathlib import Path
+    DATABASE_URL = "sqlite:///" + (Path(__file__).resolve().parents[1] / "BD/app_unified.db").as_posix()
 effective_db_url = DATABASE_URL.strip()
 if not effective_db_url:
     raise RuntimeError("Required configuration missing: DATABASE_URL")

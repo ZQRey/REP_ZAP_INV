@@ -148,10 +148,71 @@ def test_viewer_cannot_mutate_any_endpoint(branches):
     from SHARED.policies.http import POLICIES, endpoint_key
     for path, method, route in routes(app):
         policy = POLICIES[endpoint_key(route.endpoint, method)]
-        if policy["public"] or policy["action"] == "read":
+        if policy["public"] or policy["action"] in {"read", "password_self"}:
             continue
         response = branches.request(method, re.sub(r"\{[^}]+\}", "1", path), json={}, headers=headers("viewer1"))
         assert response.status_code == 403, (method, path, response.text)
+
+
+def test_operator_only_reports_and_no_side_effects(branches):
+    import re
+    from main_server import app
+    from SHARED.policies.http import POLICIES, endpoint_key
+    for path, method, route in routes(app):
+        policy = POLICIES[endpoint_key(route.endpoint, method)]
+        if policy["public"] or "operator" in policy["roles"]:
+            continue
+        response = branches.request(method, re.sub(r"\{[^}]+\}", "1", path), json={}, headers=headers("operator1"))
+        assert response.status_code == 403, (method, path, response.text)
+    for path in ("/api/reports/data", "/api/v1/repair/reports/data", "/api/v1/location/reports", "/api/v1/location/reports/csv"):
+        assert branches.get(path, headers=headers("operator1")).status_code == 200
+
+
+def test_network_report_scope_and_shared_port(branches):
+    with SessionLocal() as db:
+        db.get(m.Asset, 1).mac_address = "AA:BB:CC:DD:EE:01"
+        db.get(m.Asset, 2).mac_address = "AA:BB:CC:DD:EE:02"
+        db.get(m.SwitchPort, 1).learned_macs = ["AA:BB:CC:DD:EE:01", "11:22:33:44:55:66"]
+        db.commit()
+    response = branches.get("/api/v1/location/reports", headers=headers("operator1"))
+    assert response.status_code == 200, response.text
+    data = response.json()
+    assert "INV1" in str(data)
+    assert "INV2" not in str(data)
+    assert "Branch 2" not in str(data)
+    assert len([r for r in data["items"] if r["port"] == 1]) == 2
+    assert branches.get("/api/v1/location/reports?branch_id=2", headers=headers("operator1")).status_code == 403
+    assert branches.get("/api/cartridges/1", headers=headers("user1")).status_code == 403
+
+
+def test_manual_registration_accepts_no_employee(branches):
+    response = branches.post("/api/v1/repair/equipment", headers=headers("admin1"), json={
+        "inventory_number": "EMPTY-OWNER", "name": "Monitor", "asset_type": "monitor", "current_user_id": ""})
+    assert response.status_code == 200, response.text
+    assert response.json()["current_user_id"] is None
+
+
+def test_unmanaged_switch_supports_28_ports_and_manual_mapping(branches):
+    response = branches.put("/api/v1/location/switches/1/ports/1", headers=headers("admin1"), json={
+        "connection_mode": "unmanaged", "downstream_name": "Office 28", "downstream_port_count": 28,
+        "downstream_ports": {"AA:BB:CC:DD:EE:01": 28}})
+    assert response.status_code == 200, response.text
+    assert response.json()["downstream_port_count"] == 28
+    assert response.json()["downstream_ports"]["AA:BB:CC:DD:EE:01"] == 28
+    response = branches.put("/api/v1/location/switches/1/ports/1", headers=headers("admin1"), json={
+        "downstream_ports": {"AA:BB:CC:DD:EE:01": 29}})
+    assert response.status_code == 422
+
+
+def test_acceptance_is_not_a_second_repair(branches):
+    with SessionLocal() as db:
+        db.add_all([m.EquipmentHistoryLog(asset_id=1, action="Приемка в IT-отдел"),
+                    m.EquipmentHistoryLog(asset_id=1, action="Передача в сервисный центр")])
+        db.commit()
+    response = branches.get("/api/v1/repair/reports/data", headers=headers("admin1"))
+    assert response.status_code == 200, response.text
+    row = next(r for r in response.json()["report"]["items"] if r["inventory_number"] == "INV1")
+    assert row["repairs_count_all"] == 1
 
 
 def test_branch_selection_rejected_on_every_scoped_endpoint(branches):
@@ -167,7 +228,7 @@ def test_branch_selection_rejected_on_every_scoped_endpoint(branches):
 
 
 def test_creates_use_server_branch_and_explicit_superadmin_scope(branches):
-    for username, branch, status in [("operator1", None, 200), ("root", 2, 200)]:
+    for username, branch, status in [("admin1", None, 200), ("root", 2, 200)]:
         payload = {"inventory_number": username, "name": "Created"}
         if branch is not None:
             payload["branch_id"] = branch
@@ -183,7 +244,7 @@ def test_batch_creation_retains_valid_branch_workflow(branches):
         db.commit()
     for url, body in [("/api/v1/repair/batches", {"asset_ids": [1], "vendor_name": "SC"}),
                       ("/api/batches", {"cartridge_ids": [1], "vendor_name": "SC"})]:
-        response = branches.post(url, json=body, headers=headers("operator1"))
+        response = branches.post(url, json=body, headers=headers("admin1"))
         assert response.status_code in (200, 201), response.text
     with SessionLocal() as db:
         assert db.query(m.RepairBatch).order_by(m.RepairBatch.id.desc()).first().branch_id == 1
