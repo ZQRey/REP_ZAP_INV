@@ -278,7 +278,7 @@ def test_jwt_policy(mutation):
 
 
 def test_ad_cannot_take_over_local_identity(client, account, monkeypatch):
-    from app.services.ldap_service import LDAPService
+    from CARTRIDGE.app.services.ldap_service import LDAPService
     monkeypatch.setattr(LDAPService, "authenticate_ad_user", lambda **kw: (True, account["username"], {}))
     for path in ("/api/auth/login", "/api/v1/auth/login"):
         response = client.post(path, json={**account, "auth_type": "ad"})
