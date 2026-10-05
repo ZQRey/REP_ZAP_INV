@@ -249,9 +249,9 @@ class Notification(Base):
     template = Column(String(100), nullable=True)
     payload = Column(JSON, nullable=False, default=dict)
     status = Column(SQLEnum(NotificationStatus), nullable=False, default=NotificationStatus.PENDING)
-    attempts = Column(Integer, nullable=False, default=0)
+    attempts = Column(Integer, nullable=False, default=0, server_default="0")
     next_attempt_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow, server_default=func.now())
     sent_at = Column(DateTime, nullable=True)
     provider_message_id = Column(String(255), nullable=True)
     idempotency_key = Column(String(255), nullable=False)
@@ -552,7 +552,7 @@ class NetworkSwitch(Base):
     ip_address = Column(String(50), nullable=False)
     management_type = Column(String(50), default="snmp")    # "omada", "mikrotik", "hp", "tplink", "snmp", "ssh_cli"
     mgmt_port = Column(Integer, default=161, nullable=False)
-    username = Column(String(500), nullable=True)
+    username = Column(String(100), nullable=True)
     _password = Column("password", String(1000), nullable=True)
     _snmp_community = Column("snmp_community", String(1000), default="")
 
