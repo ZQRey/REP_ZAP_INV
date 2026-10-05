@@ -1,4 +1,4 @@
-from SHARED.authentication import require_authenticated_user
+from SHARED.authentication import require_authenticated_user, require_superadmin
 from SHARED.settings_security import public_settings
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -20,7 +20,7 @@ def get_settings(
 ):
     """Получить текущие настройки системы (пароль AD и WA API Key скрыты для не-суперадминов)."""
     settings = SettingsService.get_all(db)
-    return public_settings(settings)
+    return public_settings(settings, reveal_bind_user=current_user.role == "superadmin")
 
 
 @router.post("")
@@ -28,7 +28,7 @@ def get_settings(
 def update_settings(
     payload: SettingsDict,
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_authenticated_user)
+    current_user: AppUser = Depends(require_superadmin)
 ):
     """Обновить настройки системы в БД (доступно только Супер администратору)."""
     cleaned = dict(payload.settings)
@@ -38,14 +38,14 @@ def update_settings(
         cleaned.pop("wa_api_key", None)
 
     updated = SettingsService.update_bulk(db, cleaned)
-    return {"success": True, "settings": public_settings(updated)}
+    return {"success": True, "settings": public_settings(updated, reveal_bind_user=True)}
 
 
 @router.post("/ldap/test")
 def test_ldap_connection(
     payload: LdapTestRequest,
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_authenticated_user)
+    current_user: AppUser = Depends(require_superadmin)
 ):
     """Проверить подключение к Active Directory / LDAP (только Супер администратор)."""
     password = payload.bind_password
@@ -65,7 +65,7 @@ def test_ldap_connection(
 @router.post("/ad-sync")
 def sync_ad_users(
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_authenticated_user)
+    current_user: AppUser = Depends(require_superadmin)
 ):
     """Запустить синхронизацию пользователей из AD (только Супер администратор)."""
     result = LDAPService.sync_users(db)
