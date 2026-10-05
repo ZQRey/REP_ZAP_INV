@@ -16,7 +16,6 @@ from sqlalchemy import (
     func
 )
 from sqlalchemy.orm import relationship, synonym
-from sqlalchemy.ext.hybrid import hybrid_property
 from SHARED.database import Base
 
 
@@ -241,7 +240,7 @@ class Notification(Base):
         CheckConstraint("attempts >= 0", name="ck_notifications_attempts"),
     )
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    id = Column(BigInteger().with_variant(Integer(), "sqlite"), primary_key=True, autoincrement=True)
     branch_id = Column(Integer, ForeignKey("branches.id", ondelete="SET NULL"), nullable=True)
     cartridge_id = Column(Integer, ForeignKey("cartridges.id", ondelete="SET NULL"), nullable=True)
     channel = Column(String(32), nullable=False, default="whatsapp")
@@ -556,7 +555,7 @@ class NetworkSwitch(Base):
     _password = Column("password", String(1000), nullable=True)
     _snmp_community = Column("snmp_community", String(1000), default="")
 
-    @hybrid_property
+    @property
     def password(self):
         from SHARED.credential_crypto import decrypt_secret
         return decrypt_secret(self._password)
@@ -566,7 +565,7 @@ class NetworkSwitch(Base):
         from SHARED.credential_crypto import encrypt_secret
         self._password = encrypt_secret(value)
 
-    @hybrid_property
+    @property
     def snmp_community(self):
         from SHARED.credential_crypto import decrypt_secret
         return decrypt_secret(self._snmp_community)
