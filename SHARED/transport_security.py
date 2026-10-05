@@ -1,6 +1,6 @@
 """Verified transports with explicit opt-in for trusted-network plaintext LDAP."""
 import ssl
-from SHARED.security_config import TLS_CA_FILE, SSH_KNOWN_HOSTS, LDAP_ALLOW_PLAINTEXT
+from SHARED.security_config import TLS_CA_FILE, SSH_KNOWN_HOSTS
 
 
 def tls_context():
@@ -17,7 +17,7 @@ def ssh_client():
     return client
 
 
-def ldap_connection(host, port, use_ssl, user, password, timeout=5):
+def ldap_connection(host, port, use_ssl, user, password, timeout=5, allow_plaintext=False):
     from ldap3 import Server, Connection, Tls, NONE, AUTO_BIND_NO_TLS, AUTO_BIND_TLS_BEFORE_BIND
     if not user or not password:
         raise ValueError("LDAP credentials required")
@@ -27,7 +27,7 @@ def ldap_connection(host, port, use_ssl, user, password, timeout=5):
                     tls=Tls(validate=ssl.CERT_REQUIRED, ca_certs_file=TLS_CA_FILE))
     if use_ssl:
         auto_bind = AUTO_BIND_NO_TLS
-    elif LDAP_ALLOW_PLAINTEXT:
+    elif allow_plaintext:
         auto_bind = AUTO_BIND_NO_TLS
     else:
         auto_bind = AUTO_BIND_TLS_BEFORE_BIND

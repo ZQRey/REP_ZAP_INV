@@ -227,8 +227,7 @@ def test_ldap_requires_verified_tls(monkeypatch):
     factory = Mock()
     monkeypatch.setattr(ldap3, "Connection", factory)
 
-    monkeypatch.setattr(transport, "LDAP_ALLOW_PLAINTEXT", False)
-    transport.ldap_connection("dc.example", 389, False, "test", secrets.token_urlsafe(24))
+    transport.ldap_connection("dc.example", 389, False, "test", secrets.token_urlsafe(24), allow_plaintext=False)
     server = factory.call_args.args[0]
     assert server.tls.validate == ssl.CERT_REQUIRED
     assert factory.call_args.kwargs["auto_bind"] == ldap3.AUTO_BIND_TLS_BEFORE_BIND
@@ -238,8 +237,7 @@ def test_ldap_requires_verified_tls(monkeypatch):
     assert server.tls.validate == ssl.CERT_REQUIRED
     assert factory.call_args.kwargs["auto_bind"] == ldap3.AUTO_BIND_NO_TLS
 
-    monkeypatch.setattr(transport, "LDAP_ALLOW_PLAINTEXT", True)
-    transport.ldap_connection("dc.example", 389, False, "test", secrets.token_urlsafe(24))
+    transport.ldap_connection("dc.example", 389, False, "test", secrets.token_urlsafe(24), allow_plaintext=True)
     assert factory.call_args.kwargs["auto_bind"] == ldap3.AUTO_BIND_NO_TLS
 
 

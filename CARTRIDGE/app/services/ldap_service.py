@@ -91,13 +91,14 @@ class LDAPService:
         bind_user: str,
         bind_password: str,
         connect_timeout: int = 5,
-        base_dn: str = ""
+        base_dn: str = "",
+        allow_plaintext: bool = False,
     ) -> Connection:
         """Создает и возвращает объект Connection библиотеки ldap3."""
         server_address, port, use_ssl = cls.parse_ldap_server(host)
 
         effective_user = cls.normalize_bind_user(bind_user, base_dn)
-        return ldap_connection(server_address, port, use_ssl, effective_user, bind_password, connect_timeout)
+        return ldap_connection(server_address, port, use_ssl, effective_user, bind_password, connect_timeout, allow_plaintext=allow_plaintext)
 
     @classmethod
     def test_connection(
@@ -114,6 +115,7 @@ class LDAPService:
         u = bind_user or settings.get("ad_bind_user")
         p = bind_password if bind_password is not None else settings.get("ad_bind_password")
         b = base_dn or settings.get("ad_base_dn")
+        allow_plaintext = str(settings.get("ad_allow_plaintext", "false")).lower() == "true"
 
         if not h or not u:
             return {
@@ -159,7 +161,7 @@ class LDAPService:
 
         # 3. Аутентификация и проверка Base DN
         try:
-            conn = cls._create_connection(h, u, p, connect_timeout=5, base_dn=b)
+            conn = cls._create_connection(h, u, p, connect_timeout=5, base_dn=b, allow_plaintext=allow_plaintext)
             # Тестовый поиск
             search_ok = conn.search(
                 search_base=b if b else "",
@@ -181,8 +183,8 @@ class LDAPService:
                     "message": (
                         f"Ошибка StartTLS ({normalized_target}). Контроллер домена не смог установить TLS "
                         "или его сертификат не доверен контейнеру. Для защищенного режима настройте LDAP-сертификат "
-                        "на DC и TLS_CA_FILE/LDAPS. Для временного использования обычного LDAP во внутренней сети "
-                        "разрешите LDAP_ALLOW_PLAINTEXT=true и пересоздайте unified-server."
+                        "на DC и TLS_CA_FILE/LDAPS. Если это доверенная внутренняя сеть, включите в веб-панели "
+                        "«Разрешить обычный LDAP без StartTLS», сохраните настройки и повторите тест."
                     ),
                 }
             if "52e" in err_str:
@@ -218,6 +220,7 @@ class LDAPService:
         base_dn = settings.get("ad_base_dn")
         bind_user = settings.get("ad_bind_user")
         bind_password = settings.get("ad_bind_password")
+        allow_plaintext = str(settings.get("ad_allow_plaintext", "false")).lower() == "true"
         
         attr_name = settings.get("ad_attr_name", "displayName").strip()
         attr_cabinet = settings.get("ad_attr_cabinet", "physicalDeliveryOfficeName").strip()
@@ -238,7 +241,7 @@ class LDAPService:
             }
 
         try:
-            conn = cls._create_connection(host, bind_user, bind_password, connect_timeout=10, base_dn=base_dn)
+            conn = cls._create_connection(host, bind_user, bind_password, connect_timeout=10, base_dn=base_dn, allow_plaintext=allow_plaintext)
         except Exception as e:
             return {
                 "success": False,
@@ -367,6 +370,7 @@ class LDAPService:
         base_dn = settings.get("ad_base_dn")
         bind_user = settings.get("ad_bind_user")
         bind_password = settings.get("ad_bind_password")
+        allow_plaintext = str(settings.get("ad_allow_plaintext", "false")).lower() == "true"
 
         if not host:
             return False, None, None
@@ -399,7 +403,7 @@ class LDAPService:
         # Стратегия 1: Поиск DN пользователя через служебную учетную запись Bind User
         if bind_user and bind_password and base_dn:
             try:
-                conn = cls._create_connection(host, bind_user, bind_password, connect_timeout=5)
+                conn = cls._create_connection(host, bind_user, bind_password, connect_timeout=5, base_dn=base_dn, allow_plaintext=allow_plaintext)
                 search_filter = f"(|(sAMAccountName={escape_filter_chars(sam_account)})(userPrincipalName={escape_filter_chars(clean)}))"
                 req_attrs = ["sAMAccountName", "userPrincipalName", attr_name, attr_cabinet, attr_dept] + phone_attrs
                 conn.search(
@@ -450,7 +454,7 @@ class LDAPService:
 
                     # Проверяем пароль пользователя подключением от имени найденного DN
                     try:
-                        u_conn = cls._create_connection(host, user_dn, password, connect_timeout=5)
+                        u_conn = cls._create_connection(host, user_dn, password, connect_timeout=5, base_dn=base_dn, allow_plaintext=allow_plaintext)
                         u_conn.unbind()
                         return True, sam_account, user_info
                     except Exception:

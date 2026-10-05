@@ -360,6 +360,17 @@
                         <p class="text-[10px] text-slate-400 mt-0.5">Пример: ldap://dc01.gp1.loc:389 или ldap://192.168.1.10:389 (порт через двоеточие :389)</p>
                     </div>
 
+                    <label class="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2.5">
+                        <input type="checkbox"
+                               :checked="settingsData.ad_allow_plaintext === 'true'"
+                               @change="settingsData.ad_allow_plaintext = $event.target.checked ? 'true' : 'false'"
+                               class="mt-0.5 rounded border-amber-300 text-amber-600 focus:ring-amber-500">
+                        <span>
+                            <span class="block font-semibold text-amber-900">Разрешить обычный LDAP без StartTLS</span>
+                            <span class="block text-[10px] text-amber-700 mt-0.5">Используйте только для доверенной внутренней сети. Для LDAPS/StartTLS оставьте выключенным.</span>
+                        </span>
+                    </label>
+
                     <div>
                         <label class="block font-semibold text-slate-700 mb-1">Base DN (Корень каталога домена)</label>
                         <input type="text" x-model="settingsData.ad_base_dn" placeholder="DC=gp1,DC=loc" class="w-full border border-slate-200 rounded-lg px-3 py-2 bg-white">
