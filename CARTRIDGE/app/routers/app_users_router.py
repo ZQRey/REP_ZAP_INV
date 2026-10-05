@@ -1,4 +1,4 @@
-from SHARED.authentication import require_authenticated_user
+from SHARED.authentication import require_superadmin
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session, joinedload
@@ -14,7 +14,7 @@ router = APIRouter(prefix="/api/app-users", tags=["AppUsers"])
 @router.get("", response_model=List[AppUserResponse])
 def get_users(
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_authenticated_user)
+    current_user: AppUser = Depends(require_superadmin)
 ):
     """Список пользователей системы (доступно только Супер администратору)."""
     return db.query(AppUser).options(
@@ -26,7 +26,7 @@ def get_users(
 def create_user(
     payload: AppUserCreate,
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_authenticated_user)
+    current_user: AppUser = Depends(require_superadmin)
 ):
     """Создать учетную запись пользователя."""
     username = payload.username.strip()
@@ -68,7 +68,7 @@ def update_user(
     user_id: int,
     payload: AppUserUpdate,
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_authenticated_user)
+    current_user: AppUser = Depends(require_superadmin)
 ):
     """Редактировать пользователя (ФИО, пароль, роль, блокировка, филиал)."""
     user = db.query(AppUser).filter(AppUser.id == user_id).first()
@@ -112,7 +112,7 @@ def update_user(
 def delete_user(
     user_id: int,
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_authenticated_user)
+    current_user: AppUser = Depends(require_superadmin)
 ):
     """Удалить пользователя."""
     user = db.query(AppUser).filter(AppUser.id == user_id).first()
@@ -134,7 +134,7 @@ def delete_user(
 def toggle_user_active(
     user_id: int,
     db: Session = Depends(get_db),
-    current_user: AppUser = Depends(require_authenticated_user)
+    current_user: AppUser = Depends(require_superadmin)
 ):
     """Быстрая блокировка / разблокировка учетной записи."""
     user = db.query(AppUser).filter(AppUser.id == user_id).first()
