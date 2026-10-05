@@ -37,7 +37,11 @@ def prepare(root=Path('/state'), secret_dir=Path('/run/app-secrets')):
     provision('REDIS_URL', lambda: f'redis://:{quote(redis, safe="")}@redis:6379/0')
     provision('EVOLUTION_DATABASE_URL', lambda: f'postgresql://app_user:{quote(password, safe="")}@postgres-db:5432/evolution')
     provision('EVOLUTION_REDIS_URL', lambda: f'redis://:{quote(redis, safe="")}@redis:6379/1')
-    for relative in ('BD', 'uploads', 'uploads/maps', 'secrets/ssh'):
+    # Production stores data in PostgreSQL; preserve ownership of the checkout's
+    # BD parent and never touch PostgreSQL/Redis data directory ownership.
+    (root / 'BD').mkdir(parents=True, exist_ok=True)
+    os.chmod(root / 'BD', 0o755)
+    for relative in ('uploads', 'uploads/maps', 'secrets/ssh'):
         path = root / relative
         path.mkdir(parents=True, exist_ok=True)
         os.chown(path, 10001, 10001)
