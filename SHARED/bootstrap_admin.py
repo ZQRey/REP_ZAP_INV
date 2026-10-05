@@ -1,27 +1,88 @@
-"""Explicit provisioning; never executed by server startup."""
+"""Explicit administrator provisioning/reset; never executed by server startup."""
 import argparse
 import getpass
+import sys
+
+from SHARED.passwords import MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH
+
+
+def _read_password(args, parser):
+    if args.password_stdin:
+        password = sys.stdin.readline().rstrip("\r\n")
+        if not password:
+            parser.error("Password was not provided on stdin")
+        return password
+
+    password = getpass.getpass(
+        f"New administrator password ({MIN_PASSWORD_LENGTH}-{MAX_PASSWORD_LENGTH} characters): "
+    )
+    confirmation = getpass.getpass("Confirm password: ")
+    if password != confirmation:
+        parser.error("Password confirmation differs")
+    return password
 
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--username", required=True)
+    parser = argparse.ArgumentParser(
+        description="Create or explicitly reset a local superadmin account."
+    )
+    parser.add_argument("--username", default="admin")
+    parser.add_argument(
+        "--reset-existing",
+        action="store_true",
+        help="Reset an existing account to active local superadmin and replace its password.",
+    )
+    parser.add_argument(
+        "--password-stdin",
+        action="store_true",
+        help="Read the password from stdin instead of prompting. Useful for controlled deployment commands.",
+    )
     args = parser.parse_args()
-    password = getpass.getpass("New administrator password (at least 16 characters): ")
-    if len(password) < 16 or password != getpass.getpass("Confirm password: "):
-        parser.error("Password too short or confirmation differs")
+
+    password = _read_password(args, parser)
+    if not MIN_PASSWORD_LENGTH <= len(password) <= MAX_PASSWORD_LENGTH:
+        parser.error(
+            f"Password length must be between {MIN_PASSWORD_LENGTH} and {MAX_PASSWORD_LENGTH} characters"
+        )
+
     from SHARED.database import session_scope, init_db
     from SHARED.models import AppUser
     from SHARED.auth_service import AuthService
+
     init_db()
+    username = args.username.strip()
+    if not username:
+        parser.error("Username must not be empty")
+
     with session_scope() as db:
-        if db.query(AppUser).filter(AppUser.username == args.username.strip()).first():
-            parser.error("Account already exists; use the authorized password reset workflow")
-        db.add(AppUser(username=args.username.strip(), full_name=args.username.strip(),
-                       password_hash=AuthService.hash_password(password), auth_type="local",
-                       role="superadmin", is_active=True))
+        user = db.query(AppUser).filter(AppUser.username == username).first()
+        if user is not None:
+            if not args.reset_existing:
+                parser.error(
+                    "Account already exists; pass --reset-existing for an explicit administrator reset"
+                )
+            user.full_name = user.full_name or username
+            user.password_hash = AuthService.hash_password(password)
+            user.auth_type = "local"
+            user.role = "superadmin"
+            user.is_active = True
+            user.branch_id = None
+            action = "reset"
+        else:
+            user = AppUser(
+                username=username,
+                full_name=username,
+                password_hash=AuthService.hash_password(password),
+                auth_type="local",
+                role="superadmin",
+                is_active=True,
+                branch_id=None,
+            )
+            db.add(user)
+            action = "created"
         db.commit()
-    print("Administrator created")
+
+    print(f"Administrator {username!r} {action}")
 
 
 if __name__ == "__main__":

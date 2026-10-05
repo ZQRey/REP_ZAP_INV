@@ -3,18 +3,20 @@ import hashlib
 import secrets
 
 ITERATIONS = 600_000
+MIN_PASSWORD_LENGTH = 8
+MAX_PASSWORD_LENGTH = 1024
 
 
 def hash_password(password):
-    if not 12 <= len(password) <= 1024:
-        raise ValueError("Password length must be between 12 and 1024 characters")
+    if not MIN_PASSWORD_LENGTH <= len(password) <= MAX_PASSWORD_LENGTH:
+        raise ValueError(f"Password length must be between {MIN_PASSWORD_LENGTH} and {MAX_PASSWORD_LENGTH} characters")
     salt = secrets.token_hex(16)
     digest = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), ITERATIONS).hex()
     return f"pbkdf2_sha256${ITERATIONS}${salt}${digest}"
 
 
 def verify_password(password, hashed):
-    if not password or len(password) > 1024 or not hashed:
+    if not password or len(password) > MAX_PASSWORD_LENGTH or not hashed:
         return False
     try:
         parts = hashed.split("$")

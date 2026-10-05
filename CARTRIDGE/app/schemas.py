@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field, ConfigDict
 from SHARED.models import CartridgeStatus
+from SHARED.passwords import MIN_PASSWORD_LENGTH
 
 
 # --- Филиалы ---
@@ -48,7 +49,7 @@ class AppUserBase(BaseModel):
 class AppUserCreate(BaseModel):
     username: str
     full_name: str
-    password: Optional[str] = Field(default=None, min_length=12, max_length=1024)
+    password: Optional[str] = Field(default=None, min_length=MIN_PASSWORD_LENGTH, max_length=1024)
     auth_type: str = "local"
     role: str = "user"
     is_active: bool = True
@@ -57,7 +58,7 @@ class AppUserCreate(BaseModel):
 
 class AppUserUpdate(BaseModel):
     full_name: Optional[str] = None
-    password: Optional[str] = Field(default=None, min_length=12, max_length=1024)
+    password: Optional[str] = Field(default=None, min_length=MIN_PASSWORD_LENGTH, max_length=1024)
     role: Optional[str] = None
     is_active: Optional[bool] = None
     branch_id: Optional[int] = None
@@ -100,7 +101,7 @@ class LdapTestRequest(BaseModel):
     host: Optional[str] = None
     base_dn: Optional[str] = None
     bind_user: Optional[str] = None
-    bind_password: Optional[str] = Field(default=None, min_length=12, max_length=1024)
+    bind_password: Optional[str] = Field(default=None, min_length=MIN_PASSWORD_LENGTH, max_length=1024)
 
 
 class WhatsAppTestRequest(BaseModel):
