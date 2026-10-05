@@ -81,6 +81,19 @@ def init_db():
                         )
                     )
 
+            # Encrypt LDAP credentials that may have been stored by older releases as plaintext.
+            from SHARED.credential_crypto import PREFIX, encrypt_secret
+            for secret_key in ("ad_bind_user", "ad_bind_password"):
+                secret_setting = db.query(models.SystemSetting).filter(
+                    models.SystemSetting.key == secret_key
+                ).first()
+                if (
+                    secret_setting
+                    and secret_setting.value
+                    and not secret_setting.value.startswith(PREFIX)
+                ):
+                    secret_setting.value = encrypt_secret(secret_setting.value)
+
             # Автоматическое обновление устаревших шаблонных значений LDAP до короткого формата
             bind_user_setting = db.query(models.SystemSetting).filter(models.SystemSetting.key == "ad_bind_user").first()
             if bind_user_setting and bind_user_setting.value == "CN=svc_ldap,OU=Service,DC=company,DC=local":
