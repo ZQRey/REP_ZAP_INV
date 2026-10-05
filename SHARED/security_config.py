@@ -58,4 +58,5 @@ for origin in CORS_ORIGINS:
     if parsed.scheme not in ({"https"} if PRODUCTION else {"http", "https"}) or not parsed.netloc or parsed.path or parsed.query or parsed.fragment or parsed.username or "*" in origin:
         raise RuntimeError("CORS_ORIGINS must contain explicit origins (HTTPS in production)")
 TLS_CA_FILE = os.getenv("TLS_CA_FILE") or None
+LDAP_ALLOW_PLAINTEXT = os.getenv("LDAP_ALLOW_PLAINTEXT", "false").lower() == "true"
 SSH_KNOWN_HOSTS = os.getenv("SSH_KNOWN_HOSTS") or None
