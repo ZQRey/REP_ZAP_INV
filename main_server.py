@@ -254,7 +254,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Unified IT Enterprise Platform Server")
     parser.add_argument("--port", type=int, default=int(os.getenv("PORT", "8000")), help="Port to listen on (default 8000 or 80)")
-    parser.add_argument("--host", type=str, default=os.getenv("HOST", "0.0.0.0"), help="Host to bind to")
+    parser.add_argument("--host", type=str, default=os.getenv("HOST", "0.0.0.0"), help="Host to bind to")  # nosec B104 - container/dev server bind address
     parser.add_argument("--reload", action="store_true", default=False, help="Enable auto-reload")
     args = parser.parse_args()
 

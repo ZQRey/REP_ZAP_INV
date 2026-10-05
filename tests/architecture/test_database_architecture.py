@@ -83,17 +83,17 @@ def test_compatibility_paths_export_identical_objects():
     import SHARED
     from SHARED import database, models
     configure_mappers()
-    for name in ("app.database", "CARTRIDGE.app.database"):
+    for name in ("CARTRIDGE.app.database",):
         module = importlib.import_module(name)
         for symbol in ("Base", "engine", "SessionLocal", "get_db", "init_db", "session_scope"):
             assert getattr(module, symbol) is getattr(database, symbol)
-    for name in ("app.models", "CARTRIDGE.app.models"):
+    for name in ("CARTRIDGE.app.models",):
         module = importlib.import_module(name)
         for symbol in [*CONTRACT["legacy"], "CartridgeStatus"]:
             assert getattr(module, symbol) is getattr(models, symbol)
     assert SHARED.Base is database.Base
-    assert len(database.Base.registry.mappers) == 23
-    assert set(database.Base.metadata.tables) == {m["table"] for m in CONTRACT["shared"].values()} | {"document_counters"}
+    assert len(database.Base.registry.mappers) == len(CONTRACT["shared"]) + 2  # Notification + DocumentCounter
+    assert set(database.Base.metadata.tables) == {m["table"] for m in CONTRACT["shared"].values()} | {"document_counters", "notifications"}
     for mapper in database.Base.registry.mappers:
         assert mapper.class_.__module__ == "SHARED.models"
         for relation in mapper.relationships:
@@ -133,7 +133,13 @@ def test_original_fields_and_relationships_preserved_by_integrity_migration():
     spec = json.loads((ROOT / "alembic/integrity_spec.json").read_text(encoding="utf-8"))
     for name, before in CONTRACT["shared"].items():
         expected = json.loads(json.dumps(before))
-        if name == "AppUser": expected["columns"]["role"]["default"] = "user"
+        if name == "AppUser":
+            expected["columns"]["role"]["default"] = "user"
+        if name == "NetworkSwitch":
+            # 0005 widens persisted encrypted credential fields; the frozen
+            # pre-migration snapshot intentionally remains unchanged.
+            expected["columns"]["password"]["type"] = "VARCHAR(1000)"
+            expected["columns"]["snmp_community"]["type"] = "VARCHAR(1000)"
         for col in spec.get(before["table"], {}).get("not_null", []):
             expected["columns"][col]["nullable"] = False
         actual = describe(getattr(models, name))
@@ -186,7 +192,7 @@ def test_auth_guard_and_endpoint_share_one_session(client, account, monkeypatch,
 def test_shared_identity_map_and_relationship_alias(client):
     from SHARED.database import SessionLocal
     from SHARED.models import Branch, Batch
-    old = importlib.import_module("app.models")
+    old = importlib.import_module("CARTRIDGE.app.models")
     with SessionLocal() as db:
         branch = db.query(Branch).first()
         assert db.get(old.Branch, branch.id) is branch

@@ -16,7 +16,6 @@ from sqlalchemy import (
     func
 )
 from sqlalchemy.orm import relationship, synonym
-from sqlalchemy.ext.hybrid import hybrid_property
 from SHARED.database import Base
 
 
@@ -241,7 +240,7 @@ class Notification(Base):
         CheckConstraint("attempts >= 0", name="ck_notifications_attempts"),
     )
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    id = Column(BigInteger().with_variant(Integer(), "sqlite"), primary_key=True, autoincrement=True)
     branch_id = Column(Integer, ForeignKey("branches.id", ondelete="SET NULL"), nullable=True)
     cartridge_id = Column(Integer, ForeignKey("cartridges.id", ondelete="SET NULL"), nullable=True)
     channel = Column(String(32), nullable=False, default="whatsapp")
@@ -249,9 +248,9 @@ class Notification(Base):
     template = Column(String(100), nullable=True)
     payload = Column(JSON, nullable=False, default=dict)
     status = Column(SQLEnum(NotificationStatus), nullable=False, default=NotificationStatus.PENDING)
-    attempts = Column(Integer, nullable=False, default=0)
+    attempts = Column(Integer, nullable=False, default=0, server_default="0")
     next_attempt_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow, server_default=func.now())
     sent_at = Column(DateTime, nullable=True)
     provider_message_id = Column(String(255), nullable=True)
     idempotency_key = Column(String(255), nullable=False)
@@ -552,11 +551,11 @@ class NetworkSwitch(Base):
     ip_address = Column(String(50), nullable=False)
     management_type = Column(String(50), default="snmp")    # "omada", "mikrotik", "hp", "tplink", "snmp", "ssh_cli"
     mgmt_port = Column(Integer, default=161, nullable=False)
-    username = Column(String(500), nullable=True)
+    username = Column(String(100), nullable=True)
     _password = Column("password", String(1000), nullable=True)
     _snmp_community = Column("snmp_community", String(1000), default="")
 
-    @hybrid_property
+    @property
     def password(self):
         from SHARED.credential_crypto import decrypt_secret
         return decrypt_secret(self._password)
@@ -566,7 +565,7 @@ class NetworkSwitch(Base):
         from SHARED.credential_crypto import encrypt_secret
         self._password = encrypt_secret(value)
 
-    @hybrid_property
+    @property
     def snmp_community(self):
         from SHARED.credential_crypto import decrypt_secret
         return decrypt_secret(self._snmp_community)

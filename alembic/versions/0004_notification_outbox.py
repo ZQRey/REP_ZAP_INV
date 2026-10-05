@@ -21,7 +21,7 @@ def upgrade():
     status_column_enum = sa.Enum("PENDING", "PROCESSING", "SENT", "RETRY", "FAILED", "DEAD", name="notificationstatus", create_type=False)
     op.create_table(
         "notifications",
-        sa.Column("id", sa.BigInteger(), primary_key=True, autoincrement=True),
+        sa.Column("id", sa.BigInteger().with_variant(sa.Integer(), "sqlite"), primary_key=True, autoincrement=True),
         sa.Column("branch_id", sa.Integer(), sa.ForeignKey("branches.id", ondelete="SET NULL"), nullable=True),
         sa.Column("cartridge_id", sa.Integer(), sa.ForeignKey("cartridges.id", ondelete="SET NULL"), nullable=True),
         sa.Column("channel", sa.String(32), nullable=False),

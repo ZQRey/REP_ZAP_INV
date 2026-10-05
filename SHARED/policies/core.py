@@ -28,7 +28,7 @@ def require_branch_access(principal, branch_id):
     return branch_id
 
 
-DIRECT = {m.AppUser, m.Cartridge, m.Batch, m.Asset, m.RepairBatch, m.Floor, m.SparePartsWarehouse}
+DIRECT = {m.AppUser, m.Cartridge, m.Batch, m.Asset, m.RepairBatch, m.Floor, m.SparePartsWarehouse, m.Notification}
 GLOBAL = {m.SystemSetting, m.ADUser, m.CartridgeModel, m.EquipmentModel, m.AuditLog, m.DocumentCounter}
 PARENTS = {m.Zone: ("floor_id", m.Floor), m.CablePath: ("floor_id", m.Floor),
            m.NetworkSwitch: ("asset_id", m.Asset), m.SwitchPort: ("switch_id", m.NetworkSwitch),

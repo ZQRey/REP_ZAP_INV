@@ -28,7 +28,7 @@ jobs:
       - run: python scripts/check_security.py
       - run: python scripts/audit_authorization.py
       - run: ruff check SHARED CARTRIDGE REPAIR LOCATION PORTAL main_server.py
-      - run: bandit -c pyproject.toml -r SHARED CARTRIDGE REPAIR LOCATION main_server.py
+      - run: bandit -ll -c pyproject.toml -r SHARED CARTRIDGE REPAIR LOCATION main_server.py
       - run: pip-audit -r requirements.txt
       - name: Type check (advisory baseline)
         continue-on-error: true

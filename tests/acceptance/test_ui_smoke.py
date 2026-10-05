@@ -22,7 +22,7 @@ def test_primary_pages_and_local_assets_exist(client):
         html = html_path.read_text(encoding="utf-8")
         for src in re.findall(r'(?:src|href)="(/[^"#?]+)', html):
             if src.startswith("/static/"):
-                local = ROOT / "PORTAL" / src.removeprefix("/static/")
+                local = ROOT / "PORTAL/static" / src.removeprefix("/static/")
                 assert local.exists(), f"{html_path}: missing {src}"
             elif src.startswith("/cartridges/static/"):
                 local = ROOT / "CARTRIDGE/app/static" / src.removeprefix("/cartridges/static/")
@@ -42,7 +42,7 @@ def test_alpine_click_handlers_have_javascript_methods():
         (ROOT / "REPAIR/app/static/index.html", ROOT / "REPAIR/app/static/js/repair_app.js"),
         (ROOT / "LOCATION/app/static/index.html", ROOT / "LOCATION/app/static/js/location_canvas.js"),
     ]
-    builtins = {"preventDefault", "stopPropagation"}
+    builtins = {"preventDefault", "stopPropagation", "map", "filter", "find", "forEach", "includes", "some", "every"}
     for html_path, js_path in pairs:
         html = html_path.read_text(encoding="utf-8")
         js = js_path.read_text(encoding="utf-8")
