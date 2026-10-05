@@ -133,7 +133,13 @@ def test_original_fields_and_relationships_preserved_by_integrity_migration():
     spec = json.loads((ROOT / "alembic/integrity_spec.json").read_text(encoding="utf-8"))
     for name, before in CONTRACT["shared"].items():
         expected = json.loads(json.dumps(before))
-        if name == "AppUser": expected["columns"]["role"]["default"] = "user"
+        if name == "AppUser":
+            expected["columns"]["role"]["default"] = "user"
+        if name == "NetworkSwitch":
+            # 0005 widens persisted encrypted credential fields; the frozen
+            # pre-migration snapshot intentionally remains unchanged.
+            expected["columns"]["password"]["type"] = "VARCHAR(1000)"
+            expected["columns"]["snmp_community"]["type"] = "VARCHAR(1000)"
         for col in spec.get(before["table"], {}).get("not_null", []):
             expected["columns"][col]["nullable"] = False
         actual = describe(getattr(models, name))
