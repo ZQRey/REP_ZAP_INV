@@ -8,6 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def declarations():
     files = [ROOT / "main_server.py"]
+    files.extend((ROOT / "SHARED").rglob("*.py"))
     for module in ("CARTRIDGE", "REPAIR", "LOCATION"):
         files.extend((ROOT / module / "app").rglob("*.py"))
     rows = []

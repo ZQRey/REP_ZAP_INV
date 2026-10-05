@@ -20,3 +20,5 @@ alembic>=1.13,<2
 cryptography>=50.0.0,<51
 
 pysnmp>=7.1,<8
+
+gssapi>=1.9,<2; sys_platform != "win32"

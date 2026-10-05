@@ -408,6 +408,16 @@
                     </div>
                 </div>
 
+                <div class="bg-slate-50 p-4 rounded-xl space-y-3 border border-slate-200">
+                    <h3 class="font-bold text-slate-900">Автоматический вход под доменной учётной записью</h3>
+                    <p class="text-sm text-slate-600">Сначала настройте LDAP. Затем укажите DNS-имя HTTPS-сайта и домен Kerberos, загрузите сервисный keytab из AD. Локальный вход остаётся доступен.</p>
+                    <label class="block">DNS-имя сайта<input type="text" x-model="settingsData.sso_hostname" placeholder="it.example.local" class="w-full border rounded-lg px-3 py-2"></label>
+                    <label class="block">Kerberos realm<input type="text" x-model="settingsData.sso_realm" placeholder="EXAMPLE.LOCAL" class="w-full border rounded-lg px-3 py-2"></label>
+                    <label class="block">Сервисный keytab для HTTP/&lt;DNS-имя&gt;<input type="file" accept=".keytab" @change="uploadSsoKeytab($event)" class="block mt-1"></label>
+                    <label class="block"><input type="checkbox" :checked="settingsData.sso_enabled === 'true'" @change="settingsData.sso_enabled = $event.target.checked ? 'true' : 'false'"> Включить автоматический вход</label>
+                    <p class="text-xs text-slate-500">В браузере доменных компьютеров разрешите интегрированную авторизацию для этого сайта. По IP-адресу автоматический вход не включается. После выхода остаётся обычная форма авторизации до закрытия вкладки.</p>
+                </div>
+
                 <!-- WhatsApp (только для картриджей) -->
                 <div class="bg-slate-50 p-4 rounded-xl space-y-3 border border-slate-200">
                     <div class="flex items-center justify-between">

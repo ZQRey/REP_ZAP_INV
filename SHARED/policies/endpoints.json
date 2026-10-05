@@ -1773,5 +1773,43 @@
     "paths": [
       "/api/v1/location/reports/csv"
     ]
+  },
+  "SHARED/domain_sso.py:sso_status:GET": {
+    "path": "/api/v1/auth/sso/status",
+    "roles": [],
+    "action": "read",
+    "domain": "public",
+    "branch_scope": false,
+    "public": true,
+    "network": false,
+    "paths": [
+      "/api/v1/auth/sso/status"
+    ]
+  },
+  "SHARED/domain_sso.py:domain_login:GET": {
+    "path": "/api/v1/auth/sso",
+    "roles": [],
+    "action": "read",
+    "domain": "public",
+    "branch_scope": false,
+    "public": true,
+    "network": false,
+    "paths": [
+      "/api/v1/auth/sso"
+    ]
+  },
+  "SHARED/domain_sso.py:upload_keytab:POST": {
+    "path": "/api/v1/auth/sso/keytab",
+    "roles": [
+      "superadmin"
+    ],
+    "action": "write",
+    "domain": "settings",
+    "branch_scope": false,
+    "public": false,
+    "network": false,
+    "paths": [
+      "/api/v1/auth/sso/keytab"
+    ]
   }
 }

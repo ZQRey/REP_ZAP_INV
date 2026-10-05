@@ -18,6 +18,9 @@ DEFAULT_SQLITE_PATH = BD_DIR / "app_unified.db"
 from SHARED.security_config import DATABASE_URL, SECRET_KEY, DEBUG, JWT_ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
 
 DEFAULT_SETTINGS = {
+    "sso_enabled": "false",
+    "sso_hostname": "",
+    "sso_realm": "",
     # Active Directory / LDAP
     "ad_host": "",
     "ad_base_dn": "",

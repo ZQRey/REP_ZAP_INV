@@ -28,3 +28,6 @@ evolution_instances/
 BD/postgres_data/
 BD/redis_data/
 uploads/
+
+**/*.keytab
+BD/sso/

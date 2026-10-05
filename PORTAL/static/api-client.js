@@ -67,6 +67,23 @@
         return response.json();
     }
 
+    window.DomainSSO = {
+        async attempt() {
+            if (sessionStorage.getItem('sso_manual') === 'true') return '';
+            try {
+                const options = {credentials: 'same-origin', cache: 'no-store', signal: AbortSignal.timeout(15000)};
+                const status = await nativeFetch('/api/v1/auth/sso/status', options);
+                if (!status.ok || !(await status.json()).enabled) return '';
+                const response = await nativeFetch('/api/v1/auth/sso', {...options, signal: AbortSignal.timeout(30000)});
+                if (!response.ok) return '';
+                const result = await response.json();
+                if (!result.access_token) return '';
+                sessionStorage.setItem('token', result.access_token);
+                return result.access_token;
+            } catch (_) { return ''; }
+        }
+    };
+
     window.ApiClient = {
         ApiError,
         request,

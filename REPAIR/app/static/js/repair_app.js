@@ -193,6 +193,7 @@ document.addEventListener('alpine:init', () => {
         },
 
         async init() {
+            if (!this.token) this.token = await window.DomainSSO.attempt();
             // Если токена нет, проверим URL-параметры или перенаправим на Portal
 
             if (!this.token) {
@@ -1206,6 +1207,7 @@ document.addEventListener('alpine:init', () => {
 
         // Выход из системы
         logout() {
+            sessionStorage.setItem('sso_manual', 'true');
             sessionStorage.removeItem('token');
             window.location.href = '/';
         },

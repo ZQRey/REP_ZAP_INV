@@ -20,7 +20,7 @@ S = superadmin; A = admin; T = technician; O = operator; V = viewer; U = user.
 
 ## Полный реестр HTTP операций
 
-117 source declarations; 114 handler/method policies.
+120 source declarations; 117 handler/method policies.
 
 | Method | Path | Roles | Action / scope | Source |
 |---|---|---|---|---|
@@ -62,14 +62,14 @@ S = superadmin; A = admin; T = technician; O = operator; V = viewer; U = user.
 | GET | `/api/settings` | S/A/T/V/U | read / global | [CARTRIDGE/app/routers/settings_router.py:17](CARTRIDGE/app/routers/settings_router.py#L17) |
 | POST | `/api/settings` | S | write / global | [CARTRIDGE/app/routers/settings_router.py:28](CARTRIDGE/app/routers/settings_router.py#L28) |
 | PUT | `/api/settings` | S | write / global | [CARTRIDGE/app/routers/settings_router.py:28](CARTRIDGE/app/routers/settings_router.py#L28) |
-| POST | `/api/settings/ldap/test` | S | write / global | [CARTRIDGE/app/routers/settings_router.py:45](CARTRIDGE/app/routers/settings_router.py#L45) |
-| POST | `/api/settings/ldap/sync` | S | write / global | [CARTRIDGE/app/routers/settings_router.py:66](CARTRIDGE/app/routers/settings_router.py#L66) |
-| POST | `/api/settings/ad-sync` | S | write / global | [CARTRIDGE/app/routers/settings_router.py:66](CARTRIDGE/app/routers/settings_router.py#L66) |
-| GET | `/api/settings/wa/status` | S/A | wa_self / branch | [CARTRIDGE/app/routers/settings_router.py:76](CARTRIDGE/app/routers/settings_router.py#L76) |
-| GET | `/api/settings/wa/operators-status` | S | read / global | [CARTRIDGE/app/routers/settings_router.py:103](CARTRIDGE/app/routers/settings_router.py#L103) |
-| POST | `/api/settings/wa/qr` | S/A | wa_self / branch | [CARTRIDGE/app/routers/settings_router.py:112](CARTRIDGE/app/routers/settings_router.py#L112) |
-| POST | `/api/settings/wa/reset` | S/A | wa_self / branch | [CARTRIDGE/app/routers/settings_router.py:149](CARTRIDGE/app/routers/settings_router.py#L149) |
-| POST | `/api/settings/wa/test` | S | write / global | [CARTRIDGE/app/routers/settings_router.py:184](CARTRIDGE/app/routers/settings_router.py#L184) |
+| POST | `/api/settings/ldap/test` | S | write / global | [CARTRIDGE/app/routers/settings_router.py:47](CARTRIDGE/app/routers/settings_router.py#L47) |
+| POST | `/api/settings/ldap/sync` | S | write / global | [CARTRIDGE/app/routers/settings_router.py:68](CARTRIDGE/app/routers/settings_router.py#L68) |
+| POST | `/api/settings/ad-sync` | S | write / global | [CARTRIDGE/app/routers/settings_router.py:68](CARTRIDGE/app/routers/settings_router.py#L68) |
+| GET | `/api/settings/wa/status` | S/A | wa_self / branch | [CARTRIDGE/app/routers/settings_router.py:78](CARTRIDGE/app/routers/settings_router.py#L78) |
+| GET | `/api/settings/wa/operators-status` | S | read / global | [CARTRIDGE/app/routers/settings_router.py:105](CARTRIDGE/app/routers/settings_router.py#L105) |
+| POST | `/api/settings/wa/qr` | S/A | wa_self / branch | [CARTRIDGE/app/routers/settings_router.py:114](CARTRIDGE/app/routers/settings_router.py#L114) |
+| POST | `/api/settings/wa/reset` | S/A | wa_self / branch | [CARTRIDGE/app/routers/settings_router.py:151](CARTRIDGE/app/routers/settings_router.py#L151) |
+| POST | `/api/settings/wa/test` | S | write / global | [CARTRIDGE/app/routers/settings_router.py:186](CARTRIDGE/app/routers/settings_router.py#L186) |
 | GET | `/api/users` | S/A/T | read / global | [CARTRIDGE/app/routers/users_router.py:15](CARTRIDGE/app/routers/users_router.py#L15) |
 | GET | `/api/users/ad` | S/A/T | read / global | [CARTRIDGE/app/routers/users_router.py:15](CARTRIDGE/app/routers/users_router.py#L15) |
 | GET | `/health` | anonymous | read / global | [LOCATION/app/main.py:50](LOCATION/app/main.py#L50) |
@@ -89,8 +89,8 @@ S = superadmin; A = admin; T = technician; O = operator; V = viewer; U = user.
 | POST | `/api/v1/location/floors/{floor_id}/upload-map` | S/A | write / branch | [LOCATION/app/routers/floors_router.py:119](LOCATION/app/routers/floors_router.py#L119) |
 | GET | `/api/v1/location/network/trace` | S/A/T/V | read / branch | [LOCATION/app/routers/pathfinding_router.py:15](LOCATION/app/routers/pathfinding_router.py#L15) |
 | GET | `/api/v1/location/stats` | S/A/T/V | read / branch | [LOCATION/app/routers/pathfinding_router.py:39](LOCATION/app/routers/pathfinding_router.py#L39) |
-| GET | `/api/v1/location/reports` | S/A/T/O/V | read / branch | [LOCATION/app/routers/reports_router.py:74](LOCATION/app/routers/reports_router.py#L74) |
-| GET | `/api/v1/location/reports/csv` | S/A/T/O/V | read / branch | [LOCATION/app/routers/reports_router.py:80](LOCATION/app/routers/reports_router.py#L80) |
+| GET | `/api/v1/location/reports` | S/A/T/O/V | read / branch | [LOCATION/app/routers/reports_router.py:77](LOCATION/app/routers/reports_router.py#L77) |
+| GET | `/api/v1/location/reports/csv` | S/A/T/O/V | read / branch | [LOCATION/app/routers/reports_router.py:83](LOCATION/app/routers/reports_router.py#L83) |
 | GET | `/api/v1/location/floors/{floor_id}/switches` | S/A/T/V | read / branch | [LOCATION/app/routers/switches_router.py:94](LOCATION/app/routers/switches_router.py#L94) |
 | POST | `/api/v1/location/switches` | S/A/T | write / branch | [LOCATION/app/routers/switches_router.py:110](LOCATION/app/routers/switches_router.py#L110) |
 | PUT | `/api/v1/location/switches/{switch_id}` | S/A/T | write / branch | [LOCATION/app/routers/switches_router.py:182](LOCATION/app/routers/switches_router.py#L182) |
@@ -103,14 +103,14 @@ S = superadmin; A = admin; T = technician; O = operator; V = viewer; U = user.
 | POST | `/api/v1/location/floors/{floor_id}/zones` | S/A/T | write / branch | [LOCATION/app/routers/zones_router.py:13](LOCATION/app/routers/zones_router.py#L13) |
 | DELETE | `/api/v1/location/zones/{zone_id}` | S/A | write / branch | [LOCATION/app/routers/zones_router.py:42](LOCATION/app/routers/zones_router.py#L42) |
 | PUT | `/api/v1/location/zones/{zone_id}` | S/A/T | write / branch | [LOCATION/app/routers/zones_router.py:59](LOCATION/app/routers/zones_router.py#L59) |
-| POST | `/api/v1/auth/login` | anonymous | write / global | [main_server.py:76](main_server.py#L76) |
-| GET | `/api/v1/auth/me` | S/A/T/O/V/U | read / global | [main_server.py:112](main_server.py#L112) |
-| POST | `/api/v1/auth/change-password` | S/A/T/O/V/U | password_self / global | [main_server.py:132](main_server.py#L132) |
-| GET | `/static/js/app.js` | anonymous | read / global | [main_server.py:222](main_server.py#L222) |
-| GET | `/static/js/qr-scanner.js` | anonymous | read / global | [main_server.py:226](main_server.py#L226) |
-| GET | `/static/css/custom.css` | anonymous | read / global | [main_server.py:230](main_server.py#L230) |
-| GET | `/` | anonymous | read / global | [main_server.py:251](main_server.py#L251) |
-| GET | `/health` | anonymous | read / global | [main_server.py:256](main_server.py#L256) |
+| POST | `/api/v1/auth/login` | anonymous | write / global | [main_server.py:79](main_server.py#L79) |
+| GET | `/api/v1/auth/me` | S/A/T/O/V/U | read / global | [main_server.py:115](main_server.py#L115) |
+| POST | `/api/v1/auth/change-password` | S/A/T/O/V/U | password_self / global | [main_server.py:135](main_server.py#L135) |
+| GET | `/static/js/app.js` | anonymous | read / global | [main_server.py:225](main_server.py#L225) |
+| GET | `/static/js/qr-scanner.js` | anonymous | read / global | [main_server.py:229](main_server.py#L229) |
+| GET | `/static/css/custom.css` | anonymous | read / global | [main_server.py:233](main_server.py#L233) |
+| GET | `/` | anonymous | read / global | [main_server.py:254](main_server.py#L254) |
+| GET | `/health` | anonymous | read / global | [main_server.py:259](main_server.py#L259) |
 | GET | `/health` | anonymous | read / global | [REPAIR/app/main.py:52](REPAIR/app/main.py#L52) |
 | GET | `/` | anonymous | read / global | [REPAIR/app/main.py:57](REPAIR/app/main.py#L57) |
 | POST | `/api/v1/repair/ad/sync-computers` | S | write / branch | [REPAIR/app/routers/ad_computers_router.py:16](REPAIR/app/routers/ad_computers_router.py#L16) |
@@ -141,3 +141,6 @@ S = superadmin; A = admin; T = technician; O = operator; V = viewer; U = user.
 | GET | `/print/repair-act/{batch_id}` | S/A/T/V | read / branch | [REPAIR/app/routers/repair_print_router.py:30](REPAIR/app/routers/repair_print_router.py#L30) |
 | GET | `/api/v1/repair/reports/data` | S/A/T/O/V | read / branch | [REPAIR/app/routers/repair_reports_router.py:17](REPAIR/app/routers/repair_reports_router.py#L17) |
 | GET | `/api/v1/repair/reports/export/excel` | S/A/T/O/V | read / branch | [REPAIR/app/routers/repair_reports_router.py:55](REPAIR/app/routers/repair_reports_router.py#L55) |
+| GET | `/api/v1/auth/sso/status` | anonymous | read / global | [SHARED/domain_sso.py:77](SHARED/domain_sso.py#L77) |
+| GET | `/api/v1/auth/sso` | anonymous | read / global | [SHARED/domain_sso.py:90](SHARED/domain_sso.py#L90) |
+| POST | `/api/v1/auth/sso/keytab` | S | write / global | [SHARED/domain_sso.py:120](SHARED/domain_sso.py#L120) |

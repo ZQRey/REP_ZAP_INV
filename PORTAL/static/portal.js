@@ -64,6 +64,7 @@ document.addEventListener('alpine:init', () => {
         },
 
         async init() {
+            if (!this.token) this.token = await window.DomainSSO.attempt();
             if (!this.token) {
                 this.showLoginModal = true;
                 return;
@@ -203,6 +204,7 @@ document.addEventListener('alpine:init', () => {
         },
 
         logout() {
+            sessionStorage.setItem('sso_manual', 'true');
             this.showPasswordChange = false;
             this.passwordForm = {current_password: '', new_password: '', confirmation: ''};
             sessionStorage.removeItem('token');
@@ -236,6 +238,18 @@ document.addEventListener('alpine:init', () => {
                 this.showToast('Пароль изменён. Можно приступать к работе.', 'success');
             } catch (e) { this.passwordError = e.message; }
             finally { this.passwordLoading = false; }
+        },
+
+        async uploadSsoKeytab(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const body = new FormData(); body.append('file', file);
+            try {
+                const response = await fetch('/api/v1/auth/sso/keytab', {method: 'POST', headers: {'Authorization': `Bearer ${this.token}`}, body});
+                if (!response.ok) throw new Error((await response.json()).detail || 'Ошибка загрузки keytab');
+                this.showToast('Keytab загружен. Сохраните настройки автоматического входа.', 'success');
+            } catch (error) { this.showToast(error.message, 'error'); }
+            event.target.value = '';
         },
 
         async openSettings() {

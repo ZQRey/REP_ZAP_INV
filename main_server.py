@@ -52,6 +52,9 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+from SHARED.domain_sso import router as domain_sso_router
+app.include_router(domain_sso_router)
+
 # CORS
 app.add_middleware(
     CORSMiddleware,

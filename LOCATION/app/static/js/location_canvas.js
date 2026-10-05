@@ -370,6 +370,7 @@ write`,
         },
 
         async init() {
+            if (!this.token) this.token = await window.DomainSSO.attempt();
 
             if (!this.token) {
                 window.location.href = '/?return_to=' + encodeURIComponent(window.location.pathname);
@@ -1725,6 +1726,7 @@ write`,
         },
 
         logout() {
+            sessionStorage.setItem('sso_manual', 'true');
             sessionStorage.removeItem('token');
             window.location.href = '/';
         }

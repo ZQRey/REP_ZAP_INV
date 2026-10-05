@@ -69,6 +69,7 @@ function cartridgeApp() {
 
         // Инициализация
         async init() {
+            if (!this.authToken) this.authToken = await window.DomainSSO.attempt();
             // Shared ApiClient owns authentication/error transport. Keep legacy fetch call sites
             // temporarily, but route them through the same authenticated request boundary.
             if (!window._cartridgeFetchIntercepted) {
@@ -194,6 +195,7 @@ function cartridgeApp() {
         },
 
         logout(notify = true) {
+            sessionStorage.setItem('sso_manual', 'true');
             this.authToken = '';
             this.currentUser = null;
             sessionStorage.removeItem('token');

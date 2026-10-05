@@ -37,6 +37,8 @@ def update_settings(
     if cleaned.get("wa_api_key") in ("******", ""):
         cleaned.pop("wa_api_key", None)
 
+    from SHARED.domain_sso import validate_settings
+    validate_settings({**SettingsService.get_all(db), **cleaned})
     updated = SettingsService.update_bulk(db, cleaned)
     return {"success": True, "settings": public_settings(updated, reveal_bind_user=True)}
 
