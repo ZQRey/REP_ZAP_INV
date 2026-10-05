@@ -88,6 +88,7 @@ services:
       - REDIS_URL=${REDIS_URL:?Run ./scripts/init-env.sh first}
       - SECRET_KEY=${SECRET_KEY:?Run ./scripts/init-env.sh first}
       - NETWORK_CREDENTIAL_KEY=${NETWORK_CREDENTIAL_KEY:?Run ./scripts/init-env.sh first}
+      - NETWORK_ALLOWED_CIDRS=${NETWORK_ALLOWED_CIDRS:-}
       - APP_ENV=${APP_ENV:-production}
       - SSH_KNOWN_HOSTS=/run/ssh/known_hosts
       - TLS_CA_FILE=${TLS_CA_FILE:-}
