@@ -100,6 +100,33 @@ def test_settings_never_return_secrets(client, account):
         assert effective["ad_bind_password"] == secret
 
 
+    from SHARED.auth_service import AuthService
+    from SHARED.models import AppUser
+    with SessionLocal() as db:
+        db.add(AppUser(
+            username="settings-operator",
+            full_name="Settings Operator",
+            password_hash=AuthService.hash_password("operator123"),
+            auth_type="local",
+            role="operator",
+            is_active=True,
+        ))
+        db.commit()
+    operator_token = client.post(
+        "/api/v1/auth/login",
+        json={"username": "settings-operator", "password": "operator123", "auth_type": "local"},
+    ).json()["access_token"]
+    operator_headers = {"Authorization": "Bearer " + operator_token}
+    operator_view = client.get("/api/settings", headers=operator_headers)
+    assert operator_view.status_code == 200
+    assert operator_view.json()["ad_bind_user"] == "******"
+    assert client.put(
+        "/api/settings",
+        headers=operator_headers,
+        json={"settings": {"ad_host": "ldap://unauthorized.example:389"}},
+    ).status_code == 403
+
+
 def test_validation_does_not_echo_password(client):
     secret = secrets.token_urlsafe(24)
     response = client.post("/api/auth/login", json={"username": "test", "password": {"secret": secret}})
