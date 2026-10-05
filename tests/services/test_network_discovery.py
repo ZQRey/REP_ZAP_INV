@@ -97,7 +97,7 @@ def test_owner_branch_comes_from_cartridge_and_admin_is_unchanged(client):
         branch=m.Branch(name="Ownership");db.add(branch);db.flush()
         ordinary=m.AppUser(username="owner",full_name="Owner",role="user",is_active=True)
         admin=m.AppUser(username="administrator",full_name="Admin",role="admin",is_active=True)
-        db.add_all([ordinary,admin]);db.add(m.Cartridge(marker_label="OWN",model="HP",cabinet="1",branch_id=branch.id,current_user_id="OWNER"));db.flush()
+        db.add_all([ordinary,admin,m.ADUser(samaccountname="OWNER",display_name="Owner")]);db.flush();db.add(m.Cartridge(marker_label="OWN",model="HP",cabinet="1",branch_id=branch.id,current_user_id="OWNER"));db.flush()
         assert sync_cartridge_owner_branch(db,ordinary)
         assert ordinary.branch_id == branch.id
         assert not sync_cartridge_owner_branch(db,admin)
