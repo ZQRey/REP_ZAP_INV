@@ -17,7 +17,6 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship, synonym
 from sqlalchemy.ext.hybrid import hybrid_property
-from SHARED.credential_crypto import encrypt_secret, decrypt_secret
 from SHARED.database import Base
 
 
@@ -559,19 +558,24 @@ class NetworkSwitch(Base):
 
     @hybrid_property
     def password(self):
+        from SHARED.credential_crypto import decrypt_secret
         return decrypt_secret(self._password)
 
     @password.setter
     def password(self, value):
+        from SHARED.credential_crypto import encrypt_secret
         self._password = encrypt_secret(value)
 
     @hybrid_property
     def snmp_community(self):
+        from SHARED.credential_crypto import decrypt_secret
         return decrypt_secret(self._snmp_community)
 
     @snmp_community.setter
     def snmp_community(self, value):
+        from SHARED.credential_crypto import encrypt_secret
         self._snmp_community = encrypt_secret(value)
+
     model = Column(String(150), nullable=True)
     total_ports = Column(Integer, default=24, nullable=False)               # 24 или 48 портов
     extra_params = Column(JSON, nullable=True)              # {"site": "Default", "enable_pwd": "..."}
