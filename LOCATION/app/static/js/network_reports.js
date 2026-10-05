@@ -1,5 +1,5 @@
 (async () => {
-    const token = sessionStorage.getItem('token');
+    const token = sessionStorage.getItem('token') || await window.DomainSSO.attempt();
     if (!token) { location.replace('/?return_to=' + encodeURIComponent(location.pathname)); return; }
     const headers = {Authorization: `Bearer ${token}`};
     const message = document.getElementById('message');
