@@ -3,7 +3,6 @@ import os
 import logging
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import declarative_base, sessionmaker
-from SHARED.config import DEFAULT_SETTINGS, SETTING_DESCRIPTIONS
 
 logger = logging.getLogger("SHARED.database")
 
@@ -64,6 +63,7 @@ def init_db():
     - Базовые модели картриджей и техники
     """
     from SHARED import models
+    from SHARED.config import DEFAULT_SETTINGS, SETTING_DESCRIPTIONS
     from SHARED.schema_management import require_schema_head
     require_schema_head(engine)
 
