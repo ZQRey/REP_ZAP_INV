@@ -191,9 +191,11 @@ services:
     entrypoint:
     - /bin/bash
     - -c
-    - export AUTHENTICATION_API_KEY="$$(cat /run/app-secrets/evolution_api_key)" DATABASE_CONNECTION_URI="$$(cat
-      /run/app-secrets/evolution_database_url)" CACHE_REDIS_URI="$$(cat /run/app-secrets/evolution_redis_url)";
-      . ./Docker/scripts/deploy_database.sh && exec npm run start:prod
+    - set -e; read -r AUTHENTICATION_API_KEY < /run/app-secrets/evolution_api_key;
+      read -r DATABASE_CONNECTION_URI < /run/app-secrets/evolution_database_url; read
+      -r CACHE_REDIS_URI < /run/app-secrets/evolution_redis_url; export AUTHENTICATION_API_KEY
+      DATABASE_CONNECTION_URI CACHE_REDIS_URI; . ./Docker/scripts/deploy_database.sh
+      && exec npm run start:prod
   runtime-setup:
     build:
       context: .

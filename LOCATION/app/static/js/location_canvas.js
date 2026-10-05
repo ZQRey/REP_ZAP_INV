@@ -431,6 +431,7 @@ write`,
                     return;
                 }
                 this.currentUser = await res.json();
+                if (this.currentUser.must_change_password) { window.location.replace('/'); return; }
             } catch (e) {
                 console.error(e);
             }
@@ -603,7 +604,7 @@ write`,
                 this.zoneDraft.border_color = '#94a3b8';
             }
             this.stage.draggable(false);
-            this.showToast('Отметьте углы помещения на плане, затем нажмите «Сохранить разметку»');
+            this.showToast('Отметьте углы помещения на плане, затем нажмите «Сохранить»');
         },
         editZone() {
             if (!this.activeZone) return;

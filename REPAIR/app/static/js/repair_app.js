@@ -238,6 +238,7 @@ document.addEventListener('alpine:init', () => {
                     return;
                 }
                 this.currentUser = await res.json();
+                if (this.currentUser.must_change_password) { window.location.replace('/'); return; }
                 if (this.currentUser.branch_id) {
                     this.selectedBranchId = this.currentUser.branch_id;
                 }

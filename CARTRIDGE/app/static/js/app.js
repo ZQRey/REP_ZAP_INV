@@ -179,6 +179,7 @@ function cartridgeApp() {
                 }
                 if (res.ok) {
                     this.currentUser = await res.json();
+                if (this.currentUser.must_change_password) { window.location.replace('/'); return; }
                     this.applyRoleTabConstraints();
                 } else {
                     this.logout(false);
