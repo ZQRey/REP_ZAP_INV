@@ -48,12 +48,15 @@ def test_ldap_connection(
     current_user: AppUser = Depends(require_authenticated_user)
 ):
     """Проверить подключение к Active Directory / LDAP (только Супер администратор)."""
+    password = payload.bind_password
+    if password in (None, "", "******"):
+        password = None
     result = LDAPService.test_connection(
         db=db,
         host=payload.host,
         base_dn=payload.base_dn,
         bind_user=payload.bind_user,
-        bind_password=payload.bind_password
+        bind_password=password
     )
     return result
 
