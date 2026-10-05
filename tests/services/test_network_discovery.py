@@ -37,6 +37,7 @@ def test_uplink_does_not_move_asset(client):
         result=SwitchIntegrationService.process_mac_table(db,sw,[{"port":1,"mac":"aabbccddeeff"},{"port":1,"mac":"112233445566"}])
         assert result["relocated_assets"] == []
         assert pc.branch_id == old_branch
+        assert set(sw.ports[0].learned_macs) == {"AA:BB:CC:DD:EE:FF", "11:22:33:44:55:66"}
 
 
 @pytest.mark.parametrize("setting,expected", [("true",True),("false",False)])

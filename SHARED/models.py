@@ -608,6 +608,7 @@ class SwitchPort(Base):
     socket_label = Column(String(100), nullable=True)       # Маркировка розетки (напр. "Розетка 302-1")
     zone_id = Column(Integer, ForeignKey("zones.id", ondelete="SET NULL"), nullable=True)
     last_mac = Column(String(50), nullable=True)            # Последний зафиксированный MAC (напр. "AA:BB:CC:DD:EE:FF")
+    learned_macs = Column(JSON, nullable=False, default=list)
     last_ip = Column(String(50), nullable=True)
     last_seen_at = Column(DateTime, nullable=True)
     connected_asset_id = Column(Integer, ForeignKey("assets.id", ondelete="SET NULL"), nullable=True)

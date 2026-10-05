@@ -148,6 +148,7 @@ class SwitchPortResponse(BaseModel):
     socket_label: Optional[str] = None
     zone_id: Optional[int] = None
     last_mac: Optional[str] = None
+    learned_macs: List[str] = []
     last_ip: Optional[str] = None
     last_seen_at: Optional[datetime] = None
     connected_asset_id: Optional[int] = None

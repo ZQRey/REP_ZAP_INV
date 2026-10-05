@@ -47,6 +47,7 @@ def _format_switch_response(sw: NetworkSwitch) -> NetworkSwitchResponse:
             socket_label=p.socket_label,
             zone_id=p.zone_id,
             last_mac=p.last_mac,
+            learned_macs=p.learned_macs or [],
             last_ip=p.last_ip,
             last_seen_at=p.last_seen_at,
             connected_asset_id=p.connected_asset_id,

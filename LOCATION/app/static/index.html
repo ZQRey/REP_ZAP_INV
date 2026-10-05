@@ -560,7 +560,7 @@
                 <div class="p-3 bg-slate-950/60 rounded-xl border border-slate-800 space-y-1">
                     <div class="flex justify-between text-[11px]">
                         <span class="text-slate-400">Последний MAC:</span>
-                        <span class="font-mono text-purple-300 font-bold" x-text="selectedPort?.last_mac || 'Не зафиксирован'"></span>
+                        <span class="font-mono text-purple-300 font-bold max-w-xs break-all whitespace-normal max-h-40 overflow-y-auto" x-text="selectedPort?.learned_macs?.length ? selectedPort.learned_macs.join(', ') : (selectedPort?.last_mac || 'Не зафиксирован')"></span>
                     </div>
                     <div class="flex justify-between text-[11px]">
                         <span class="text-slate-400">Подключенное устройство:</span>

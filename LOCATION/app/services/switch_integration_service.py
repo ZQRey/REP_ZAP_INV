@@ -345,12 +345,15 @@ class SwitchIntegrationService:
                 return rows
             try:
                 forwarding = await walk("1.3.6.1.2.1.17.4.3.1.2")
+                if not forwarding:
+                    forwarding = await walk("1.3.6.1.2.1.17.7.1.2.2.1.2")
                 interfaces = await walk("1.3.6.1.2.1.17.1.4.1.2")
                 port_map = (switch.extra_params or {}).get("ifindex_port_map", {})
                 result = []
                 for suffix, bridge_port in forwarding.items():
-                    octets = suffix.split(".")
-                    if len(octets) != 6 or bridge_port <= 0: continue
+                    parts = suffix.split(".")
+                    if len(parts) not in (6, 7) or bridge_port <= 0: continue
+                    octets = parts[-6:]
                     ifindex = interfaces.get(str(bridge_port))
                     physical = int(port_map.get(str(ifindex), bridge_port))
                     result.append({"mac": ":".join(f"{int(n):02X}" for n in octets), "port": physical, "ip": None})
@@ -386,6 +389,9 @@ class SwitchIntegrationService:
         """
         now = datetime.utcnow()
         ports_by_number = {p.port_number: p for p in switch.ports}
+        for port in switch.ports:
+            port.learned_macs = []
+
         
         matched_count = 0
         relocated_assets = []
@@ -421,6 +427,8 @@ class SwitchIntegrationService:
                     port.last_ip = ip
                 port.last_seen_at = now
 
+            port.learned_macs = sorted({normalize_mac(e.get("mac")) for e in mac_entries
+                                        if e.get("port") == port_num} - {None})
             # Поиск техники в базе данных по MAC-адресу
             # Проверяем поле mac_address, а также specs/notes
             # Exact normalized identity only: free-text notes cannot establish identity.
