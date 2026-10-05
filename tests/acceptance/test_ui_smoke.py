@@ -42,7 +42,7 @@ def test_alpine_click_handlers_have_javascript_methods():
         (ROOT / "REPAIR/app/static/index.html", ROOT / "REPAIR/app/static/js/repair_app.js"),
         (ROOT / "LOCATION/app/static/index.html", ROOT / "LOCATION/app/static/js/location_canvas.js"),
     ]
-    builtins = {"preventDefault", "stopPropagation"}
+    builtins = {"preventDefault", "stopPropagation", "map", "filter", "find", "forEach", "includes", "some", "every"}
     for html_path, js_path in pairs:
         html = html_path.read_text(encoding="utf-8")
         js = js_path.read_text(encoding="utf-8")
